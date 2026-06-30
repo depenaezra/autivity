@@ -12,7 +12,7 @@ The dataset for the learner profile contains the necessary information used by t
 - Sex
 - Grade Level
 - Developmental Age
-- Autism Severity Level
+- Autism Level
 - Existing Assessment Results
 - Learning Preferences
 - Sensory Preferences
