@@ -12,6 +12,8 @@ import {
 
 export default function User() {
   const navigation = useNavigation<any>();
+  // single string --> only one user can be selected at a time
+  const [selectedUser, setSelectedUser] = useState<string | null>(null);
 
   const handleContinue = () => {
     // Prevent navigation if nothing is selected yet
@@ -41,9 +43,6 @@ export default function User() {
       image: require('../assets/images/bear.png')
     }
   ];
-
-  // single string --> only one user can be selected at a time
-  const [selectedUser, setSelectedUser] = useState<string | null>(null);
 
   return (
     <View className="flex-1 flex-col items-center gap-[49px] bg-[#F5F7FA]">
@@ -81,8 +80,8 @@ export default function User() {
 
                 // conditional styling for outer wrapper
                 className={`flex-row items-center justify-center self-stretch ${isSelected
-                    ? "w-[613px] h-[334px] rounded-[36px] border-[3px] border-b-[7px] border-[#62A9E6] bg-[#E1F4FF]"
-                    : "w-[613px] h-[334px] rounded-[36px] border-[3px] border-[#D9D9D9] bg-[#F5F7FA]"
+                  ? "w-[613px] h-[334px] rounded-[36px] border-[3px] border-b-[7px] border-[#62A9E6] bg-[#E1F4FF]"
+                  : "w-[613px] h-[334px] rounded-[36px] border-[3px] border-[#D9D9D9] bg-[#F5F7FA]"
                   }`}
               >
                 {/* inner content box */}
@@ -126,10 +125,10 @@ export default function User() {
           {({ pressed }) => (
             <View
               className={`flex-row h-[84px] p-[10px] justify-center items-center gap-[10px] self-stretch rounded-[55px] ${!selectedUser
-                  ? "bg-gray-300 border-b-[4px] border-gray-400" // disabled button styling
-                  : pressed
-                    ? "bg-[#5298D4] border-b-0 translate-y-[4px]" // active pressed button styling
-                    : "bg-[#62A9E6] border-b-[4px] border-[#5298D4]" // default active button styling
+                ? "bg-gray-300 border-b-[4px] border-gray-400" // disabled button styling
+                : pressed
+                  ? "bg-[#5298D4] border-b-0 translate-y-[4px]" // active pressed button styling
+                  : "bg-[#62A9E6] border-b-[4px] border-[#5298D4]" // default active button styling
                 }`}
             >
               <Text className="text-[#F5F7FA] text-center text-[28px] font-fredoka leading-[normal]">
