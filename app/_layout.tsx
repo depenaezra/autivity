@@ -3,10 +3,10 @@ import {
   DefaultTheme,
   ThemeProvider,
 } from "@react-navigation/native";
+import { PortalHost } from "@rn-primitives/portal";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import "react-native-reanimated";
-import { PortalHost } from "@rn-primitives/portal";
 
 import { useFonts } from "expo-font";
 
@@ -61,7 +61,11 @@ export default function RootLayout() {
       <Stack>
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen
-          name="teacher-onboard2"
+          name="user"
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="teacher-onboard"
           options={{ headerShown: false }}
         />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />

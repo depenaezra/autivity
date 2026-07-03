@@ -1,16 +1,16 @@
-import { Image } from "expo-image";
-import {
-  Platform,
-  StyleSheet,
-  Text,
-  View,
-  TouchableOpacity,
-} from "react-native";
 import Entypo from "@expo/vector-icons/Entypo";
 import { useNavigation } from "@react-navigation/native";
+import { router } from "expo-router";
 import { useState } from "react";
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
+} from "react-native";
 
-export default function TeacherOnboard2() {
+export default function TeacherOnboard() {
   const navigation = useNavigation<any>();
 
   // list of options array
@@ -72,20 +72,18 @@ export default function TeacherOnboard2() {
                 onPress={() => toggleGoal(goal)}
 
                 // conditional styling
-                className={`flex-row items-center justify-center gap-[10px] self-stretch ${
-                  isSelected
+                className={`flex-row items-center justify-center gap-[10px] self-stretch ${isSelected
                     ? // active styling
-                      "h-[96px] px-[50px] py-[10px] rounded-[60px] border-[3px] border-b-[7px] border-[#62A9E6] bg-[#E1F4FF]"
+                    "h-[96px] px-[50px] py-[10px] rounded-[60px] border-[3px] border-b-[7px] border-[#62A9E6] bg-[#E1F4FF]"
                     : // default styling
-                      "h-[96px] px-[50px] py-[10px] rounded-[60px] border-[3px] border-[solid] border-[#D9D9D9] bg-[#F5F7FA]"
-                }`}
+                    "h-[96px] px-[50px] py-[10px] rounded-[60px] border-[3px] border-[solid] border-[#D9D9D9] bg-[#F5F7FA]"
+                  }`}
               >
                 <Text
-                  className={`text-[30px] font-quicksand-medium leading-[normal] ${
-                    isSelected
+                  className={`text-[30px] font-quicksand-medium leading-[normal] ${isSelected
                       ? "text-[#62A9E6]" // active text color
                       : "text-[#4B5161]" // default text color
-                  }`}
+                    }`}
                 >
                   {goal}
                 </Text>
@@ -95,6 +93,27 @@ export default function TeacherOnboard2() {
         </View>
 
         {/* ADD BUTTON CONTINUE */}
+        <Pressable
+          // Disables the button if the array is empty
+          disabled={selectedGoals.length === 0}
+          onPress={() => router.push("/(tabs)/explore")} // <-- change to actual tab
+          className="w-full"
+        >
+          {({ pressed }) => (
+            <View
+              className={`flex-row h-[84px] p-[10px] justify-center items-center gap-[10px] self-stretch rounded-[55px] ${selectedGoals.length === 0
+                  ? "bg-[#D9D9D9] border-b-[4px] border-[#A6A6A6]" // disabled button styling
+                  : pressed
+                    ? "bg-[#5298D4] border-b-0 translate-y-[4px]" // active pressed button styling
+                    : "bg-[#62A9E6] border-b-[4px] border-[#5298D4]" // default active button styling
+                }`}
+            >
+              <Text className="text-[#F5F7FA] text-center text-[28px] font-fredoka leading-[normal]">
+                Get started
+              </Text>
+            </View>
+          )}
+        </Pressable>
       </View>
     </View>
   );

@@ -1,7 +1,7 @@
-import { Image } from "expo-image";
-import { StyleSheet, Text, View, TouchableOpacity } from "react-native";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { useNavigation } from "@react-navigation/native";
+import { Image } from "expo-image";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 export default function HomeScreen() {
   const navigation = useNavigation<any>();
@@ -50,7 +50,7 @@ export default function HomeScreen() {
           <TouchableOpacity
             activeOpacity={0.8}
             className="flex-row h-[84px] p-[10px] justify-center items-center gap-[10px] self-stretch rounded-[55px] bg-[#62A9E6] border-b-[4px] border-[#5298D4]"
-            onPress={() => navigation.navigate("teacher-onboard2")} // change to onboard 1 later
+            onPress={() => navigation.navigate("user")} // change to onboard 1 later
           >
             <Text className="text-[#F5F7FA] text-center text-[28px] font-fredoka leading-[normal]">
               Get started
