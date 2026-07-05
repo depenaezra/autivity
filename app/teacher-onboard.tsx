@@ -92,11 +92,10 @@ export default function TeacherOnboard() {
           })}
         </View>
 
-        {/* ADD BUTTON CONTINUE */}
         <Pressable
           // Disables the button if the array is empty
           disabled={selectedGoals.length === 0}
-          onPress={() => router.push("/(tabs)/explore")} // <-- change to actual tab
+          onPress={() => router.push("/(tabs)/teacher-home")} // <-- change to actual tab
           className="w-full"
         >
           {({ pressed }) => (
