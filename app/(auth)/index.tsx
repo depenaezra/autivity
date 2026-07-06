@@ -4,7 +4,7 @@ import { Button, Text, View } from "react-native";
 export default function Welcome() {
   return (
     <View style={{ flex: 1, justifyContent: "center", alignItems: "center", gap: 10 }}>
-      <Text>Welcome Screen</Text>
+      <Text className="font-extrabold">Welcome Screen</Text>
 
       <Button
         title="Get Started"

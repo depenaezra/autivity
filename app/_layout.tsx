@@ -1,3 +1,5 @@
+import "../global.css"; // The '../' steps out of the 'app' folder into the root
+
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
