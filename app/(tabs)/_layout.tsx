@@ -2,7 +2,6 @@ import { Tabs } from 'expo-router';
 import React from 'react';
 
 import { HapticTab } from '@/components/haptic-tab';
-import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 // custom icons
@@ -15,10 +14,25 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+        // 1. Force your specific blue for the active state
+        tabBarActiveTintColor: '#62A9E6',
+
+        // 2. Use a neutral gray for the inactive state
+        tabBarInactiveTintColor: '#D1D5DB',
+
+        // 3. Ensure the label is below the icon
+        tabBarLabelPosition: 'below-icon',
+
         headerShown: false,
         tabBarButton: HapticTab,
-      }}>
+
+        // Optional: Ensure the tab bar itself looks clean
+        tabBarStyle: {
+          height: 80,
+          paddingTop: 10,
+        },
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
