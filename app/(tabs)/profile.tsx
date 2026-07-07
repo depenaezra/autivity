@@ -8,7 +8,7 @@ export default function Profile() {
 
       <Button
         title="Logout"
-        onPress={() => router.replace("/(auth)/welcome")}
+        onPress={() => router.replace("/(auth)")}
       />
     </View>
   );

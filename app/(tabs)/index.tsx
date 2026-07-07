@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Image, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-export default function Class1() {
+export default function TeacherHome() {
   const { firstName } = useLocalSearchParams();
   const router = useRouter();
 
@@ -14,30 +14,30 @@ export default function Class1() {
   // Class Data mapping
   const classesData = [
     {
-      id: '1',
+      id: '1a', // CHANGED: '1' -> '1a' to match our mock database
       title: 'Class 1A',
       level: 'Level 1',
       people: 4,
       image: require('../../assets/images/class-frog.png'),
-      themeColor: '#86EFAC', // Tailwind Green
+      themeColor: '#86EFAC',
       shadowColor: '#4ADE80',
     },
     {
-      id: '2',
-      title: 'Class 1B',
+      id: '2b', // CHANGED: '2' -> '2b' to match our mock database
+      title: 'Class 2B',
       level: 'Level 2',
       people: 3,
       image: require('../../assets/images/class-hamster.png'),
-      themeColor: '#FDBA74', // Tailwind Orange
+      themeColor: '#FDBA74',
       shadowColor: '#FB923C',
     },
     {
-      id: '3',
+      id: '3c', // CHANGED: '3' -> '3c' (You can add '3c' to the MOCK_CLASSES later)
       title: 'Class 1C',
       level: 'Level 3',
       people: 5,
       image: require('../../assets/images/class-penguin.png'),
-      themeColor: '#FDE047', // Tailwind Yellow
+      themeColor: '#FDE047',
       shadowColor: '#EAB308',
     }
   ];
@@ -134,68 +134,70 @@ export default function Class1() {
         </Text>
 
         <ScrollView
-  horizontal
-  showsHorizontalScrollIndicator={false}
-  contentContainerStyle={{ paddingHorizontal: 48 }}
->
-  {classesData.map((item) => (
-    <Pressable 
-      key={item.id} 
-      onPress={() => router.replace('/class1')}
-    >
-      <View
-        className="mr-6 w-[230px] h-[190px] bg-white rounded-[24px] overflow-hidden border-[2px]"
-        style={{
-          borderColor: item.themeColor
-        }}
-      >
-        {/* Image Section (Top half) */}
-        <View
-          className="w-full h-[55%] border-b-[2px]"
-          style={{ borderBottomColor: item.themeColor }}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 48 }}
         >
-          <Image
-            source={item.image}
-            className="w-full h-full"
-            resizeMode="cover"
-          />
-        </View>
-
-        {/* Info Section (Bottom half) */}
-        <View className="flex-1 px-5 py-4 justify-between bg-white">
-          <View className="flex-row justify-between items-center">
-            <Text className="text-2xl font-bold text-[#4B5563]">
-              {item.title}
-            </Text>
-
-            {/* Updated Level Badge */}
-            <View
-              className="border rounded-md px-2 py-0.5"
-              style={{
-                borderColor: item.themeColor,
-                backgroundColor: `${item.themeColor}33`
-              }}
+          {classesData.map((item) => (
+            <Pressable
+              key={item.id}
+              // CHANGED: Replaced hardcoded '/class1' with dynamic route using template literals.
+              // We also use .push() instead of .replace() so you can use the back button!
+              onPress={() => router.push(`/class/${item.id}` as any)}
             >
-              <Text className="text-xs font-semibold" style={{ color: item.themeColor }}>
-                {item.level}
-              </Text>
-            </View>
-          </View>
+              <View
+                className="mr-6 w-[230px] h-[190px] bg-white rounded-[24px] overflow-hidden border-[2px]"
+                style={{
+                  borderColor: item.themeColor
+                }}
+              >
+                {/* Image Section (Top half) */}
+                <View
+                  className="w-full h-[55%] border-b-[2px]"
+                  style={{ borderBottomColor: item.themeColor }}
+                >
+                  <Image
+                    source={item.image}
+                    className="w-full h-full"
+                    resizeMode="cover"
+                  />
+                </View>
 
-          <View className="flex-row items-center mt-2">
-            <View className="flex-row">
-              <View className="w-5 h-5 rounded-full border border-white" style={{ backgroundColor: item.themeColor, opacity: 0.5 }} />
-              <View className="w-5 h-5 rounded-full border border-white -ml-2" style={{ backgroundColor: item.themeColor, opacity: 0.8 }} />
-            </View>
-            <Text className="text-sm font-medium ml-2" style={{ color: item.themeColor }}>
-              {item.people} people
-            </Text>
-          </View>
-        </View>
-      </View>
-    </Pressable>
-  ))}
-</ScrollView>
+                {/* Info Section (Bottom half) */}
+                <View className="flex-1 px-5 py-4 justify-between bg-white">
+                  <View className="flex-row justify-between items-center">
+                    <Text className="text-2xl font-bold text-[#4B5563]">
+                      {item.title}
+                    </Text>
+
+                    {/* Updated Level Badge */}
+                    <View
+                      className="border rounded-md px-2 py-0.5"
+                      style={{
+                        borderColor: item.themeColor,
+                        backgroundColor: `${item.themeColor}33`
+                      }}
+                    >
+                      <Text className="text-xs font-semibold" style={{ color: item.themeColor }}>
+                        {item.level}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View className="flex-row items-center mt-2">
+                    <View className="flex-row">
+                      <View className="w-5 h-5 rounded-full border border-white" style={{ backgroundColor: item.themeColor, opacity: 0.5 }} />
+                      <View className="w-5 h-5 rounded-full border border-white -ml-2" style={{ backgroundColor: item.themeColor, opacity: 0.8 }} />
+                    </View>
+                    <Text className="text-sm font-medium ml-2" style={{ color: item.themeColor }}>
+                      {item.people} people
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            </Pressable>
+          ))}
+        </ScrollView>
       </View>
 
       {/* LESSONS SECTION */}

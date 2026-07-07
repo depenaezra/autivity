@@ -17,8 +17,21 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(auth)" /> {/* expo will start here as its the first screen in stack */} 
+        <Stack.Screen name="(auth)" /> {/* expo will start here as its the first screen in stack */}
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="class/[classId]"
+          options={{ 
+            headerShown: false,
+            presentation: 'card'
+          }}
+        />
+        <Stack.Screen name="student/[studentId]/(student-tabs)" 
+          options={{
+            headerShown: false,
+            presentation: 'fullScreenModal',
+            animation: 'slide_from_bottom'
+          }}
+        />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>
