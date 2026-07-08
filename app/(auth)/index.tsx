@@ -5,21 +5,25 @@ import {
   Image,
   Pressable,
   Text,
-  View
+  View,
+  useWindowDimensions // imported to make app responsive to mobile
 } from 'react-native';
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function Welcome() {
-  // State to track if the checkbox is checked (defaults to false)
   const [isChecked, setIsChecked] = useState(false);
-
   const router = useRouter();
+
+  // to get the screen width of device
+  const { width } = useWindowDimensions();
+  // boolean to check if it's a tablet
+  const isTablet = width >= 768;
 
   return (
     <SafeAreaView className="flex-1 bg-[#F5F8FA]" edges={['bottom', 'left', 'right']}>
 
       {/* Header Container */}
-      <View className="w-full h-[45%]">
+      <View className={`w-full ${isTablet ? 'h-[45%]' : 'h-[35%]'}`}>
         <Image
           source={require('../../assets/images/header.png')}
           className="w-full h-full"
@@ -28,70 +32,70 @@ export default function Welcome() {
       </View>
 
       {/* Main Content Container */}
-      {/* Added flex-1 to this container so it spans the rest of the screen height */}
-      <View className="flex-1 flex-col items-center w-full pt-0 px-[94px] pb-[78px] mt-[49px]">
+      <View
+        className={`flex-1 flex-col items-center w-full pt-0 ${isTablet ? 'px-[94px] pb-[78px] mt-[49px]' : 'px-6 pb-8 mt-6'
+          }`}
+      >
 
         {/* GROUP 1: Welcome Text */}
         <View className="items-center">
-          <Text className="text-5xl font-extrabold text-[#4B5563] text-center mb-4">
+          <Text
+            className={`font-extrabold text-[#4B5563] text-center mb-2 ${isTablet ? 'text-5xl mb-4' : 'text-3xl'
+              }`}
+          >
             Welcome to Autivity
           </Text>
-          <Text className="text-2xl text-[#6B7280] text-center">
+          <Text className={`text-[#6B7280] text-center ${isTablet ? 'text-2xl' : 'text-lg'}`}>
             The right education just for you
           </Text>
         </View>
 
         {/* GROUP 2: Actions (Checkbox & Buttons) */}
-        {/* mt-auto forces this block to push all the way down to the bottom padding! */}
-        <View className="w-full flex-col gap-6 mt-auto">
+        <View className={`w-full flex-col mt-auto ${isTablet ? 'gap-6' : 'gap-4'}`}>
 
           {/* Checkbox Area */}
           <View className="flex-row items-center w-full pl-2">
-            {/* Checkbox Area */}
-            {/* 1. Changed parent View to Pressable and moved the onPress here */}
             <Pressable
               className="flex-row items-center w-full pl-2"
               onPress={() => setIsChecked(!isChecked)}
             >
-              {/* 2. Changed this from Pressable to a standard View since the parent handles the tap */}
               <View
-                className={`w-6 h-6 border-2 rounded-[4px] mr-4 items-center justify-center ${isChecked ? 'bg-[#62A9E6] border-[#62A9E6]' : 'border-[#4B5563] bg-transparent'
+                className={`border-2 items-center justify-center ${isTablet ? 'w-8 h-8 rounded-[6px] mr-4' : 'w-6 h-6 rounded-[4px] mr-3'
+                  } ${isChecked ? 'bg-[#62A9E6] border-[#62A9E6]' : 'border-[#4B5563] bg-transparent'
                   }`}
               >
-                {isChecked && <Feather name="check" size={18} color="white" />}
+                {isChecked && <Feather name="check" size={isTablet ? 22 : 16} color="white" />}
               </View>
 
-              <Text className="text-[#6B7280] text-lg flex-1 leading-7">
+              <Text className={`text-[#6B7280] flex-1 ${isTablet ? 'text-lg leading-7' : 'text-sm leading-5'}`}>
                 I agree to Autivity's <Text className="text-[#84B9E9] underline">Terms and Conditions</Text> and acknowledge the <Text className="text-[#84B9E9] underline">Privacy Policy</Text>.
               </Text>
             </Pressable>
-
           </View>
 
           {/* "Get started" Button */}
           <Pressable
-            // 3. Add the route push here
             onPress={() => router.push('/(auth)/user')}
-            className="w-full h-[84px] bg-[#62A9E6] rounded-[55px] flex items-center justify-center border-b-[4px] border-[#5298D4] p-[10px]"
+            className={`w-full bg-[#62A9E6] flex items-center justify-center border-b-[4px] border-[#5298D4] p-[10px] ${isTablet ? 'h-[84px] rounded-[55px]' : 'h-[60px] rounded-full'
+              }`}
           >
-            <Text className="text-white text-2xl font-semibold">
+            <Text className={`text-white font-semibold ${isTablet ? 'text-2xl' : 'text-lg'}`}>
               Get started
             </Text>
           </Pressable>
 
           {/* "I already have an account" Button */}
           <Pressable
-            // 4. Add the route push here
             onPress={() => router.push('/(auth)/login')}
-            className="w-full h-[84px] bg-[#FEF7F7] rounded-[55px] flex items-center justify-center border-b-[4px] border-[#D5D0D2] p-[10px]"
+            className={`w-full bg-[#FEF7F7] flex items-center justify-center border-b-[4px] border-[#D5D0D2] p-[10px] ${isTablet ? 'h-[84px] rounded-[55px]' : 'h-[60px] rounded-full'
+              }`}
           >
-            <Text className="text-[#4B5563] text-2xl font-semibold">
+            <Text className={`text-[#4B5563] font-semibold ${isTablet ? 'text-2xl' : 'text-lg'}`}>
               I already have an account
             </Text>
           </Pressable>
 
         </View>
-
       </View>
     </SafeAreaView>
   );
