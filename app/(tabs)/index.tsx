@@ -1,20 +1,21 @@
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Image, Pressable, ScrollView, Text, View } from "react-native";
+import { Image, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function TeacherHome() {
   const { firstName } = useLocalSearchParams();
   const router = useRouter();
 
-  // Track which class card is currently "focused" on the left
+  const { width } = useWindowDimensions();
+  const isTablet = width >= 768;
+
   const [activeIndex, setActiveIndex] = useState(0);
 
-  // Class Data mapping
   const classesData = [
     {
-      id: '1a', // CHANGED: '1' -> '1a' to match our mock database
+      id: '1a',
       title: 'Class 1A',
       level: 'Level 1',
       people: 4,
@@ -23,7 +24,7 @@ export default function TeacherHome() {
       shadowColor: '#4ADE80',
     },
     {
-      id: '2b', // CHANGED: '2' -> '2b' to match our mock database
+      id: '2b',
       title: 'Class 2B',
       level: 'Level 2',
       people: 3,
@@ -32,7 +33,7 @@ export default function TeacherHome() {
       shadowColor: '#FB923C',
     },
     {
-      id: '3c', // CHANGED: '3' -> '3c' (You can add '3c' to the MOCK_CLASSES later)
+      id: '3c',
       title: 'Class 1C',
       level: 'Level 3',
       people: 5,
@@ -42,13 +43,11 @@ export default function TeacherHome() {
     }
   ];
 
-  // Function to calculate which card is active based on horizontal scroll position
   const handleScroll = (event: any) => {
     const scrollPosition = event.nativeEvent.contentOffset.x;
-    // 250 is roughly the width of a card plus the gap between them
-    const index = Math.round(scrollPosition / 250);
+    const cardScrollWidth = isTablet ? 254 : 176;
+    const index = Math.round(scrollPosition / cardScrollWidth);
 
-    // Prevent index out of bounds
     if (index >= 0 && index < classesData.length) {
       setActiveIndex(index);
     }
@@ -58,98 +57,86 @@ export default function TeacherHome() {
     <SafeAreaView className="flex-1 bg-[#F5F8FA]">
 
       {/* HEADER SECTION */}
-      <View className="w-full px-12 pt-8 flex-row justify-between items-center">
+      <View className={`w-full flex-row justify-between items-center ${isTablet ? 'px-12 pt-8' : 'px-6 pt-6'}`}>
         {/* Left Side: Welcome Text & Subtitle */}
-        {/* flex-1 ensures the text wraps properly if the name is very long */}
         <View className="flex-1 mr-4">
-          <Text className="text-4xl font-extrabold text-[#4B5563] mb-2">
+          <Text className={`font-extrabold text-[#4B5563] ${isTablet ? 'text-4xl mb-2' : 'text-2xl mb-1'}`}>
             Hi, Teacher {firstName || 'Guest'}!
           </Text>
-          <Text className="text-xl text-[#9CA3AF]">
+          <Text className={`text-[#9CA3AF] ${isTablet ? 'text-xl' : 'text-base'}`}>
             Manage and start activities
           </Text>
         </View>
 
         {/* Right Side: Avatar */}
-        {/* Added justify-end in case the bear needs to sit perfectly flat at the bottom of the circle */}
-        <View className="w-24 h-24 rounded-full bg-[#9ACBF9] overflow-hidden items-center justify-end">
+        <View className={`rounded-full bg-[#9ACBF9] overflow-hidden items-center justify-end ${isTablet ? 'w-24 h-24' : 'w-16 h-16'}`}>
           <Image
             source={require('../../assets/images/bear.png')}
-            // 1. Made the image take up the entire container
             className="w-full h-full"
-            // 2. Changed to 'cover' so it fills the circle entirely without white space
             resizeMode="cover"
           />
         </View>
       </View>
 
       {/* STATS CARDS ROW */}
-      <View className="w-full px-12 mt-10 flex-row justify-between gap-4">
+      <View className={`w-full flex-row justify-between ${isTablet ? 'px-12 mt-10 gap-4' : 'px-6 mt-6 gap-2'}`}>
 
         {/* CARD 1: STUDENTS (Blue) */}
-        <View className="flex-1 rounded-[16px] border-[2px] border-[#A3CFF1] bg-white overflow-hidden">
-          {/* Top colored half */}
-          <View className="bg-[#EBF5FF] flex-row items-center justify-center py-5 gap-3 border-b-[2px] border-b-[#A3CFF1]">
-            <Ionicons name="school-outline" size={36} color="#62A9E6" />
-            <Text className="text-4xl font-extrabold text-[#62A9E6]">15</Text>
+        <View className={`flex-1 border-[2px] border-[#A3CFF1] bg-white overflow-hidden ${isTablet ? 'rounded-[16px]' : 'rounded-xl'}`}>
+          <View className={`bg-[#EBF5FF] flex-row items-center justify-center border-b-[2px] border-b-[#A3CFF1] ${isTablet ? 'py-5 gap-3' : 'py-3 gap-1'}`}>
+            <Ionicons name="school-outline" size={isTablet ? 36 : 24} color="#62A9E6" />
+            <Text className={`font-extrabold text-[#62A9E6] ${isTablet ? 'text-4xl' : 'text-2xl'}`}>15</Text>
           </View>
-          {/* Bottom white half */}
-          <View className="bg-white items-center justify-center py-3">
-            <Text className="text-[#4B5563] text-sm font-bold tracking-widest">STUDENTS</Text>
+          <View className={`bg-white items-center justify-center ${isTablet ? 'py-3' : 'py-2'}`}>
+            <Text className={`text-[#4B5563] font-bold tracking-widest ${isTablet ? 'text-sm' : 'text-[10px]'}`}>STUDENTS</Text>
           </View>
         </View>
 
         {/* CARD 2: LESSONS (Yellow) */}
-        <View className="flex-1 rounded-[16px] border-[2px] border-[#FDE047] bg-white overflow-hidden">
-          {/* Top colored half */}
-          <View className="bg-[#FEF9C3] flex-row items-center justify-center py-5 gap-3 border-b-[2px] border-b-[#FDE047]">
-            <Ionicons name="book" size={32} color="#EAB308" />
-            <Text className="text-4xl font-extrabold text-[#EAB308]">8</Text>
+        <View className={`flex-1 border-[2px] border-[#FDE047] bg-white overflow-hidden ${isTablet ? 'rounded-[16px]' : 'rounded-xl'}`}>
+          <View className={`bg-[#FEF9C3] flex-row items-center justify-center border-b-[2px] border-b-[#FDE047] ${isTablet ? 'py-5 gap-3' : 'py-3 gap-1'}`}>
+            <Ionicons name="book" size={isTablet ? 32 : 20} color="#EAB308" />
+            <Text className={`font-extrabold text-[#EAB308] ${isTablet ? 'text-4xl' : 'text-2xl'}`}>8</Text>
           </View>
-          {/* Bottom white half */}
-          <View className="bg-white items-center justify-center py-3">
-            <Text className="text-[#4B5563] text-sm font-bold tracking-widest">LESSONS</Text>
+          <View className={`bg-white items-center justify-center ${isTablet ? 'py-3' : 'py-2'}`}>
+            <Text className={`text-[#4B5563] font-bold tracking-widest ${isTablet ? 'text-sm' : 'text-[10px]'}`}>LESSONS</Text>
           </View>
         </View>
 
         {/* CARD 3: REPORTS (Red/Pink) */}
-        <View className="flex-1 rounded-[16px] border-[2px] border-[#FCA5A5] bg-white overflow-hidden">
-          {/* Top colored half */}
-          <View className="bg-[#FEE2E2] flex-row items-center justify-center py-5 gap-3 border-b-[2px] border-b-[#FCA5A5]">
-            <Ionicons name="stats-chart" size={32} color="#F87171" />
-            <Text className="text-4xl font-extrabold text-[#F87171]">5</Text>
+        <View className={`flex-1 border-[2px] border-[#FCA5A5] bg-white overflow-hidden ${isTablet ? 'rounded-[16px]' : 'rounded-xl'}`}>
+          <View className={`bg-[#FEE2E2] flex-row items-center justify-center border-b-[2px] border-b-[#FCA5A5] ${isTablet ? 'py-5 gap-3' : 'py-3 gap-1'}`}>
+            <Ionicons name="stats-chart" size={isTablet ? 32 : 20} color="#F87171" />
+            <Text className={`font-extrabold text-[#F87171] ${isTablet ? 'text-4xl' : 'text-2xl'}`}>5</Text>
           </View>
-          {/* Bottom white half */}
-          <View className="bg-white items-center justify-center py-3">
-            <Text className="text-[#4B5563] text-sm font-bold tracking-widest">REPORTS</Text>
+          <View className={`bg-white items-center justify-center ${isTablet ? 'py-3' : 'py-2'}`}>
+            <Text className={`text-[#4B5563] font-bold tracking-widest ${isTablet ? 'text-sm' : 'text-[10px]'}`}>REPORTS</Text>
           </View>
         </View>
       </View>
 
       {/* CLASSES SECTION */}
-      <View className="w-full mt-10">
-
-        <Text className="text-3xl font-extrabold text-[#4B5563] px-12 mb-6">
+      <View className={`w-full ${isTablet ? 'mt-10' : 'mt-6'}`}>
+        <Text className={`font-extrabold text-[#4B5563] ${isTablet ? 'text-3xl px-12 mb-6' : 'text-xl px-6 mb-4'}`}>
           Classes
         </Text>
 
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 48 }}
+          contentContainerStyle={{ paddingHorizontal: isTablet ? 48 : 24 }}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
         >
           {classesData.map((item) => (
             <Pressable
               key={item.id}
-              // CHANGED: Replaced hardcoded '/class1' with dynamic route using template literals.
-              // We also use .push() instead of .replace() so you can use the back button!
               onPress={() => router.push(`/class/${item.id}` as any)}
             >
               <View
-                className="mr-6 w-[230px] h-[190px] bg-white rounded-[24px] overflow-hidden border-[2px]"
-                style={{
-                  borderColor: item.themeColor
-                }}
+                className={`bg-white overflow-hidden border-[2px] ${isTablet ? 'w-[230px] h-[190px] mr-6 rounded-[24px]' : 'w-[160px] h-[150px] mr-4 rounded-2xl'
+                  }`}
+                style={{ borderColor: item.themeColor }}
               >
                 {/* Image Section (Top half) */}
                 <View
@@ -164,13 +151,12 @@ export default function TeacherHome() {
                 </View>
 
                 {/* Info Section (Bottom half) */}
-                <View className="flex-1 px-5 py-4 justify-between bg-white">
+                <View className="flex-1 px-4 py-3 justify-between bg-white">
                   <View className="flex-row justify-between items-center">
-                    <Text className="text-2xl font-bold text-[#4B5563]">
+                    <Text className={`font-bold text-[#4B5563] ${isTablet ? 'text-2xl' : 'text-lg'}`}>
                       {item.title}
                     </Text>
 
-                    {/* Updated Level Badge */}
                     <View
                       className="border rounded-md px-2 py-0.5"
                       style={{
@@ -178,18 +164,18 @@ export default function TeacherHome() {
                         backgroundColor: `${item.themeColor}33`
                       }}
                     >
-                      <Text className="text-xs font-semibold" style={{ color: item.themeColor }}>
+                      <Text className={`font-semibold ${isTablet ? 'text-xs' : 'text-[10px]'}`} style={{ color: item.themeColor }}>
                         {item.level}
                       </Text>
                     </View>
                   </View>
 
-                  <View className="flex-row items-center mt-2">
+                  <View className="flex-row items-center mt-1">
                     <View className="flex-row">
-                      <View className="w-5 h-5 rounded-full border border-white" style={{ backgroundColor: item.themeColor, opacity: 0.5 }} />
-                      <View className="w-5 h-5 rounded-full border border-white -ml-2" style={{ backgroundColor: item.themeColor, opacity: 0.8 }} />
+                      <View className={`rounded-full border border-white ${isTablet ? 'w-5 h-5' : 'w-4 h-4'}`} style={{ backgroundColor: item.themeColor, opacity: 0.5 }} />
+                      <View className={`rounded-full border border-white ${isTablet ? 'w-5 h-5 -ml-2' : 'w-4 h-4 -ml-1'}`} style={{ backgroundColor: item.themeColor, opacity: 0.8 }} />
                     </View>
-                    <Text className="text-sm font-medium ml-2" style={{ color: item.themeColor }}>
+                    <Text className={`font-medium ${isTablet ? 'text-sm ml-2' : 'text-xs ml-1'}`} style={{ color: item.themeColor }}>
                       {item.people} people
                     </Text>
                   </View>
@@ -201,15 +187,16 @@ export default function TeacherHome() {
       </View>
 
       {/* LESSONS SECTION */}
-      <View className="w-full px-12 mt-10 mb-10">
-
-        <Text className="text-3xl font-extrabold text-[#4B5563] mb-6">
+      <View className={`w-full ${isTablet ? 'px-12 mt-10 mb-10' : 'px-6 mt-6 mb-6'}`}>
+        <Text className={`font-extrabold text-[#4B5563] ${isTablet ? 'text-3xl mb-6' : 'text-xl mb-4'}`}>
           Lessons
         </Text>
 
         {/* Lesson Card */}
-        <View className="w-full h-[280px] bg-white rounded-[18px] border-[3px] border-[#D5D0D2] border-b-[5px] overflow-hidden">
-
+        <View
+          className={`w-full bg-white overflow-hidden ${isTablet ? 'h-[280px] rounded-[18px] border-[3px] border-[#D5D0D2] border-b-[5px]' : 'h-[200px] rounded-[14px] border-[2px] border-[#D5D0D2] border-b-[4px]'
+            }`}
+        >
           {/* Top Image Container */}
           <View className="w-full h-[65%]">
             <Image
@@ -220,13 +207,13 @@ export default function TeacherHome() {
           </View>
 
           {/* Bottom Text Container */}
-          <View className="flex-1 px-6 py-4 justify-center">
-            <Text className="text-3xl font-extrabold text-[#4B5563]">
+          <View className="flex-1 px-6 justify-center">
+            <Text className={`font-extrabold text-[#4B5563] ${isTablet ? 'text-3xl' : 'text-xl'}`}>
               Lesson Materials
             </Text>
-            <View className="flex-row items-center mt-2 gap-2">
-              <Feather name="file-text" size={18} color="#9CA3AF" />
-              <Text className="text-lg text-[#9CA3AF] font-medium">
+            <View className={`flex-row items-center gap-2 ${isTablet ? 'mt-2' : 'mt-1'}`}>
+              <Feather name="file-text" size={isTablet ? 18 : 14} color="#9CA3AF" />
+              <Text className={`text-[#9CA3AF] font-medium ${isTablet ? 'text-lg' : 'text-sm'}`}>
                 5 lessons
               </Text>
             </View>
