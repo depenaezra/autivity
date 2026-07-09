@@ -169,8 +169,24 @@ export default function ClassScreen() {
         style={{ paddingBottom: insets.bottom > 0 ? insets.bottom : (isTablet ? 40 : 24) }}
       >
         <Pressable
-          className={`w-full bg-[#62A9E6] flex items-center justify-center border-b-[4px] border-[#5298D4] p-[10px] ${isTablet ? 'h-[84px] rounded-[55px]' : 'h-[60px] rounded-full'
-            }`}
+          disabled={!selectedStudent} // Disable if no student is selected
+          onPress={() => {
+            if (selectedStudent) {
+              router.push({
+                // This matches the file structure: app/student/[studentId]/...
+                // We use 'placeholder-id' since we don't have a real DB ID yet
+                pathname: '/student/[studentId]',
+                params: {
+                  studentId: 'placeholder-id',
+                  studentName: selectedStudent
+                }
+              });
+            }
+          }}
+          className={`w-full flex items-center justify-center border-b-[4px] p-[10px] ${selectedStudent
+            ? 'bg-[#62A9E6] border-[#5298D4]'
+            : 'bg-[#D1D5DB] border-[#9CA3AF]' // Grayed out if disabled
+            } ${isTablet ? 'h-[84px] rounded-[55px]' : 'h-[60px] rounded-full'}`}
         >
           <Text className={`text-white font-semibold ${isTablet ? 'text-2xl' : 'text-lg'}`}>
             Start activity

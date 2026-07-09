@@ -1,50 +1,61 @@
+import { HapticTab } from '@/components/haptic-tab';
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
+import React from 'react';
+import { Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
 
 export default function StudentTabsLayout() {
+  const insets = useSafeAreaInsets();
+
   return (
-    <Tabs 
-      screenOptions={{ 
-        headerShown: false, // Hides the top header to let you build custom ones
-        tabBarActiveTintColor: '#3B82F6', // The blue color we used for the button
-        tabBarInactiveTintColor: '#9CA3AF',
+    <Tabs
+      screenOptions={{
+        tabBarActiveTintColor: '#62A9E6',
+        tabBarInactiveTintColor: '#D1D5DB',
+        tabBarLabelPosition: 'below-icon',
+
+        headerShown: false,
+        tabBarButton: HapticTab,
+
         tabBarStyle: {
-          height: 65,
-          paddingBottom: 10,
-          paddingTop: 5,
+          backgroundColor: '#FFFFFF',
+          borderTopWidth: 1,
+          borderTopColor: '#E5E7EB',
+          height: Platform.OS === 'ios' ? 85 : 65,
+          paddingBottom: Platform.OS === 'ios' ? insets.bottom : 10,
+          paddingTop: 10,
+          elevation: 0,
+          shadowOpacity: 0,
+        },
+
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: '600',
+          marginTop: 4,
         }
       }}
     >
-      {/* 1. Home / Dashboard Screen */}
       <Tabs.Screen
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="home" size={24} color={color} />
-          ),
+          tabBarIcon: ({ color }) => <Ionicons size={28} name="home" color={color} />,
         }}
       />
-
-      {/* 2. Achievements Screen */}
       <Tabs.Screen
         name="achievements"
         options={{
           title: 'Rewards',
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="star" size={24} color={color} />
-          ),
+          tabBarIcon: ({ color }) => <Ionicons size={28} name="star" color={color} />,
         }}
       />
-
-      {/* 3. Profile Screen */}
       <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="person" size={24} color={color} />
-          ),
+          tabBarIcon: ({ color }) => <Ionicons size={28} name="person" color={color} />,
         }}
       />
     </Tabs>
