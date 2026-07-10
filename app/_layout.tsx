@@ -1,12 +1,6 @@
 import "../global.css"; // The '../' steps out of the 'app' folder into the root
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
-
 import {
   Fredoka_300Light,
   Fredoka_400Regular,
@@ -14,6 +8,7 @@ import {
   Fredoka_600SemiBold,
   Fredoka_700Bold,
 } from '@expo-google-fonts/fredoka';
+import { FredokaOne_400Regular } from '@expo-google-fonts/fredoka-one';
 import {
   Quicksand_300Light,
   Quicksand_400Regular,
@@ -21,6 +16,15 @@ import {
   Quicksand_600SemiBold,
   Quicksand_700Bold,
 } from '@expo-google-fonts/quicksand';
+import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { useFonts } from 'expo-font';
+import { Stack } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
+import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
+import 'react-native-reanimated';
+
+SplashScreen.preventAutoHideAsync();
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -29,7 +33,7 @@ export const unstable_settings = {
 export default function RootLayout() {
   const colorScheme = useColorScheme();
 
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     'Quicksand-Light': Quicksand_300Light,
     'Quicksand-Regular': Quicksand_400Regular,
     'Quicksand-Medium': Quicksand_500Medium,
@@ -40,23 +44,26 @@ export default function RootLayout() {
     'Fredoka-Medium': Fredoka_500Medium,
     'Fredoka-SemiBold': Fredoka_600SemiBold,
     'Fredoka-Bold': Fredoka_700Bold,
-    'FredokaOne-Regular': require('../assets/fonts/FredokaOne-Regular.ttf'),
+    'FredokaOne-Regular': FredokaOne_400Regular,
   });
 
-  // if (!fontsLoaded) {
-  //   return null;
-  // }
+  useEffect(() => {
+    if (fontsLoaded || fontError) {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded, fontError]);
+
+  if (!fontsLoaded && !fontError) {
+    return null;
+  }
 
   return (
+
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="class/[classId]" />
-
-        {/* REPLACE your long student path with just the parent folder name.
-           Expo Router will automatically find the internal structure.
-        */}
         <Stack.Screen name="student/[studentId]" />
       </Stack>
       <StatusBar style="auto" />

@@ -79,10 +79,10 @@ export default function StudentHome() {
                         />
                     </View>
 
-                    <Text className={`font-extrabold text-[#374151] ${isTablet ? 'text-6xl mt-4' : 'text-4xl mt-3'}`}>
+                    <Text className={`font-fredoka-one text-[#374151] ${isTablet ? 'text-6xl mt-4' : 'text-4xl mt-3'}`}>
                         {studentName || 'Monna'}
                     </Text>
-                    <Text className={`text-[#9CA3AF] font-medium ${isTablet ? 'text-2xl mt-1' : 'text-lg'}`}>
+                    <Text className={`text-[#9CA3AF] font-quicksand-medium ${isTablet ? 'text-2xl mt-1' : 'text-lg'}`}>
                         Grade 1
                     </Text>
                 </View>
@@ -100,15 +100,15 @@ export default function StudentHome() {
                                 <Ionicons name="hourglass-outline" size={isTablet ? 28 : 20} color="#62A9E6" />
                             </View>
 
-                            <Text className={`font-extrabold text-[#374151] ${isTablet ? 'text-5xl mr-6' : 'text-3xl mr-4'}`}>
+                            <Text className={`font-quicksand-semibold text-[#374151] ${isTablet ? 'text-5xl mr-6' : 'text-3xl mr-4'}`}>
                                 {formattedTime}
                             </Text>
 
                             <View>
-                                <Text className={`font-bold text-[#374151] ${isTablet ? 'text-2xl' : 'text-base'}`}>
+                                <Text className={`font-quicksand-semibold text-[#374151] ${isTablet ? 'text-2xl' : 'text-base'}`}>
                                     Adventure time!
                                 </Text>
-                                <Text className={`text-[#9CA3AF] ${isTablet ? 'text-lg mt-1' : 'text-xs'}`}>
+                                <Text className={`text-[#9CA3AF] font-quicksand-regular ${isTablet ? 'text-lg mt-1' : 'text-xs'}`}>
                                     Explore and play.
                                 </Text>
                             </View>
@@ -132,7 +132,7 @@ export default function StudentHome() {
 
                     {/* START / ACTIVITIES SECTION */}
                     <View className={isTablet ? 'mt-10' : 'mt-8'}>
-                        <Text className={`font-extrabold text-[#4B5563] ${isTablet ? 'text-4xl mb-6' : 'text-2xl mb-4'}`}>
+                        <Text className={`font-fredoka-one text-[#4B5563] ${isTablet ? 'text-4xl mb-6' : 'text-2xl mb-4'}`}>
                             Start
                         </Text>
 
@@ -156,7 +156,7 @@ export default function StudentHome() {
                             <View className={`flex-1 justify-center bg-white ${isTablet ? 'px-6 py-4' : 'px-4 py-3'}`}>
 
                                 <View className="flex-row items-center justify-between w-full">
-                                    <Text className={`font-extrabold text-[#4B5563] ${isTablet ? 'text-4xl' : 'text-2xl'}`}>
+                                    <Text className={`font-quicksand-bold text-[#4B5563] ${isTablet ? 'text-4xl' : 'text-3xl'}`}>
                                         Numbers
                                     </Text>
 
@@ -164,7 +164,7 @@ export default function StudentHome() {
                                     <Pressable className={`flex-row items-center justify-center border-[2px] border-[#FDE047] bg-[#FEF9C3] rounded-full ${isTablet ? 'px-6 py-2 gap-2' : 'px-4 py-1.5 gap-1'
                                         }`}>
                                         <Ionicons name="play" size={isTablet ? 18 : 14} color="#EAB308" />
-                                        <Text className={`font-bold text-[#EAB308] ${isTablet ? 'text-xl' : 'text-sm'}`}>
+                                        <Text className={`font-quicksand-bold text-[#EAB308] ${isTablet ? 'text-xl' : 'text-sm'}`}>
                                             Start
                                         </Text>
                                     </Pressable>

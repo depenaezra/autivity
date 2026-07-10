@@ -12,6 +12,7 @@ module.exports = {
         "quicksand-bold": ["Quicksand-Bold"],
         "fredoka-light": ["Fredoka-Light"],
         fredoka: ["Fredoka-Regular"],
+        "fredoka-regular": ["Fredoka-Regular"],
         "fredoka-medium": ["Fredoka-Medium"],
         "fredoka-semibold": ["Fredoka-SemiBold"],
         "fredoka-bold": ["Fredoka-Bold"],

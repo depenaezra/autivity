@@ -48,7 +48,7 @@ export default function ProfileScreen() {
             </Pressable>
           </View>
 
-          <Text className={`font-extrabold text-[#374151] ${isTablet ? 'text-4xl mt-3' : 'text-2xl mt-2'}`}>
+          <Text className={`font-fredoka-one text-[#374151] ${isTablet ? 'text-4xl mt-3' : 'text-2xl mt-2'}`}>
             Anne Santos
           </Text>
         </View>
@@ -59,33 +59,33 @@ export default function ProfileScreen() {
           {/* PROFILE SECTION */}
           <View className={isTablet ? 'mt-8' : 'mt-6'}>
             <View className="flex-row items-center mb-3">
-              <Text className={`text-[#6B7280] font-bold tracking-widest mr-2 ${isTablet ? 'text-sm' : 'text-xs'}`}>PROFILE</Text>
+              <Text className={`text-[#6B7280] font-quicksand-semibold tracking-widest mr-2 ${isTablet ? 'text-base' : 'text-sm'}`}>PROFILE</Text>
               <Feather name="edit-2" size={isTablet ? 14 : 12} color="#62A9E6" />
             </View>
 
             <View className={`bg-white rounded-[20px] shadow-sm border border-[#F3F4F6] ${isTablet ? 'p-6' : 'p-4'}`}>
               {/* Name Row */}
               <View className={`flex-row items-center border-b border-[#F3F4F6] ${isTablet ? 'pb-4 mb-4' : 'pb-3 mb-3'}`}>
-                <Text className={`text-[#4B5563] ${isTablet ? 'w-[120px] text-lg' : 'w-[90px] text-sm'}`}>Name</Text>
-                <Text className={`flex-1 text-[#9CA3AF] ${isTablet ? 'text-lg' : 'text-sm'}`}>Anne Santos</Text>
+                <Text className={`font-quicksand-medium text-[#4B5563] ${isTablet ? 'w-[120px] text-lg' : 'w-[90px] text-sm'}`}>Name</Text>
+                <Text className={`font-quicksand-medium flex-1 text-[#9CA3AF] ${isTablet ? 'text-lg' : 'text-sm'}`}>Anne Santos</Text>
               </View>
 
               {/* Email Row */}
               <View className={`flex-row items-center border-b border-[#F3F4F6] ${isTablet ? 'pb-4 mb-4' : 'pb-3 mb-3'}`}>
-                <Text className={`text-[#4B5563] ${isTablet ? 'w-[120px] text-lg' : 'w-[90px] text-sm'}`}>Email</Text>
-                <Text className={`flex-1 text-[#9CA3AF] ${isTablet ? 'text-lg' : 'text-sm'}`}>annesantos@g.batstate-u.edu.ph</Text>
+                <Text className={`font-quicksand-medium text-[#4B5563] ${isTablet ? 'w-[120px] text-lg' : 'w-[90px] text-sm'}`}>Email</Text>
+                <Text className={`font-quicksand-medium flex-1 text-[#9CA3AF] ${isTablet ? 'text-lg' : 'text-sm'}`}>annesantos@g.batstate-u.edu.ph</Text>
               </View>
 
               {/* Password Row */}
               <View className={`flex-row items-center border-b border-[#F3F4F6] ${isTablet ? 'pb-4 mb-4' : 'pb-3 mb-3'}`}>
-                <Text className={`text-[#4B5563] ${isTablet ? 'w-[120px] text-lg' : 'w-[90px] text-sm'}`}>Password</Text>
+                <Text className={`font-quicksand-medium text-[#4B5563] ${isTablet ? 'w-[120px] text-lg' : 'w-[90px] text-sm'}`}>Password</Text>
                 <Text className={`flex-1 text-[#D1D5DB] leading-none mt-1 ${isTablet ? 'text-2xl' : 'text-lg'}`}>••••••••</Text>
               </View>
 
               {/* University Row */}
               <View className="flex-row items-center">
-                <Text className={`text-[#4B5563] ${isTablet ? 'w-[120px] text-lg' : 'w-[90px] text-sm'}`}>University</Text>
-                <Text className={`flex-1 text-[#9CA3AF] ${isTablet ? 'text-lg' : 'text-sm'}`}>Batangas State University</Text>
+                <Text className={`font-quicksand-medium text-[#4B5563] ${isTablet ? 'w-[120px] text-lg' : 'w-[90px] text-sm'}`}>University</Text>
+                <Text className={`font-quicksand-medium flex-1 text-[#9CA3AF] ${isTablet ? 'text-lg' : 'text-sm'}`}>Batangas State University</Text>
               </View>
             </View>
           </View>
@@ -93,34 +93,34 @@ export default function ProfileScreen() {
           {/* PREFERENCES & CLASSROOM SECTION */}
           <View className={isTablet ? 'mt-8' : 'mt-6'}>
             <View className="flex-row items-center mb-3">
-              <Text className={`text-[#6B7280] font-bold tracking-widest mr-2 ${isTablet ? 'text-sm' : 'text-xs'}`}>PREFERENCES & CLASSROOM</Text>
+              <Text className={`text-[#6B7280] font-quicksand-semibold tracking-widest mr-2 ${isTablet ? 'text-base' : 'text-sm'}`}>PREFERENCES & CLASSROOM</Text>
               <Feather name="edit-2" size={isTablet ? 14 : 12} color="#62A9E6" />
             </View>
 
             <View className={`bg-white rounded-[20px] shadow-sm border border-[#F3F4F6] ${isTablet ? 'p-6' : 'p-4'}`}>
               {/* Goals Row */}
               <View className={`border-b border-[#F3F4F6] ${isTablet ? 'pb-4 mb-4' : 'pb-3 mb-3'}`}>
-                <Text className={`text-[#4B5563] ${isTablet ? 'text-lg mb-3' : 'text-sm mb-2'}`}>Goals</Text>
+                <Text className={`font-quicksand-medium text-[#4B5563] ${isTablet ? 'text-lg mb-3' : 'text-sm mb-2'}`}>Goals</Text>
                 <View className="flex-row flex-wrap gap-2">
                   <View className={`bg-[#DCFCE7] border border-[#86EFAC] rounded-full ${isTablet ? 'px-4 py-2' : 'px-3 py-1'}`}>
-                    <Text className={`text-[#15803D] font-semibold ${isTablet ? 'text-sm' : 'text-[10px]'}`}>Classroom-ready activities</Text>
+                    <Text className={`text-[#15803D] font-quicksand-bold ${isTablet ? 'text-sm' : 'text-[10px]'}`}>Classroom-ready activities</Text>
                   </View>
                   <View className={`bg-[#FEF9C3] border border-[#FDE047] rounded-full ${isTablet ? 'px-4 py-2' : 'px-3 py-1'}`}>
-                    <Text className={`text-[#A16207] font-semibold ${isTablet ? 'text-sm' : 'text-[10px]'}`}>Reports and assessments</Text>
+                    <Text className={`text-[#A16207] font-quicksand-bold ${isTablet ? 'text-sm' : 'text-[10px]'}`}>Reports and assessments</Text>
                   </View>
                 </View>
               </View>
 
               {/* Students Row */}
               <View className={`flex-row items-center border-b border-[#F3F4F6] ${isTablet ? 'pb-4 mb-4' : 'pb-3 mb-3'}`}>
-                <Text className={`text-[#4B5563] ${isTablet ? 'w-[120px] text-lg' : 'w-[90px] text-sm'}`}>Students</Text>
-                <Text className={`flex-1 text-[#9CA3AF] ${isTablet ? 'text-lg' : 'text-sm'}`}>10</Text>
+                <Text className={`font-quicksand-medium text-[#4B5563] ${isTablet ? 'w-[120px] text-lg' : 'w-[90px] text-sm'}`}>Students</Text>
+                <Text className={`font-quicksand-medium flex-1 text-[#9CA3AF] ${isTablet ? 'text-lg' : 'text-sm'}`}>10</Text>
               </View>
 
               {/* Classes Row */}
               <View className="flex-row items-center">
-                <Text className={`text-[#4B5563] ${isTablet ? 'w-[120px] text-lg' : 'w-[90px] text-sm'}`}>Classes</Text>
-                <Text className={`flex-1 text-[#9CA3AF] ${isTablet ? 'text-lg' : 'text-sm'}`}>3</Text>
+                <Text className={`font-quicksand-medium text-[#4B5563] ${isTablet ? 'w-[120px] text-lg' : 'w-[90px] text-sm'}`}>Classes</Text>
+                <Text className={`font-quicksand-medium flex-1 text-[#9CA3AF] ${isTablet ? 'text-lg' : 'text-sm'}`}>3</Text>
               </View>
             </View>
           </View>
@@ -128,7 +128,7 @@ export default function ProfileScreen() {
           {/* ACCOUNT SECTION */}
           <View className={isTablet ? 'mt-8' : 'mt-6'}>
             <View className="flex-row items-center mb-3">
-              <Text className={`text-[#6B7280] font-bold tracking-widest mr-2 ${isTablet ? 'text-sm' : 'text-xs'}`}>ACCOUNT</Text>
+              <Text className={`text-[#6B7280] font-quicksand-semibold tracking-widest mr-2 ${isTablet ? 'text-base' : 'text-sm'}`}>ACCOUNT</Text>
               <Feather name="edit-2" size={isTablet ? 14 : 12} color="#62A9E6" />
             </View>
 
@@ -136,32 +136,32 @@ export default function ProfileScreen() {
 
               {/* Reset Password Row */}
               <View className={`flex-row items-center justify-between border-b border-[#F3F4F6] ${isTablet ? 'pb-4 mb-4' : 'pb-3 mb-3'}`}>
-                <Text className={`text-[#4B5563] ${isTablet ? 'text-lg' : 'text-sm'}`}>Reset Password</Text>
+                <Text className={`font-quicksand-medium text-[#4B5563] ${isTablet ? 'text-lg' : 'text-sm'}`}>Reset Password</Text>
                 <Pressable className={`flex-row items-center bg-[#E1F0FF] border border-[#9ACBF9] rounded-full ${isTablet ? 'px-4 py-2' : 'px-3 py-1.5'}`}>
                   <Feather name="mail" size={isTablet ? 14 : 12} color="#0284C7" />
-                  <Text className={`text-[#0284C7] font-bold ml-1.5 ${isTablet ? 'text-sm' : 'text-xs'}`}>Send reset link</Text>
+                  <Text className={`text-[#0284C7] font-quicksand-bold ml-1.5 ${isTablet ? 'text-sm' : 'text-xs'}`}>Send reset link</Text>
                 </Pressable>
               </View>
 
               {/* System Updates Row */}
               <View className={`flex-row items-center justify-between border-b border-[#F3F4F6] ${isTablet ? 'pb-4 mb-4' : 'pb-3 mb-3'}`}>
-                <Text className={`text-[#4B5563] ${isTablet ? 'text-lg' : 'text-sm'}`}>System Updates</Text>
+                <Text className={`font-quicksand-medium text-[#4B5563] ${isTablet ? 'text-lg' : 'text-sm'}`}>System Updates</Text>
                 <View className={`flex-row items-center bg-[#E1F0FF] border border-[#9ACBF9] rounded-full ${isTablet ? 'px-4 py-2' : 'px-3 py-1.5'}`}>
                   <Feather name="bell" size={isTablet ? 14 : 12} color="#0284C7" />
-                  <Text className={`text-[#0284C7] font-bold ml-1.5 ${isTablet ? 'text-sm' : 'text-xs'}`}>ON</Text>
+                  <Text className={`text-[#0284C7] font-quicksand-bold ml-1.5 ${isTablet ? 'text-sm' : 'text-xs'}`}>ON</Text>
                 </View>
               </View>
 
               {/* Privacy Policy Row */}
               <Pressable className={`flex-row items-center justify-between border-b border-[#F3F4F6] ${isTablet ? 'pb-4 mb-4' : 'pb-3 mb-3'}`}>
-                <Text className={`text-[#4B5563] ${isTablet ? 'text-lg' : 'text-sm'}`}>Privacy Policy</Text>
+                <Text className={`font-quicksand-medium text-[#4B5563] ${isTablet ? 'text-lg' : 'text-sm'}`}>Privacy Policy</Text>
                 <Feather name="external-link" size={isTablet ? 20 : 16} color="#62A9E6" />
               </Pressable>
 
               {/* Terms and Conditions Row */}
               <Pressable className="flex-row items-center justify-between pt-1">
                 <View className="w-[80%]">
-                  <Text className={`text-[#4B5563] leading-5 ${isTablet ? 'text-lg' : 'text-sm'}`}>Terms and Conditions</Text>
+                  <Text className={`font-quicksand-medium text-[#4B5563] leading-5 ${isTablet ? 'text-lg' : 'text-sm'}`}>Terms and Conditions</Text>
                 </View>
                 <Feather name="external-link" size={isTablet ? 20 : 16} color="#62A9E6" />
               </Pressable>
@@ -173,12 +173,12 @@ export default function ProfileScreen() {
           <View className={`mb-8 ${isTablet ? 'mt-10 gap-y-6' : 'mt-8 gap-y-4'}`}>
             {/* Log out Button */}
             <Pressable className={`w-full bg-[#FFE4E6] rounded-full items-center justify-center ${isTablet ? 'h-[76px]' : 'h-[55px]'}`}>
-              <Text className={`text-[#E11D48] font-semibold ${isTablet ? 'text-xl' : 'text-lg'}`}>Log out</Text>
+              <Text className={`text-[#E11D48] font-fredoka-regular ${isTablet ? 'text-xl' : 'text-lg'}`}>Log out</Text>
             </Pressable>
 
             {/* Delete Account Button */}
             <Pressable className={`w-full bg-[#F43F5E] rounded-full items-center justify-center ${isTablet ? 'h-[76px]' : 'h-[55px]'}`}>
-              <Text className={`text-white font-semibold ${isTablet ? 'text-xl' : 'text-lg'}`}>Delete account</Text>
+              <Text className={`text-white font-fredoka-regular ${isTablet ? 'text-xl' : 'text-lg'}`}>Delete account</Text>
             </Pressable>
           </View>
 

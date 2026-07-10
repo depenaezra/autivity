@@ -40,12 +40,12 @@ export default function Welcome() {
         {/* GROUP 1: Welcome Text */}
         <View className="items-center">
           <Text
-            className={`font-extrabold text-[#4B5563] text-center mb-2 ${isTablet ? 'text-5xl mb-4' : 'text-3xl'
+            className={`font-fredoka-one text-[#4B5563] text-center mb-2 ${isTablet ? 'text-5xl mb-4' : 'text-3xl'
               }`}
           >
             Welcome to Autivity
           </Text>
-          <Text className={`text-[#6B7280] text-center ${isTablet ? 'text-2xl' : 'text-lg'}`}>
+          <Text className={`font-quicksand-medium text-[#6B7280] text-center ${isTablet ? 'text-2xl' : 'text-lg'}`}>
             The right education just for you
           </Text>
         </View>
@@ -67,7 +67,7 @@ export default function Welcome() {
                 {isChecked && <Feather name="check" size={isTablet ? 22 : 16} color="white" />}
               </View>
 
-              <Text className={`text-[#6B7280] flex-1 ${isTablet ? 'text-lg leading-7' : 'text-sm leading-5'}`}>
+              <Text className={`font-quicksand-medium text-[#6B7280] flex-1 ${isTablet ? 'text-lg leading-7' : 'text-sm leading-5'}`}>
                 I agree to Autivity's <Text className="text-[#84B9E9] underline">Terms and Conditions</Text> and acknowledge the <Text className="text-[#84B9E9] underline">Privacy Policy</Text>.
               </Text>
             </Pressable>
@@ -79,7 +79,7 @@ export default function Welcome() {
             className={`w-full bg-[#62A9E6] flex items-center justify-center border-b-[4px] border-[#5298D4] p-[10px] ${isTablet ? 'h-[84px] rounded-[55px]' : 'h-[60px] rounded-full'
               }`}
           >
-            <Text className={`text-white font-semibold ${isTablet ? 'text-2xl' : 'text-lg'}`}>
+            <Text className={`font-fredoka-regular text-white ${isTablet ? 'text-2xl' : 'text-lg'}`}>
               Get started
             </Text>
           </Pressable>
@@ -90,7 +90,7 @@ export default function Welcome() {
             className={`w-full bg-[#FEF7F7] flex items-center justify-center border-b-[4px] border-[#D5D0D2] p-[10px] ${isTablet ? 'h-[84px] rounded-[55px]' : 'h-[60px] rounded-full'
               }`}
           >
-            <Text className={`text-[#4B5563] font-semibold ${isTablet ? 'text-2xl' : 'text-lg'}`}>
+            <Text className={`text-[#4B5563] font-fredoka-regular ${isTablet ? 'text-2xl' : 'text-lg'}`}>
               I already have an account
             </Text>
           </Pressable>

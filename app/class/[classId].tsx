@@ -80,16 +80,16 @@ export default function ClassScreen() {
             {/* Title, Level, and Student Count Container */}
             <View>
               <View className="bg-white/50 self-start px-3 py-1 rounded-md border border-white mb-2">
-                <Text className={`text-[#16A34A] font-bold uppercase tracking-widest ${isTablet ? 'text-sm' : 'text-xs'}`}>
+                <Text className={`text-[#16A34A] font-quicksand-bold uppercase tracking-widest ${isTablet ? 'text-sm' : 'text-xs'}`}>
                   {classData.level}
                 </Text>
               </View>
-              <Text className={`font-extrabold text-[#4B5563] ${isTablet ? 'text-5xl' : 'text-4xl'}`}>
+              <Text className={`font-fredoka-one text-[#4B5563] ${isTablet ? 'text-5xl' : 'text-4xl'}`}>
                 {classData.name}
               </Text>
               <View className="flex-row items-center gap-2 mt-2">
                 <Ionicons name="school" size={isTablet ? 18 : 14} color="#6B7280" />
-                <Text className={`text-[#6B7280] font-medium ${isTablet ? 'text-lg' : 'text-sm'}`}>
+                <Text className={`text-[#6B7280] font-quicksand-medium ${isTablet ? 'text-lg' : 'text-sm'}`}>
                   {classData.students.length} students
                 </Text>
               </View>
@@ -99,7 +99,7 @@ export default function ClassScreen() {
 
         {/* CURRENT ACTIVITY SECTION */}
         <View className={isTablet ? 'px-12 mt-10' : 'px-6 mt-8'}>
-          <Text className={`font-extrabold text-[#4B5563] ${isTablet ? 'text-2xl mb-4' : 'text-xl mb-3'}`}>
+          <Text className={`font-quicksand-semibold text-[#4B5563] ${isTablet ? 'text-2xl mb-4' : 'text-xl mb-3'}`}>
             Current Activity
           </Text>
           <View className={`w-full bg-white flex-row items-center border-[#E5E7EB] ${isTablet ? 'p-5 rounded-[20px] border-[2px]' : 'p-4 rounded-2xl border-2'
@@ -111,10 +111,10 @@ export default function ClassScreen() {
               <Ionicons name={classData.activity.icon} size={isTablet ? 28 : 24} color={classData.darkThemeColor} />
             </View>
             <View className="flex-1">
-              <Text className={`font-bold text-[#4B5563] ${isTablet ? 'text-xl' : 'text-lg'}`}>
+              <Text className={`font-quicksand-medium text-[#4B5563] ${isTablet ? 'text-xl' : 'text-lg'}`}>
                 {classData.activity.title}
               </Text>
-              <Text className={`text-[#9CA3AF] leading-5 ${isTablet ? 'text-base mt-2' : 'text-s mt-1'}`}>
+              <Text className={`font-quicksand-regular text-[#9CA3AF] leading-5 ${isTablet ? 'text-base mt-2' : 'text-s mt-1'}`}>
                 {classData.activity.description}
               </Text>
             </View>
@@ -140,7 +140,7 @@ export default function ClassScreen() {
                     <Ionicons name="person" size={isTablet ? 56 : 40} color={isSelected ? classData.themeColor : '#D1D5DB'} />
                   </View>
                   <Text
-                    className={`font-bold ${isTablet ? 'text-2xl mt-4' : 'text-xl mt-2'}`}
+                    className={`font-quicksand-medium ${isTablet ? 'text-2xl mt-4' : 'text-xl mt-2'}`}
                     style={{ color: isSelected ? classData.themeColor : '#4B5563' }}
                   >
                     {name}
@@ -155,7 +155,7 @@ export default function ClassScreen() {
                 }`}>
                 <Ionicons name="add" size={isTablet ? 56 : 40} color="#6B7280" />
               </View>
-              <Text className={`font-bold text-[#6B7280] ${isTablet ? 'text-xl mt-4' : 'text-base mt-2'}`}>
+              <Text className={`font-quicksand-medium text-[#9CA3AF] ${isTablet ? 'text-2xl mt-4' : 'text-xl mt-2'}`}>
                 Add Student
               </Text>
             </Pressable>
@@ -188,7 +188,7 @@ export default function ClassScreen() {
             : 'bg-[#D1D5DB] border-[#9CA3AF]' // Grayed out if disabled
             } ${isTablet ? 'h-[84px] rounded-[55px]' : 'h-[60px] rounded-full'}`}
         >
-          <Text className={`text-white font-semibold ${isTablet ? 'text-2xl' : 'text-lg'}`}>
+          <Text className={`text-white font-fredoka-regular ${isTablet ? 'text-2xl' : 'text-lg'}`}>
             Start activity
           </Text>
         </Pressable>

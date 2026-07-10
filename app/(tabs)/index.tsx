@@ -60,10 +60,10 @@ export default function TeacherHome() {
       <View className={`w-full flex-row justify-between items-center ${isTablet ? 'px-12 pt-8' : 'px-6 pt-6'}`}>
         {/* Left Side: Welcome Text & Subtitle */}
         <View className="flex-1 mr-4">
-          <Text className={`font-extrabold text-[#4B5563] ${isTablet ? 'text-4xl mb-2' : 'text-2xl mb-1'}`}>
+          <Text className={`font-fredoka-one text-[#4B5563] ${isTablet ? 'text-4xl mb-2' : 'text-2xl mb-1'}`}>
             Hi, Teacher {firstName || 'Guest'}!
           </Text>
-          <Text className={`text-[#9CA3AF] ${isTablet ? 'text-xl' : 'text-base'}`}>
+          <Text className={`font-quicksand-medium text-[#9CA3AF] ${isTablet ? 'text-xl' : 'text-base'}`}>
             Manage and start activities
           </Text>
         </View>
@@ -85,10 +85,10 @@ export default function TeacherHome() {
         <View className={`flex-1 border-[2px] border-[#A3CFF1] bg-white overflow-hidden ${isTablet ? 'rounded-[16px]' : 'rounded-xl'}`}>
           <View className={`bg-[#EBF5FF] flex-row items-center justify-center border-b-[2px] border-b-[#A3CFF1] ${isTablet ? 'py-5 gap-3' : 'py-3 gap-1'}`}>
             <Ionicons name="school-outline" size={isTablet ? 36 : 24} color="#62A9E6" />
-            <Text className={`font-extrabold text-[#62A9E6] ${isTablet ? 'text-4xl' : 'text-2xl'}`}>15</Text>
+            <Text className={`font-quicksand-semibold text-[#62A9E6] ${isTablet ? 'text-4xl' : 'text-2xl'}`}>15</Text>
           </View>
           <View className={`bg-white items-center justify-center ${isTablet ? 'py-3' : 'py-2'}`}>
-            <Text className={`text-[#4B5563] font-bold tracking-widest ${isTablet ? 'text-sm' : 'text-[10px]'}`}>STUDENTS</Text>
+            <Text className={`text-[#4B5563] font-quicksand-semibold tracking-widest ${isTablet ? 'text-sm' : 'text-[10px]'}`}>STUDENTS</Text>
           </View>
         </View>
 
@@ -96,10 +96,10 @@ export default function TeacherHome() {
         <View className={`flex-1 border-[2px] border-[#FDE047] bg-white overflow-hidden ${isTablet ? 'rounded-[16px]' : 'rounded-xl'}`}>
           <View className={`bg-[#FEF9C3] flex-row items-center justify-center border-b-[2px] border-b-[#FDE047] ${isTablet ? 'py-5 gap-3' : 'py-3 gap-1'}`}>
             <Ionicons name="book" size={isTablet ? 32 : 20} color="#EAB308" />
-            <Text className={`font-extrabold text-[#EAB308] ${isTablet ? 'text-4xl' : 'text-2xl'}`}>8</Text>
+            <Text className={`font-quicksand-semibold text-[#EAB308] ${isTablet ? 'text-4xl' : 'text-2xl'}`}>8</Text>
           </View>
           <View className={`bg-white items-center justify-center ${isTablet ? 'py-3' : 'py-2'}`}>
-            <Text className={`text-[#4B5563] font-bold tracking-widest ${isTablet ? 'text-sm' : 'text-[10px]'}`}>LESSONS</Text>
+            <Text className={`text-[#4B5563] font-quicksand-semibold tracking-widest ${isTablet ? 'text-sm' : 'text-[10px]'}`}>LESSONS</Text>
           </View>
         </View>
 
@@ -107,17 +107,17 @@ export default function TeacherHome() {
         <View className={`flex-1 border-[2px] border-[#FCA5A5] bg-white overflow-hidden ${isTablet ? 'rounded-[16px]' : 'rounded-xl'}`}>
           <View className={`bg-[#FEE2E2] flex-row items-center justify-center border-b-[2px] border-b-[#FCA5A5] ${isTablet ? 'py-5 gap-3' : 'py-3 gap-1'}`}>
             <Ionicons name="stats-chart" size={isTablet ? 32 : 20} color="#F87171" />
-            <Text className={`font-extrabold text-[#F87171] ${isTablet ? 'text-4xl' : 'text-2xl'}`}>5</Text>
+            <Text className={`font-quicksand-semibold text-[#F87171] ${isTablet ? 'text-4xl' : 'text-2xl'}`}>5</Text>
           </View>
           <View className={`bg-white items-center justify-center ${isTablet ? 'py-3' : 'py-2'}`}>
-            <Text className={`text-[#4B5563] font-bold tracking-widest ${isTablet ? 'text-sm' : 'text-[10px]'}`}>REPORTS</Text>
+            <Text className={`text-[#4B5563] font-quicksand-semibold tracking-widest ${isTablet ? 'text-sm' : 'text-[10px]'}`}>REPORTS</Text>
           </View>
         </View>
       </View>
 
       {/* CLASSES SECTION */}
       <View className={`w-full ${isTablet ? 'mt-10' : 'mt-6'}`}>
-        <Text className={`font-extrabold text-[#4B5563] ${isTablet ? 'text-3xl px-12 mb-6' : 'text-xl px-6 mb-4'}`}>
+        <Text className={`font-fredoka-one text-[#4B5563] ${isTablet ? 'text-3xl px-12 mb-6' : 'text-xl px-6 mb-4'}`}>
           Classes
         </Text>
 
@@ -153,7 +153,7 @@ export default function TeacherHome() {
                 {/* Info Section (Bottom half) */}
                 <View className="flex-1 px-4 py-3 justify-between bg-white">
                   <View className="flex-row justify-between items-center">
-                    <Text className={`font-bold text-[#4B5563] ${isTablet ? 'text-2xl' : 'text-lg'}`}>
+                    <Text className={`font-quicksand-bold text-[#4B5563] ${isTablet ? 'text-2xl' : 'text-lg'}`}>
                       {item.title}
                     </Text>
 
@@ -164,7 +164,7 @@ export default function TeacherHome() {
                         backgroundColor: `${item.themeColor}33`
                       }}
                     >
-                      <Text className={`font-semibold ${isTablet ? 'text-xs' : 'text-[10px]'}`} style={{ color: item.themeColor }}>
+                      <Text className={`font-quicksand-bold ${isTablet ? 'text-xs' : 'text-[10px]'}`} style={{ color: item.themeColor }}>
                         {item.level}
                       </Text>
                     </View>
@@ -175,7 +175,7 @@ export default function TeacherHome() {
                       <View className={`rounded-full border border-white ${isTablet ? 'w-5 h-5' : 'w-4 h-4'}`} style={{ backgroundColor: item.themeColor, opacity: 0.5 }} />
                       <View className={`rounded-full border border-white ${isTablet ? 'w-5 h-5 -ml-2' : 'w-4 h-4 -ml-1'}`} style={{ backgroundColor: item.themeColor, opacity: 0.8 }} />
                     </View>
-                    <Text className={`font-medium ${isTablet ? 'text-sm ml-2' : 'text-xs ml-1'}`} style={{ color: item.themeColor }}>
+                    <Text className={`font-quicksand-medium ${isTablet ? 'text-sm ml-2' : 'text-xs ml-1'}`} style={{ color: item.themeColor }}>
                       {item.people} people
                     </Text>
                   </View>
@@ -188,7 +188,7 @@ export default function TeacherHome() {
 
       {/* LESSONS SECTION */}
       <View className={`w-full ${isTablet ? 'px-12 mt-10 mb-10' : 'px-6 mt-6 mb-6'}`}>
-        <Text className={`font-extrabold text-[#4B5563] ${isTablet ? 'text-3xl mb-6' : 'text-xl mb-4'}`}>
+        <Text className={`font-fredoka-one text-[#4B5563] ${isTablet ? 'text-3xl mb-6' : 'text-xl mb-4'}`}>
           Lessons
         </Text>
 
@@ -208,12 +208,12 @@ export default function TeacherHome() {
 
           {/* Bottom Text Container */}
           <View className="flex-1 px-6 justify-center">
-            <Text className={`font-extrabold text-[#4B5563] ${isTablet ? 'text-3xl' : 'text-xl'}`}>
+            <Text className={`font-quicksand-bold text-[#4B5563] ${isTablet ? 'text-3xl' : 'text-xl'}`}>
               Lesson Materials
             </Text>
             <View className={`flex-row items-center gap-2 ${isTablet ? 'mt-2' : 'mt-1'}`}>
               <Feather name="file-text" size={isTablet ? 18 : 14} color="#9CA3AF" />
-              <Text className={`text-[#9CA3AF] font-medium ${isTablet ? 'text-lg' : 'text-sm'}`}>
+              <Text className={`text-[#9CA3AF] font-quicksand-medium ${isTablet ? 'text-lg' : 'text-sm'}`}>
                 5 lessons
               </Text>
             </View>
