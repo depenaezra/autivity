@@ -85,7 +85,7 @@ export default function ProfileScreen() {
               {/* University Row */}
               <View className="flex-row items-center">
                 <Text className={`font-quicksand-medium text-[#4B5563] ${isTablet ? 'w-[120px] text-lg' : 'w-[90px] text-sm'}`}>University</Text>
-                <Text className={`font-quicksand-medium flex-1 text-[#9CA3AF] ${isTablet ? 'text-lg' : 'text-sm'}`}>Batangas State University</Text>
+                <Text className={`font-quicksand-medium flex-1 text-[#9CA3AF] ${isTablet ? 'text-lg' : 'text-sm'}`}>Nasugbu East Central School</Text>
               </View>
             </View>
           </View>
