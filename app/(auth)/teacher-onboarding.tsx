@@ -53,13 +53,13 @@ export default function TeacherOnboarding() {
         {/* Title Container */}
         <View className="items-center mb-10 w-full">
           <Text
-            className={`font-extrabold text-[#4B5563] text-center ${isTablet ? 'text-5xl mb-4' : 'text-3xl mb-2'
+            className={`font-fredoka-one text-[#4B5563] text-center ${isTablet ? 'text-5xl mb-4' : 'text-3xl mb-2'
               }`}
           >
             What would you like to focus on?
           </Text>
           {/* Added Subtitle */}
-          <Text className={`text-[#6B7280] text-center ${isTablet ? 'text-2xl' : 'text-lg'}`}>
+          <Text className={`font-quicksand-medium text-[#6B7280] text-center ${isTablet ? 'text-2xl' : 'text-lg'}`}>
             Choose one or more goals
           </Text>
         </View>
@@ -82,7 +82,7 @@ export default function TeacherOnboarding() {
                   }`}
               >
                 <Text
-                  className={`font-medium ${isTablet ? 'text-2xl' : 'text-lg'} ${isActive ? 'text-[#62A9E6]' : 'text-[#6B7280]'
+                  className={`font-quicksand-medium ${isTablet ? 'text-2xl' : 'text-lg'} ${isActive ? 'text-[#62A9E6]' : 'text-[#6B7280]'
                     }`}
                 >
                   {goal}
@@ -105,7 +105,7 @@ export default function TeacherOnboarding() {
                 : 'bg-[#D1D5DB] border-[#9CA3AF]'
               }`}
           >
-            <Text className={`text-white font-semibold ${isTablet ? 'text-2xl' : 'text-lg'}`}>
+            <Text className={`text-white font-quicksand-medium ${isTablet ? 'text-2xl' : 'text-lg'}`}>
               Continue
             </Text>
           </Pressable>

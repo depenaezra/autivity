@@ -34,7 +34,7 @@ export default function User() {
       >
         {/* Title */}
         <Text
-          className={`font-extrabold text-[#4B5563] text-center ${isTablet ? 'text-5xl mb-10' : 'text-3xl mb-6'
+          className={`font-fredoka-one text-[#4B5563] text-center ${isTablet ? 'text-5xl mb-10' : 'text-3xl mb-6'
             }`}
         >
           Who are you?
@@ -57,13 +57,13 @@ export default function User() {
               resizeMode="contain"
             />
             <Text
-              className={`font-extrabold ${isTablet ? 'text-4xl mb-3' : 'text-2xl mb-1'} ${selectedRole === 'parent' ? 'text-[#62A9E6]' : 'text-[#4B5563]'
+              className={`font-fredoka-one ${isTablet ? 'text-4xl mb-3' : 'text-2xl mb-1'} ${selectedRole === 'parent' ? 'text-[#62A9E6]' : 'text-[#4B5563]'
                 }`}
             >
               Parent
             </Text>
             <Text
-              className={`text-center ${isTablet ? 'text-lg leading-7' : 'text-sm leading-5'} ${selectedRole === 'parent' ? 'text-[#7CB7EC]' : 'text-[#6B7280]'
+              className={`font-quicksand-medium text-center ${isTablet ? 'text-lg leading-7' : 'text-sm leading-5'} ${selectedRole === 'parent' ? 'text-[#7CB7EC]' : 'text-[#6B7280]'
                 }`}
             >
               Monitor your child's progress and achievements as they go on their journey.
@@ -85,13 +85,13 @@ export default function User() {
               resizeMode="contain"
             />
             <Text
-              className={`font-extrabold ${isTablet ? 'text-4xl mb-3' : 'text-2xl mb-1'} ${selectedRole === 'teacher' ? 'text-[#62A9E6]' : 'text-[#4B5563]'
+              className={`font-fredoka-one ${isTablet ? 'text-4xl mb-3' : 'text-2xl mb-1'} ${selectedRole === 'teacher' ? 'text-[#62A9E6]' : 'text-[#4B5563]'
                 }`}
             >
               Teacher
             </Text>
             <Text
-              className={`text-center ${isTablet ? 'text-lg leading-7' : 'text-sm leading-5'} ${selectedRole === 'teacher' ? 'text-[#7CB7EC]' : 'text-[#6B7280]'
+              className={`font-quicksand-medium text-center ${isTablet ? 'text-lg leading-7' : 'text-sm leading-5'} ${selectedRole === 'teacher' ? 'text-[#7CB7EC]' : 'text-[#6B7280]'
                 }`}
             >
               Manage classroom activities and learner profiles.
@@ -117,7 +117,7 @@ export default function User() {
                 : 'bg-[#D1D5DB] border-[#9CA3AF]'
               }`}
           >
-            <Text className={`text-white font-semibold ${isTablet ? 'text-2xl' : 'text-lg'}`}>
+            <Text className={`text-white font-fredoka-regular ${isTablet ? 'text-2xl' : 'text-lg'}`}>
               Continue
             </Text>
           </Pressable>

@@ -49,7 +49,7 @@ export default function Signup() {
         >
           {/* Title */}
           <Text
-            className={`font-extrabold text-[#4B5563] text-center ${isTablet ? 'text-5xl mb-10' : 'text-3xl mb-6'
+            className={`font-fredoka-one text-[#4B5563] text-center ${isTablet ? 'text-5xl mb-10' : 'text-3xl mb-6'
               }`}
           >
             Create an account
@@ -63,7 +63,7 @@ export default function Signup() {
                 } ${focusedInput === 'firstName' ? 'border-[#62A9E6]' : 'border-[#E5E7EB]'}`}
             >
               <TextInput
-                className={`text-[#4B5563] w-full p-0 ${isTablet ? 'text-[24px]' : 'text-[18px]'}`}
+                className={`font-quicksand-medium text-[#4B5563] w-full p-0 ${isTablet ? 'text-[24px]' : 'text-[18px]'}`}
                 placeholder="First name"
                 placeholderTextColor="#9CA3AF"
                 value={firstName}
@@ -79,7 +79,7 @@ export default function Signup() {
                 } ${focusedInput === 'lastName' ? 'border-[#62A9E6]' : 'border-[#E5E7EB]'}`}
             >
               <TextInput
-                className={`text-[#4B5563] w-full p-0 ${isTablet ? 'text-[24px]' : 'text-[18px]'}`}
+                className={`font-quicksand-medium text-[#4B5563] w-full p-0 ${isTablet ? 'text-[24px]' : 'text-[18px]'}`}
                 placeholder="Last name"
                 placeholderTextColor="#9CA3AF"
                 value={lastName}
@@ -95,7 +95,7 @@ export default function Signup() {
                 } ${focusedInput === 'email' ? 'border-[#62A9E6]' : 'border-[#E5E7EB]'}`}
             >
               <TextInput
-                className={`text-[#4B5563] w-full p-0 ${isTablet ? 'text-[24px]' : 'text-[18px]'}`}
+                className={`font-quicksand-medium text-[#4B5563] w-full p-0 ${isTablet ? 'text-[24px]' : 'text-[18px]'}`}
                 placeholder="Email address"
                 placeholderTextColor="#9CA3AF"
                 value={email}
@@ -113,7 +113,7 @@ export default function Signup() {
                 } ${focusedInput === 'password' ? 'border-[#62A9E6]' : 'border-[#E5E7EB]'}`}
             >
               <TextInput
-                className={`text-[#4B5563] flex-1 p-0 ${isTablet ? 'text-[24px]' : 'text-[18px]'}`}
+                className={`font-quicksand-medium text-[#4B5563] flex-1 p-0 ${isTablet ? 'text-[24px]' : 'text-[18px]'}`}
                 placeholder="Password"
                 placeholderTextColor="#9CA3AF"
                 value={password}
@@ -135,7 +135,7 @@ export default function Signup() {
               className={`w-full bg-[#62A9E6] flex items-center justify-center border-b-[4px] border-[#5298D4] p-[10px] ${isTablet ? 'h-[84px] rounded-[55px]' : 'h-[60px] rounded-full'
                 }`}
             >
-              <Text className={`text-white font-semibold ${isTablet ? 'text-2xl' : 'text-lg'}`}>
+              <Text className={`text-white font-fredoka-regular ${isTablet ? 'text-2xl' : 'text-lg'}`}>
                 Register
               </Text>
             </Pressable>
@@ -144,7 +144,7 @@ export default function Signup() {
           {/* Divider: OR CONTINUE WITH */}
           <View className={`flex-row items-center w-full ${isTablet ? 'my-8' : 'my-6'}`}>
             <View className="flex-1 h-[2px] bg-[#E5E7EB]" />
-            <Text className={`mx-4 text-[#9CA3AF] font-medium tracking-widest ${isTablet ? 'text-lg' : 'text-sm'}`}>
+            <Text className={`mx-4 text-[#9CA3AF] font-fredoka-regular tracking-widest ${isTablet ? 'text-lg' : 'text-sm'}`}>
               OR CONTINUE WITH
             </Text>
             <View className="flex-1 h-[2px] bg-[#E5E7EB]" />
@@ -157,7 +157,7 @@ export default function Signup() {
                 }`}
             >
               <FontAwesome name="facebook-f" size={isTablet ? 28 : 20} color="#3b5998" />
-              <Text className={`font-medium text-[#4B5563] ${isTablet ? 'text-2xl' : 'text-lg'}`}>Facebook</Text>
+              <Text className={`font-quicksand-medium text-[#4B5563] ${isTablet ? 'text-2xl' : 'text-lg'}`}>Facebook</Text>
             </Pressable>
 
             <Pressable
@@ -165,17 +165,17 @@ export default function Signup() {
                 }`}
             >
               <AntDesign name="google" size={isTablet ? 28 : 20} color="#DB4437" />
-              <Text className={`font-medium text-[#4B5563] ${isTablet ? 'text-2xl' : 'text-lg'}`}>Google</Text>
+              <Text className={`font-quicksand-medium text-[#4B5563] ${isTablet ? 'text-2xl' : 'text-lg'}`}>Google</Text>
             </Pressable>
           </View>
 
           {/* Bottom Login Link */}
           <View className="mt-auto pb-4">
-            <Text className={`text-[#9CA3AF] ${isTablet ? 'text-xl' : 'text-base'}`}>
+            <Text className={`font-quicksand-regular text-[#9CA3AF] ${isTablet ? 'text-xl' : 'text-base'}`}>
               Already have an account?{' '}
               <Text
                 onPress={() => router.push('/(auth)/login')}
-                className="text-[#62A9E6] font-semibold"
+                className="text-[#62A9E6] font-quicksand-medium"
               >
                 Log in
               </Text>
