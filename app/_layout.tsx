@@ -1,3 +1,4 @@
+import { GestureHandlerRootView } from "react-native-gesture-handler"; // For handling tracing
 import "../global.css"; // The '../' steps out of the 'app' folder into the root
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -58,15 +59,16 @@ export default function RootLayout() {
   }
 
   return (
-
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(auth)" />
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="class/[classId]" />
-        <Stack.Screen name="student/[studentId]" />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="(auth)" />
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="class/[classId]" />
+          <Stack.Screen name="student/[studentId]" />
+        </Stack>
+        <StatusBar style="auto" />
+      </ThemeProvider>
+    </GestureHandlerRootView>
   );
 }
