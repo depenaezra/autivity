@@ -1,9 +1,5 @@
 import { svgPathProperties } from "svg-path-properties";
-
-export type Point = {
-    x: number;
-    y: number;
-};
+import type { Point } from "../types";
 
 export function generateCheckpoints(
     path: string,
@@ -18,9 +14,9 @@ export function generateCheckpoints(
     for (
         let distance = 0;
         distance <= totalLength;
-        distance += spacing // if spacing is 30, we sample 0, 30, 60, 90...
+        distance += spacing
     ) {
-        const point = properties.getPointAtLength(distance); // returns x, y for every sample = checkpoints
+        const point = properties.getPointAtLength(distance);
 
         checkpoints.push({
             x: point.x,
