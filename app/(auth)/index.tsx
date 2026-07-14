@@ -75,9 +75,12 @@ export default function Welcome() {
 
           {/* "Get started" Button */}
           <Pressable
-            onPress={() => router.push('/(auth)/user')}
-            className={`w-full bg-[#62A9E6] flex items-center justify-center border-b-[4px] border-[#5298D4] p-[10px] ${isTablet ? 'h-[84px] rounded-[55px]' : 'h-[60px] rounded-full'
-              }`}
+            onPress={() => router.push('/(auth)/teacher-onboarding')}
+            disabled={!isChecked}
+            className={`w-full flex items-center justify-center border-b-[4px] p-[10px] ${isChecked
+              ? 'bg-[#62A9E6] border-[#5298D4]' // blue - if tnc is checked
+              : 'bg-[#D1D5DB] border-[#9CA3AF]' // gray - if tnc not checked yet
+              } ${isTablet ? 'h-[84px] rounded-[55px]' : 'h-[60px] rounded-full'}`}
           >
             <Text className={`font-fredoka-regular text-white ${isTablet ? 'text-2xl' : 'text-lg'}`}>
               Get started

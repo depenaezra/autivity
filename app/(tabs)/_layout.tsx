@@ -1,7 +1,6 @@
 import { HapticTab } from '@/components/haptic-tab';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
-import Fontisto from '@expo/vector-icons/Fontisto';
 import { Tabs } from 'expo-router';
 import React from 'react';
 import { Platform } from 'react-native';
@@ -47,10 +46,10 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="settings"
+        name="analytics"
         options={{
-          title: 'Settings',
-          tabBarIcon: ({ color }) => <Fontisto size={28} name="star" color={color} />,
+          title: 'Analytics',
+          tabBarIcon: ({ color }) => <FontAwesome6 size={28} name="chart-line" color={color} />,
         }}
       />
       <Tabs.Screen

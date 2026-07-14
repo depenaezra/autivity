@@ -1,14 +1,47 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { ImageBackground, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
+import { Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+// Import your SVG headers here
+import BlueHeaderSvg from '../../assets/images/class-headers/blue-header.svg';
+import GreenHeaderSvg from '../../assets/images/class-headers/green-header.svg';
+import OrangeHeaderSvg from '../../assets/images/class-headers/orange-header.svg';
+import YellowHeaderSvg from '../../assets/images/class-headers/yellow-header.svg';
+
+export const THEME_CONFIG: Record<string, {
+  themeColor: string;
+  darkThemeColor: string;
+  lightThemeColor: string;
+}> = {
+  green: {
+    themeColor: '#4ADE80',
+    darkThemeColor: '#059669',
+    lightThemeColor: '#D1FAE5',
+  },
+  orange: {
+    themeColor: '#FB923C',
+    darkThemeColor: '#EA580C',
+    lightThemeColor: '#FFEDD5',
+  },
+  yellow: {
+    themeColor: '#FACC15',
+    darkThemeColor: '#CA8A04',
+    lightThemeColor: '#FEF9C3',
+  },
+  blue: {
+    themeColor: '#60A5FA',
+    darkThemeColor: '#2563EB',
+    lightThemeColor: '#DBEAFE',
+  },
+};
 
 export const MOCK_CLASSES = {
   '1a': {
     id: '1a',
     name: 'Class 1A',
-    level: 'Level 1',
+    level: 'Grade 1',
     themeColor: '#4ADE80',       // main color
     darkThemeColor: '#059669',   // icons: darker green
     lightThemeColor: '#D1FAE5',  // icon backgrounds: light green
@@ -22,10 +55,10 @@ export const MOCK_CLASSES = {
   '2b': {
     id: '2b',
     name: 'Class 2B',
-    level: 'Level 2',
-    themeColor: '#A78BFA',       // main color
-    darkThemeColor: '#7C3AED',   // icons: darker purple
-    lightThemeColor: '#EDE9FE',  // icon backgrounds: light purple
+    level: 'Grade 2',
+    themeColor: '#FB923C',       // main color
+    darkThemeColor: '#EA580C',   // icons: darker orange
+    lightThemeColor: '#FFEDD5',  // icon backgrounds: light orange
     students: ['Alex', 'Sarah', 'John'],
     activity: {
       title: 'Letter Tracing',
@@ -48,7 +81,42 @@ export default function ClassScreen() {
 
   const safeId = Array.isArray(rawId) ? rawId[0] : rawId;
 
-  const classData = MOCK_CLASSES[safeId as keyof typeof MOCK_CLASSES] || MOCK_CLASSES['1a'];
+  const paramName = Array.isArray(params.name) ? params.name[0] : params.name;
+  const paramGrade = Array.isArray(params.grade) ? params.grade[0] : params.grade || (Array.isArray(params.level) ? params.level[0] : params.level);
+  const paramThemeName = Array.isArray(params.themeName) ? params.themeName[0] : params.themeName;
+  const paramThemeColor = Array.isArray(params.themeColor) ? params.themeColor[0] : params.themeColor;
+
+  let resolvedThemeName = paramThemeName;
+  if (!resolvedThemeName && paramThemeColor) {
+    if (paramThemeColor.toUpperCase().includes('86EFAC') || paramThemeColor.toUpperCase().includes('4ADE80')) resolvedThemeName = 'green';
+    else if (paramThemeColor.toUpperCase().includes('FDBA74') || paramThemeColor.toUpperCase().includes('FB923C')) resolvedThemeName = 'orange';
+    else if (paramThemeColor.toUpperCase().includes('FDE047') || paramThemeColor.toUpperCase().includes('EAB308') || paramThemeColor.toUpperCase().includes('FACC15')) resolvedThemeName = 'yellow';
+    else if (paramThemeColor.toUpperCase().includes('93C5FD') || paramThemeColor.toUpperCase().includes('60A5FA')) resolvedThemeName = 'blue';
+  }
+  if (!resolvedThemeName) {
+    if (safeId === '2b') resolvedThemeName = 'orange';
+    else if (safeId === '3c') resolvedThemeName = 'yellow';
+    else resolvedThemeName = 'green';
+  }
+
+  const themeConfig = THEME_CONFIG[resolvedThemeName] || THEME_CONFIG.green;
+  const mockClass = MOCK_CLASSES[safeId as keyof typeof MOCK_CLASSES] || MOCK_CLASSES['1a'];
+
+  const classData = {
+    id: safeId || '1a',
+    name: paramName || mockClass.name,
+    level: paramGrade || mockClass.level,
+    themeName: resolvedThemeName,
+    themeColor: paramThemeColor || mockClass.themeColor || themeConfig.themeColor,
+    darkThemeColor: themeConfig.darkThemeColor,
+    lightThemeColor: themeConfig.lightThemeColor,
+    students: mockClass.students || [],
+    activity: mockClass.activity || {
+      title: 'Pre-Writing Activities',
+      description: 'Interactive pre-writing activities to build confidence and writing readiness.',
+      icon: 'pencil' as const,
+    }
+  };
 
   const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
 
@@ -61,13 +129,27 @@ export default function ClassScreen() {
         bounces={false}
       >
         {/* HEADER SECTION */}
-        <ImageBackground
-          source={require('../../assets/images/class-screen-frog.png')}
-          className={`w-full ${isTablet ? 'h-[320px]' : 'h-[240px]'}`}
-          resizeMode="cover"
-        >
+        <View className={`w-full relative overflow-hidden ${isTablet ? 'h-[320px]' : 'h-[240px]'}`}>
+
+          {/* svg background */}
           <View
-            className={`flex-1 justify-between ${isTablet ? 'px-12 pb-8' : 'px-6 pb-6'}`}
+            className="absolute w-full z-0"
+            style={{ height: '115%', top: -30 }}
+          >
+            {classData.themeName === 'orange' ? (
+              <OrangeHeaderSvg width="100%" height="100%" preserveAspectRatio="xMidYMax slice" />
+            ) : classData.themeName === 'yellow' ? (
+              <YellowHeaderSvg width="100%" height="100%" preserveAspectRatio="xMidYMax slice" />
+            ) : classData.themeName === 'blue' ? (
+              <BlueHeaderSvg width="100%" height="100%" preserveAspectRatio="xMidYMax slice" />
+            ) : (
+              <GreenHeaderSvg width="100%" height="100%" preserveAspectRatio="xMidYMax slice" />
+            )}
+          </View>
+
+          {/* 2. The Content layered on top */}
+          <View
+            className={`flex-1 justify-between relative z-10 ${isTablet ? 'px-12 pb-8' : 'px-6 pb-6'}`}
             style={{ paddingTop: insets.top + (isTablet ? 24 : 16) }}
           >
             <Pressable
@@ -80,7 +162,7 @@ export default function ClassScreen() {
             {/* Title, Level, and Student Count Container */}
             <View>
               <View className="bg-white/50 self-start px-3 py-1 rounded-md border border-white mb-2">
-                <Text className={`text-[#16A34A] font-quicksand-bold uppercase tracking-widest ${isTablet ? 'text-sm' : 'text-xs'}`}>
+                <Text className={`font-quicksand-bold uppercase tracking-widest ${isTablet ? 'text-sm' : 'text-xs'}`} style={{ color: classData.darkThemeColor }}>
                   {classData.level}
                 </Text>
               </View>
@@ -95,7 +177,7 @@ export default function ClassScreen() {
               </View>
             </View>
           </View>
-        </ImageBackground>
+        </View>
 
         {/* CURRENT ACTIVITY SECTION */}
         <View className={isTablet ? 'px-12 mt-10' : 'px-6 mt-8'}>
@@ -162,19 +244,17 @@ export default function ClassScreen() {
 
           </View>
         </View>
-      </ScrollView>
+      </ScrollView >
 
       <View
         className={`w-full bg-[#F9FAFB] pt-2 ${isTablet ? 'px-12 pb-10' : 'px-6 pb-8'}`}
         style={{ paddingBottom: insets.bottom > 0 ? insets.bottom : (isTablet ? 40 : 24) }}
       >
         <Pressable
-          disabled={!selectedStudent} // Disable if no student is selected
+          disabled={!selectedStudent}
           onPress={() => {
             if (selectedStudent) {
               router.push({
-                // This matches the file structure: app/student/[studentId]/...
-                // We use 'placeholder-id' since we don't have a real DB ID yet
                 pathname: '/student/[studentId]',
                 params: {
                   studentId: 'placeholder-id',
@@ -185,7 +265,7 @@ export default function ClassScreen() {
           }}
           className={`w-full flex items-center justify-center border-b-[4px] p-[10px] ${selectedStudent
             ? 'bg-[#62A9E6] border-[#5298D4]'
-            : 'bg-[#D1D5DB] border-[#9CA3AF]' // Grayed out if disabled
+            : 'bg-[#D1D5DB] border-[#9CA3AF]'
             } ${isTablet ? 'h-[84px] rounded-[55px]' : 'h-[60px] rounded-full'}`}
         >
           <Text className={`text-white font-fredoka-regular ${isTablet ? 'text-2xl' : 'text-lg'}`}>
@@ -194,6 +274,6 @@ export default function ClassScreen() {
         </Pressable>
       </View>
 
-    </View>
+    </View >
   );
 }
