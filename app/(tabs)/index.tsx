@@ -1,8 +1,26 @@
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useState } from 'react';
-import { Image, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, View, useWindowDimensions } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+interface ClassItem {
+  id: string;
+  title: string;
+  level: string;
+  people: number;
+  image?: any;
+  themeColor: string;
+  shadowColor: string;
+  themeName?: string;
+}
+
+const classCards: Record<string, any> = {
+  green: require('../../assets/images/class-cards/class-frog.png'),
+  orange: require('../../assets/images/class-cards/class-hamster.png'),
+  yellow: require('../../assets/images/class-cards/class-penguin.png'),
+  blue: require('../../assets/images/polar-bear.png'),
+};
 
 export default function TeacherHome() {
   const { firstName } = useLocalSearchParams();
@@ -13,35 +31,88 @@ export default function TeacherHome() {
 
   const [activeIndex, setActiveIndex] = useState(0);
 
-  const classesData = [
+  const [classesData, setClassesData] = useState<ClassItem[]>([
     {
       id: '1a',
       title: 'Class 1A',
-      level: 'Level 1',
+      level: 'Grade 1',
       people: 4,
-      image: require('../../assets/images/class-frog.png'),
+      image: require('../../assets/images/class-cards/class-frog.png'),
       themeColor: '#86EFAC',
       shadowColor: '#4ADE80',
+      themeName: 'green',
     },
     {
       id: '2b',
       title: 'Class 2B',
-      level: 'Level 2',
+      level: 'Grade 2',
       people: 3,
-      image: require('../../assets/images/class-hamster.png'),
+      image: require('../../assets/images/class-cards/class-hamster.png'),
       themeColor: '#FDBA74',
       shadowColor: '#FB923C',
+      themeName: 'orange',
     },
     {
       id: '3c',
       title: 'Class 1C',
-      level: 'Level 3',
+      level: 'Grade 3',
       people: 5,
-      image: require('../../assets/images/class-penguin.png'),
+      image: require('../../assets/images/class-cards/class-penguin.png'),
       themeColor: '#FDE047',
       shadowColor: '#EAB308',
+      themeName: 'yellow',
     }
+  ]);
+
+  const [isAddClassModalVisible, setAddClassModalVisible] = useState(false);
+  const slideAnim = useRef(new Animated.Value(600)).current;
+
+  useEffect(() => {
+    if (isAddClassModalVisible) {
+      slideAnim.setValue(600);
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        useNativeDriver: true,
+        damping: 20,
+        stiffness: 150,
+      }).start();
+    }
+  }, [isAddClassModalVisible]);
+
+  const [newClassName, setNewClassName] = useState('');
+  const [newClassSchedule, setNewClassSchedule] = useState('');
+  const [newClassGrade, setNewClassGrade] = useState('Grade 1');
+  const [newClassTheme, setNewClassTheme] = useState('#FDBA74'); // Default orange
+
+  const themeColors = [
+    { name: 'orange', value: '#FDBA74', shadow: '#FB923C' },
+    { name: 'yellow', value: '#FDE047', shadow: '#EAB308' },
+    { name: 'blue', value: '#93C5FD', shadow: '#60A5FA' },
+    { name: 'green', value: '#86EFAC', shadow: '#4ADE80' },
   ];
+
+  const handleAddClass = () => {
+    if (!newClassName.trim()) return;
+    const selectedTheme = themeColors.find(c => c.value === newClassTheme) || themeColors[0];
+
+    const newClass: ClassItem = {
+      id: Date.now().toString(),
+      title: newClassName,
+      level: newClassGrade.trim() || 'Grade 1',
+      people: 0,
+      image: classCards[selectedTheme.name] || require('../../assets/images/polar-bear.png'),
+      themeColor: selectedTheme.value,
+      shadowColor: selectedTheme.shadow,
+      themeName: selectedTheme.name,
+    };
+
+    setClassesData([...classesData, newClass]);
+    setAddClassModalVisible(false);
+    setNewClassName('');
+    setNewClassSchedule('');
+    setNewClassGrade('Grade 1');
+    setNewClassTheme('#FDBA74');
+  };
 
   const handleScroll = (event: any) => {
     const scrollPosition = event.nativeEvent.contentOffset.x;
@@ -131,7 +202,16 @@ export default function TeacherHome() {
           {classesData.map((item) => (
             <Pressable
               key={item.id}
-              onPress={() => router.push(`/class/${item.id}` as any)}
+              onPress={() => router.push({
+                pathname: '/class/[classId]',
+                params: {
+                  classId: item.id,
+                  name: item.title,
+                  grade: item.level,
+                  themeColor: item.themeColor,
+                  themeName: item.themeName || (item.themeColor === '#86EFAC' ? 'green' : item.themeColor === '#FDBA74' ? 'orange' : item.themeColor === '#FDE047' ? 'yellow' : item.themeColor === '#93C5FD' ? 'blue' : 'green')
+                }
+              } as any)}
             >
               <View
                 className={`bg-white overflow-hidden border-[2px] ${isTablet ? 'w-[230px] h-[190px] mr-6 rounded-[24px]' : 'w-[160px] h-[150px] mr-4 rounded-2xl'
@@ -140,14 +220,18 @@ export default function TeacherHome() {
               >
                 {/* Image Section (Top half) */}
                 <View
-                  className="w-full h-[55%] border-b-[2px]"
-                  style={{ borderBottomColor: item.themeColor }}
+                  className="w-full h-[55%] border-b-[2px] overflow-hidden justify-center items-center"
+                  style={{ borderBottomColor: item.themeColor, backgroundColor: `${item.themeColor}20` }}
                 >
-                  <Image
-                    source={item.image}
-                    className="w-full h-full"
-                    resizeMode="cover"
-                  />
+                  {item.image ? (
+                    <Image
+                      source={item.image}
+                      className="w-full h-full"
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <Ionicons name="school" size={48} color={item.themeColor} />
+                  )}
                 </View>
 
                 {/* Info Section (Bottom half) */}
@@ -183,6 +267,21 @@ export default function TeacherHome() {
               </View>
             </Pressable>
           ))}
+
+          {/* Add Class Button */}
+          <Pressable onPress={() => setAddClassModalVisible(true)}>
+            <View
+              className={`bg-[#F9FAFB] overflow-hidden border-[2px] border-dashed border-[#D1D5DB] justify-center items-center ${isTablet ? 'w-[230px] h-[190px] mr-6 rounded-[24px]' : 'w-[160px] h-[150px] mr-4 rounded-2xl'
+                }`}
+            >
+              <View className={`rounded-full bg-[#E5E7EB] items-center justify-center ${isTablet ? 'w-16 h-16 mb-4' : 'w-12 h-12 mb-3'}`}>
+                <Feather name="plus" size={isTablet ? 32 : 24} color="#9CA3AF" />
+              </View>
+              <Text className={`font-quicksand-bold text-[#9CA3AF] ${isTablet ? 'text-xl' : 'text-base'}`}>
+                Add Class
+              </Text>
+            </View>
+          </Pressable>
         </ScrollView>
       </View>
 
@@ -193,33 +292,157 @@ export default function TeacherHome() {
         </Text>
 
         {/* Lesson Card */}
-        <View
-          className={`w-full bg-white overflow-hidden ${isTablet ? 'h-[280px] rounded-[18px] border-[3px] border-[#D5D0D2] border-b-[5px]' : 'h-[200px] rounded-[14px] border-[2px] border-[#D5D0D2] border-b-[4px]'
-            }`}
-        >
-          {/* Top Image Container */}
-          <View className="w-full h-[65%]">
-            <Image
-              source={require('../../assets/images/lesson-header.png')}
-              className="w-full h-full"
-              resizeMode="cover"
-            />
-          </View>
+        <Pressable onPress={() => router.push('/lesson-materials' as any)}>
+          <View
+            className={`w-full bg-white overflow-hidden ${isTablet ? 'h-[280px] rounded-[18px] border-[3px] border-[#D5D0D2] border-b-[5px]' : 'h-[200px] rounded-[14px] border-[2px] border-[#D5D0D2] border-b-[4px]'
+              }`}
+          >
+            {/* Top Image Container */}
+            <View className="w-full h-[65%] overflow-hidden relative">
+              <Image
+                source={require('../../assets/images/lesson-header.png')}
+                className="absolute w-full h-[120%]"
+                style={{ top: -10 }}
+                resizeMode="cover"
+              />
+            </View>
 
-          {/* Bottom Text Container */}
-          <View className="flex-1 px-6 justify-center">
-            <Text className={`font-quicksand-bold text-[#4B5563] ${isTablet ? 'text-3xl' : 'text-xl'}`}>
-              Lesson Materials
-            </Text>
-            <View className={`flex-row items-center gap-2 ${isTablet ? 'mt-2' : 'mt-1'}`}>
-              <Feather name="file-text" size={isTablet ? 18 : 14} color="#9CA3AF" />
-              <Text className={`text-[#9CA3AF] font-quicksand-medium ${isTablet ? 'text-lg' : 'text-sm'}`}>
-                5 lessons
+            {/* Bottom Text Container */}
+            <View className="flex-1 px-6 justify-center">
+              <Text className={`font-quicksand-bold text-[#4B5563] ${isTablet ? 'text-3xl' : 'text-xl'}`}>
+                Lesson Materials
               </Text>
+              <View className={`flex-row items-center gap-2 ${isTablet ? 'mt-2' : 'mt-1'}`}>
+                <Feather name="file-text" size={isTablet ? 18 : 14} color="#9CA3AF" />
+                <Text className={`text-[#9CA3AF] font-quicksand-medium ${isTablet ? 'text-lg' : 'text-sm'}`}>
+                  5 lessons
+                </Text>
+              </View>
             </View>
           </View>
-        </View>
+        </Pressable>
       </View>
+
+      {/* ADD CLASS MODAL */}
+      <Modal
+        visible={isAddClassModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setAddClassModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          className="flex-1 justify-end bg-black/50"
+        >
+          <Pressable className="flex-1" onPress={() => setAddClassModalVisible(false)} />
+          <Animated.View
+            style={{ transform: [{ translateY: slideAnim }] }}
+            className={`bg-white rounded-t-3xl p-6 ${isTablet ? 'h-[60%]' : 'h-[70%]'}`}
+          >
+            <View className="flex-row justify-between items-center mb-6">
+              <Text className="font-fredoka-one text-2xl text-[#4B5563]">Create New Class</Text>
+              <Pressable onPress={() => setAddClassModalVisible(false)} className="p-2">
+                <Feather name="x" size={24} color="#9CA3AF" />
+              </Pressable>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {/* Class Name */}
+              <View className="mb-4">
+                <Text className="font-quicksand-bold text-[#4B5563] text-base mb-2">Class Name</Text>
+                <TextInput
+                  value={newClassName}
+                  onChangeText={setNewClassName}
+                  placeholder="e.g. Class 1A"
+                  placeholderTextColor="#9CA3AF"
+                  className="bg-[#F5F8FA] rounded-xl px-4 py-3 font-quicksand-medium text-[#4B5563]"
+                />
+              </View>
+
+              {/* Grade */}
+              <View className="mb-4">
+                <Text className="font-quicksand-bold text-[#4B5563] text-base mb-2">Grade</Text>
+                <View className="flex-row flex-wrap gap-2 mb-2">
+                  {['Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6'].map((grade) => (
+                    <Pressable
+                      key={grade}
+                      onPress={() => setNewClassGrade(grade)}
+                      className={`px-3 py-1.5 rounded-xl border ${
+                        newClassGrade === grade
+                          ? 'bg-[#9ACBF9] border-[#9ACBF9]'
+                          : 'bg-[#F5F8FA] border-[#E5E7EB]'
+                      }`}
+                    >
+                      <Text
+                        className={`font-quicksand-bold text-xs ${
+                          newClassGrade === grade ? 'text-white' : 'text-[#4B5563]'
+                        }`}
+                      >
+                        {grade}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+                <TextInput
+                  value={newClassGrade}
+                  onChangeText={setNewClassGrade}
+                  placeholder="Or type custom grade (ex. Grade 1)"
+                  placeholderTextColor="#9CA3AF"
+                  className="bg-[#F5F8FA] rounded-xl px-4 py-3 font-quicksand-medium text-[#4B5563]"
+                />
+              </View>
+
+              {/* Schedule */}
+              <View className="mb-4">
+                <Text className="font-quicksand-bold text-[#4B5563] text-base mb-2">Schedule</Text>
+                <TextInput
+                  value={newClassSchedule}
+                  onChangeText={setNewClassSchedule}
+                  placeholder="e.g. Mon & Wed, 10:00 AM"
+                  placeholderTextColor="#9CA3AF"
+                  className="bg-[#F5F8FA] rounded-xl px-4 py-3 font-quicksand-medium text-[#4B5563]"
+                />
+              </View>
+
+              {/* Theme Color */}
+              <View className="mb-6">
+                <Text className="font-quicksand-bold text-[#4B5563] text-base mb-2">Color Theme</Text>
+                <View className="flex-row gap-4">
+                  {themeColors.map((color) => (
+                    <Pressable
+                      key={color.name}
+                      onPress={() => setNewClassTheme(color.value)}
+                      className={`w-12 h-12 rounded-full justify-center items-center ${newClassTheme === color.value ? 'border-4 border-white' : ''}`}
+                      style={[
+                        { backgroundColor: color.value },
+                        newClassTheme === color.value && {
+                          shadowColor: color.shadow,
+                          shadowOffset: { width: 0, height: 4 },
+                          shadowOpacity: 0.3,
+                          shadowRadius: 4,
+                          elevation: 5,
+                        }
+                      ]}
+                    >
+                      {newClassTheme === color.value && <Feather name="check" size={20} color="white" />}
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+
+              {/* Create Button */}
+              <Pressable
+                onPress={handleAddClass}
+                className={`py-4 rounded-xl items-center mb-8 ${newClassName.trim() ? 'bg-[#9ACBF9]' : 'bg-[#E5E7EB]'}`}
+                disabled={!newClassName.trim()}
+              >
+                <Text className="font-quicksand-bold text-white text-lg">Create Class</Text>
+              </Pressable>
+            </ScrollView>
+          </Animated.View>
+        </KeyboardAvoidingView>
+      </Modal>
+
     </SafeAreaView>
   );
 }
