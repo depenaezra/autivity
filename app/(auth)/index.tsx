@@ -68,7 +68,7 @@ export default function Welcome() {
               </View>
 
               <Text className={`font-quicksand-medium text-[#6B7280] flex-1 ${isTablet ? 'text-lg leading-7' : 'text-sm leading-5'}`}>
-                I agree to Autivity's <Text className="text-[#84B9E9] underline">Terms and Conditions</Text> and acknowledge the <Text className="text-[#84B9E9] underline">Privacy Policy</Text>.
+                I agree to {"Autivity's"} <Text className="text-[#84B9E9] underline">Terms and Conditions</Text> and acknowledge the <Text className="text-[#84B9E9] underline">Privacy Policy</Text>.
               </Text>
             </Pressable>
           </View>

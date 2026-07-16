@@ -96,8 +96,12 @@ export default function TeacherOnboarding() {
         <View className="w-full mt-auto">
           <Pressable
             disabled={selectedGoals.length === 0}
+            // [MODIFIED] Pass the goals array as a stringified parameter to the signup screen
             onPress={() => {
-              router.push('/(auth)/signup');
+              router.push({
+                pathname: '/(auth)/signup',
+                params: { goals: JSON.stringify(selectedGoals) }
+              });
             }}
             className={`w-full flex items-center justify-center border-b-[4px] p-[10px] ${isTablet ? 'h-[84px] rounded-[55px]' : 'h-[60px] rounded-full'
               } ${selectedGoals.length > 0

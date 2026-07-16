@@ -1,13 +1,72 @@
 import { Feather, Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import React from 'react';
-import { Image, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
+import { useGlobalSearchParams, useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Image, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
+
+// [ADDED] Import supabase directly for fetching data
+import { supabase } from '../../../../src/lib/supabase';
 
 export default function StudentProfile() {
     const router = useRouter();
-    const { studentName } = useLocalSearchParams();
+    const { studentId, studentName } = useGlobalSearchParams();
     const { width } = useWindowDimensions();
     const isTablet = width >= 768;
+
+    // [ADDED] State for fetched profile details
+    const [studentData, setStudentData] = useState<any>(null);
+    const [isLoading, setIsLoading] = useState(true);
+
+    // [ADDED] Fetch the student, class, and teacher details from DB
+    useEffect(() => {
+        const fetchProfileData = async () => {
+            // 1. Safely extract the ID
+            const safeId = Array.isArray(studentId) ? studentId[0] : studentId;
+
+            // 2. Stop loading immediately if no ID is found
+            if (!safeId) {
+                setIsLoading(false);
+                return;
+            }
+
+            try {
+                const { data: student } = await supabase
+                    .from('students')
+                    .select('*')
+                    .eq('id', safeId)
+                    .single();
+
+                if (!student) {
+                    setIsLoading(false);
+                    return;
+                }
+
+                const { data: classData } = await supabase
+                    .from('classes')
+                    .select('title, grade')
+                    .eq('id', student.class_id)
+                    .single();
+
+                const { data: teacherData } = await supabase
+                    .from('profiles')
+                    .select('first_name, last_name')
+                    .eq('id', student.teacher_id)
+                    .single();
+
+                setStudentData({
+                    ...student,
+                    className: classData?.title || 'Unknown Class',
+                    grade: classData?.grade || 'Grade 1',
+                    teacherName: teacherData ? `${teacherData.first_name} ${teacherData.last_name}` : 'Unknown Teacher',
+                });
+            } catch (error) {
+                console.error("Error fetching student profile:", error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchProfileData();
+    }, [studentId]);
 
     return (
         <View className="flex-1 bg-[#F5F8FA]">
@@ -30,32 +89,22 @@ export default function StudentProfile() {
                     <View className="relative">
                         {/* Avatar Image Container */}
                         <View
-                            className={`rounded-full border-white shadow-sm overflow-hidden ${isTablet ? 'w-[140px] h-[140px] border-[6px]' : 'w-[100px] h-[100px] border-[4px]'
+                            className={`rounded-full border-white shadow-sm overflow-hidden bg-[#E5E7EB] items-center justify-center ${isTablet ? 'w-[140px] h-[140px] border-[6px]' : 'w-[100px] h-[100px] border-[4px]'
                                 }`}
                         >
-                            {/* Profile Picture Image */}
-                            <Image
-                                source={require('../../../../assets/images/bear.png')}
-                                className="w-full h-full"
-                                resizeMode="cover"
-                            />
+                            <Ionicons name="person" size={isTablet ? 70 : 50} color="#9CA3AF" />
                         </View>
-
-                        {/* Camera Icon Badge */}
-                        <Pressable
-                            className={`absolute bg-[#62A9E6] rounded-full items-center justify-center border-white ${isTablet ? 'w-10 h-10 bottom-1 right-2 border-[3.5px]' : 'w-8 h-8 bottom-0 right-0 border-[2.5px]'
-                                }`}
-                        >
-                            <Feather name="camera" size={isTablet ? 16 : 14} color="white" />
-                        </Pressable>
+                        {/* [REMOVED] Camera Icon button deleted from here */}
                     </View>
 
+                    {/* [MODIFIED] Dynamic Name */}
                     <Text className={`font-fredoka-one text-[#374151] ${isTablet ? 'text-4xl mt-3' : 'text-2xl mt-2'}`}>
-                        {studentName || 'Monna'}
+                        {studentData?.name || studentName || 'Loading...'}
                     </Text>
                     <View className="bg-[#EBF5FF] border border-[#9ACBF9] rounded-full px-4 py-1 mt-2">
+                        {/* [MODIFIED] Dynamic Grade */}
                         <Text className={`text-[#0284C7] font-quicksand-bold ${isTablet ? 'text-lg' : 'text-sm'}`}>
-                            Grade 1 Explorer
+                            {studentData?.grade || 'Grade 1'} Explorer
                         </Text>
                     </View>
                 </View>
@@ -73,9 +122,14 @@ export default function StudentProfile() {
 
                         <View className={`bg-white rounded-[20px] shadow-sm border border-[#F3F4F6] flex-row justify-around items-center ${isTablet ? 'p-6' : 'p-4'}`}>
                             <View className="items-center">
-                                <Text className={`font-fredoka-one text-[#62A9E6] ${isTablet ? 'text-4xl' : 'text-2xl'}`}>
-                                    14
-                                </Text>
+                                {/* Dynamic Assigned Activities Count */}
+                                {isLoading ? (
+                                    <ActivityIndicator color="#62A9E6" size="small" />
+                                ) : (
+                                    <Text className={`font-fredoka-one text-[#62A9E6] ${isTablet ? 'text-4xl' : 'text-2xl'}`}>
+                                        {studentData?.assigned_activities?.length || 0}
+                                    </Text>
+                                )}
                                 <Text className={`font-quicksand-medium text-[#9CA3AF] ${isTablet ? 'text-lg mt-1' : 'text-xs'}`}>
                                     Activities
                                 </Text>
@@ -89,23 +143,14 @@ export default function StudentProfile() {
                                     Stars
                                 </Text>
                             </View>
-                            <View className="h-8 w-[1px] bg-[#F3F4F6]" />
-                            <View className="items-center">
-                                <Text className={`font-fredoka-one text-[#4ADE80] ${isTablet ? 'text-4xl' : 'text-2xl'}`}>
-                                    3
-                                </Text>
-                                <Text className={`font-quicksand-medium text-[#9CA3AF] ${isTablet ? 'text-lg mt-1' : 'text-xs'}`}>
-                                    Days Streak
-                                </Text>
-                            </View>
                         </View>
                     </View>
 
-                    {/* CLASS & TEACHER SECTION */}
+                    {/* CLASSROOM DETAILS SECTION */}
                     <View className={isTablet ? 'mt-8' : 'mt-6'}>
                         <View className="flex-row items-center mb-3">
                             <Text className={`text-[#6B7280] font-quicksand-semibold tracking-widest mr-2 ${isTablet ? 'text-base' : 'text-sm'}`}>
-                                CLASS & TEACHER
+                                CLASSROOM DETAILS
                             </Text>
                             <Feather name="book-open" size={isTablet ? 14 : 12} color="#62A9E6" />
                         </View>
@@ -119,34 +164,23 @@ export default function StudentProfile() {
                                         Classroom
                                     </Text>
                                 </View>
+                                {/* Dynamic Class Name & Grade */}
                                 <Text className={`font-quicksand-medium flex-1 text-right text-[#9CA3AF] ${isTablet ? 'text-lg' : 'text-sm'}`}>
-                                    Class 1A (Level 1)
+                                    {studentData?.className || 'Loading...'} ({studentData?.grade || 'Grade 1'})
                                 </Text>
                             </View>
 
-                            {/* Teacher Row */}
-                            <View className={`flex-row items-center justify-between border-b border-[#F3F4F6] ${isTablet ? 'pb-4 mb-4' : 'pb-3 mb-3'}`}>
+                            {/* Teacher Row (Removed bottom border since it is now the last item) */}
+                            <View className="flex-row items-center justify-between">
                                 <View className="flex-row items-center">
                                     <Ionicons name="person-circle-outline" size={isTablet ? 24 : 18} color="#62A9E6" />
                                     <Text className={`font-quicksand-medium text-[#4B5563] ml-3 ${isTablet ? 'w-[120px] text-lg' : 'w-[90px] text-sm'}`}>
                                         Teacher
                                     </Text>
                                 </View>
+                                {/* Dynamic Teacher Name */}
                                 <Text className={`font-quicksand-medium flex-1 text-right text-[#9CA3AF] ${isTablet ? 'text-lg' : 'text-sm'}`}>
-                                    Ms. Anne Santos
-                                </Text>
-                            </View>
-
-                            {/* School Row */}
-                            <View className="flex-row items-center justify-between">
-                                <View className="flex-row items-center">
-                                    <Ionicons name="business-outline" size={isTablet ? 24 : 18} color="#62A9E6" />
-                                    <Text className={`font-quicksand-medium text-[#4B5563] ml-3 ${isTablet ? 'w-[120px] text-lg' : 'w-[90px] text-sm'}`}>
-                                        School
-                                    </Text>
-                                </View>
-                                <Text className={`font-quicksand-medium flex-1 text-right text-[#9CA3AF] ${isTablet ? 'text-lg' : 'text-sm'}`}>
-                                    Nasugbu East Central School
+                                    Teacher {studentData?.teacherName || 'Loading...'}
                                 </Text>
                             </View>
                         </View>
@@ -222,7 +256,7 @@ export default function StudentProfile() {
                                     Student ID
                                 </Text>
                                 <Text className={`font-quicksand-medium flex-1 text-right text-[#9CA3AF] ${isTablet ? 'text-lg' : 'text-sm'}`}>
-                                    STU-2026-01
+                                    STU-{studentId?.slice(0, 6) || '2026-01'}
                                 </Text>
                             </View>
 
@@ -249,16 +283,16 @@ export default function StudentProfile() {
                     </View>
 
                     {/* ACTION BUTTONS */}
-                    <View className={`mb-8 ${isTablet ? 'mt-10 gap-y-6' : 'mt-8 gap-y-4'}`}>
+                    <View className={`mb-8 ${isTablet ? 'mt-10' : 'mt-8'}`}>
                         {/* Switch Student Button */}
-                        <Pressable className={`w-full bg-[#E1F0FF] rounded-full items-center justify-center ${isTablet ? 'h-[76px]' : 'h-[55px]'}`}>
+                        <Pressable
+                            onPress={() => router.back()}
+                            className={`w-full bg-[#E1F0FF] rounded-full items-center justify-center ${isTablet ? 'h-[76px]' : 'h-[55px]'}`}
+                        >
                             <Text className={`text-[#0284C7] font-fredoka-regular ${isTablet ? 'text-xl' : 'text-lg'}`}>Switch Student</Text>
                         </Pressable>
 
-                        {/* Log out Button */}
-                        <Pressable className={`w-full bg-[#FFE4E6] rounded-full items-center justify-center ${isTablet ? 'h-[76px]' : 'h-[55px]'}`}>
-                            <Text className={`text-[#E11D48] font-fredoka-regular ${isTablet ? 'text-xl' : 'text-lg'}`}>Log out</Text>
-                        </Pressable>
+                        {/* [REMOVED] Log out button deleted from here */}
                     </View>
                 </View>
             </ScrollView>

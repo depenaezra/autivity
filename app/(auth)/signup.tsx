@@ -1,11 +1,18 @@
-import { AntDesign, Feather, FontAwesome } from '@expo/vector-icons';
-import { useRouter } from "expo-router";
+import { Feather } from '@expo/vector-icons';
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from 'react';
-import { Alert, Keyboard, Pressable, Text, TextInput, TouchableWithoutFeedback, View, useWindowDimensions } from "react-native";
+import { ActivityIndicator, Alert, Keyboard, Pressable, Text, TextInput, TouchableWithoutFeedback, View, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+// register service
+import { register } from '../../src/services/auth';
 
 export default function Signup() {
   const router = useRouter();
+
+  // to handle goals from onboarding
+  const params = useLocalSearchParams();
+  const userGoals: string[] = params.goals ? JSON.parse(params.goals as string) : [];
 
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
@@ -19,17 +26,35 @@ export default function Signup() {
   // UI State
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Validation & Routing Function
-  const handleRegister = () => {
+  // [MODIFIED] Made handleRegister async to wait for the database
+  const handleRegister = async () => {
     if (!firstName || !lastName || !email || !password) {
       Alert.alert('Missing Information', 'Please fill out all fields to register.');
       return;
     }
-    router.push({
-      pathname: '/(tabs)',
-      params: { firstName: firstName } // pass first name as parameter for homescreen
-    });
+
+    // [ADDED] Start loading spinner
+    setIsLoading(true);
+
+    // [ADDED] try/catch block for backend call
+    try {
+      // [ADDED] Pass all 4 parameters to your updated auth service
+      await register(email, password, firstName, lastName, userGoals);
+
+      // [MODIFIED] Replaced router.push with router.replace so they don't swipe back to signup
+      router.replace({
+        pathname: '/(tabs)',
+        params: { firstName: firstName }
+      });
+    } catch (error: any) {
+      // [ADDED] Catch any errors (e.g., email already taken)
+      Alert.alert('Registration Failed', error.message);
+    } finally {
+      // [ADDED] Stop loading spinner
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -132,40 +157,17 @@ export default function Signup() {
           <View className={`w-full ${isTablet ? 'mt-8' : 'mt-6'}`}>
             <Pressable
               onPress={handleRegister}
-              className={`w-full bg-[#62A9E6] flex items-center justify-center border-b-[4px] border-[#5298D4] p-[10px] ${isTablet ? 'h-[84px] rounded-[55px]' : 'h-[60px] rounded-full'
-                }`}
+              // [MODIFIED] Disable button during load
+              disabled={isLoading}
+              // [MODIFIED] Fade out button if loading
+              className={`w-full bg-[#62A9E6] flex items-center justify-center border-b-[4px] border-[#5298D4] p-[10px] ${isTablet ? 'h-[84px] rounded-[55px]' : 'h-[60px] rounded-full'} ${isLoading ? 'opacity-70' : 'opacity-100'}`}
             >
-              <Text className={`text-white font-fredoka-regular ${isTablet ? 'text-2xl' : 'text-lg'}`}>
-                Register
-              </Text>
-            </Pressable>
-          </View>
-
-          {/* Divider: OR CONTINUE WITH */}
-          <View className={`flex-row items-center w-full ${isTablet ? 'my-8' : 'my-6'}`}>
-            <View className="flex-1 h-[2px] bg-[#E5E7EB]" />
-            <Text className={`mx-4 text-[#9CA3AF] font-fredoka-regular tracking-widest ${isTablet ? 'text-lg' : 'text-sm'}`}>
-              OR CONTINUE WITH
-            </Text>
-            <View className="flex-1 h-[2px] bg-[#E5E7EB]" />
-          </View>
-
-          {/* Social Buttons */}
-          <View className={`flex-row w-full ${isTablet ? 'gap-6' : 'gap-4'}`}>
-            <Pressable
-              className={`flex-1 border-[2px] border-[#E5E7EB] bg-white flex-row items-center justify-center gap-3 ${isTablet ? 'h-[76px] rounded-[55px]' : 'h-[60px] rounded-full'
-                }`}
-            >
-              <FontAwesome name="facebook-f" size={isTablet ? 28 : 20} color="#3b5998" />
-              <Text className={`font-quicksand-medium text-[#4B5563] ${isTablet ? 'text-2xl' : 'text-lg'}`}>Facebook</Text>
-            </Pressable>
-
-            <Pressable
-              className={`flex-1 border-[2px] border-[#E5E7EB] bg-white flex-row items-center justify-center gap-3 ${isTablet ? 'h-[76px] rounded-[55px]' : 'h-[60px] rounded-full'
-                }`}
-            >
-              <AntDesign name="google" size={isTablet ? 28 : 20} color="#DB4437" />
-              <Text className={`font-quicksand-medium text-[#4B5563] ${isTablet ? 'text-2xl' : 'text-lg'}`}>Google</Text>
+              {/* [MODIFIED] Show spinner or text depending on state */}
+              {isLoading ? (
+                <ActivityIndicator color="white" />
+              ) : (
+                <Text className={`text-white font-fredoka-regular ${isTablet ? 'text-2xl' : 'text-lg'}`}>Register</Text>
+              )}
             </Pressable>
           </View>
 
