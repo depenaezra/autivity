@@ -1,8 +1,11 @@
-import { AntDesign, Feather, FontAwesome } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
 import { useRouter } from "expo-router";
 import React, { useState } from 'react';
-import { Alert, Keyboard, Pressable, Text, TextInput, TouchableWithoutFeedback, View, useWindowDimensions } from "react-native";
+import { ActivityIndicator, Alert, Keyboard, Pressable, Text, TextInput, TouchableWithoutFeedback, View, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+// login service
+import { login } from '../../src/services/auth';
 
 export default function Login() {
   const router = useRouter();
@@ -19,20 +22,24 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
 
-  // Validation & Routing Function
-  const handleLogin = () => {
+  // Loading State
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Database Connection
+  const handleLogin = async () => {
     if (!email || !password) {
       Alert.alert('Missing Information', 'Please enter your email and password to log in.');
       return;
     }
-    router.push('/(tabs)');
-  };
 
-  const handleCreateAccount = () => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.push('/(auth)/signup');
+    setIsLoading(true);
+    try {
+      await login(email, password);
+      router.replace('/(tabs)');
+    } catch (error: any) {
+      Alert.alert('Login Failed', error.message);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -133,40 +140,17 @@ export default function Login() {
           <View className="w-full">
             <Pressable
               onPress={handleLogin}
-              className={`w-full bg-[#62A9E6] flex items-center justify-center border-b-[4px] border-[#5298D4] p-[10px] ${isTablet ? 'h-[84px] rounded-[55px]' : 'h-[60px] rounded-full'
-                }`}
+              // [MODIFIED] Disable the button completely while loading
+              disabled={isLoading}
+              // [MODIFIED] Slightly fade the button if it is loading
+              className={`w-full bg-[#62A9E6] flex items-center justify-center border-b-[4px] border-[#5298D4] p-[10px] ${isTablet ? 'h-[84px] rounded-[55px]' : 'h-[60px] rounded-full'} ${isLoading ? 'opacity-70' : 'opacity-100'}`}
             >
-              <Text className={`text-white font-fredoka-regular ${isTablet ? 'text-2xl' : 'text-lg'}`}>
-                Log in
-              </Text>
-            </Pressable>
-          </View>
-
-          {/* Divider: OR CONTINUE WITH */}
-          <View className={`flex-row items-center w-full ${isTablet ? 'my-8' : 'my-6'}`}>
-            <View className="flex-1 h-[2px] bg-[#E5E7EB]" />
-            <Text className={`mx-4 text-[#9CA3AF] font-fredoka-regular tracking-widest ${isTablet ? 'text-lg' : 'text-sm'}`}>
-              OR CONTINUE WITH
-            </Text>
-            <View className="flex-1 h-[2px] bg-[#E5E7EB]" />
-          </View>
-
-          {/* Social Buttons */}
-          <View className={`flex-row w-full ${isTablet ? 'gap-6' : 'gap-4'}`}>
-            <Pressable
-              className={`flex-1 border-[2px] border-[#E5E7EB] bg-white flex-row items-center justify-center ${isTablet ? 'h-[76px] rounded-[55px] gap-4' : 'h-[60px] rounded-full gap-3'
-                }`}
-            >
-              <FontAwesome name="facebook-f" size={isTablet ? 28 : 20} color="#3b5998" />
-              <Text className={`font-quicksand-medium text-[#4B5563] ${isTablet ? 'text-2xl' : 'text-lg'}`}>Facebook</Text>
-            </Pressable>
-
-            <Pressable
-              className={`flex-1 border-[2px] border-[#E5E7EB] bg-white flex-row items-center justify-center ${isTablet ? 'h-[76px] rounded-[55px] gap-4' : 'h-[60px] rounded-full gap-3'
-                }`}
-            >
-              <AntDesign name="google" size={isTablet ? 28 : 20} color="#DB4437" />
-              <Text className={`font-quicksand-medium text-[#4B5563] ${isTablet ? 'text-2xl' : 'text-lg'}`}>Google</Text>
+              {/* [MODIFIED] Show spinner if loading, otherwise show "Log in" text */}
+              {isLoading ? (
+                <ActivityIndicator color="white" />
+              ) : (
+                <Text className={`text-white font-fredoka-regular ${isTablet ? 'text-2xl' : 'text-lg'}`}>Log in</Text>
+              )}
             </Pressable>
           </View>
 

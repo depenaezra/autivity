@@ -1,6 +1,7 @@
 import ActivityBear from '@/assets/images/activity-bear.svg';
 import { Feather, Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
+import * as SecureStore from 'expo-secure-store';
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Dimensions, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -9,9 +10,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { getTracingActivityByPath } from '@/activities/tracing';
 import ActivityRenderer from '@/components/activity-renderer';
 
+// Import service
+import { saveStudentSession } from '@/src/services/sessions';
+import { getStudentById } from '@/src/services/students';
+import { formatActivityTitle } from '@/src/utils/format';
+
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
-const TRACING_ACTIVITIES = [
+const DEFAULT_TRACING_ACTIVITIES = [
     { path: "activity/tracing/lines/zigzag", title: "Zigzag Lines" },
     { path: "activity/tracing/lines/wave", title: "Wave Lines" },
     { path: "activity/tracing/lines/arc", title: "Arc Lines" },
@@ -72,10 +78,12 @@ function ConfettiEffect() {
                         backgroundColor: p.color,
                         transform: [
                             { translateY: p.yAnim },
-                            { rotate: p.rotateAnim.interpolate({
-                                inputRange: [0, 360],
-                                outputRange: ['0deg', '360deg'],
-                            })},
+                            {
+                                rotate: p.rotateAnim.interpolate({
+                                    inputRange: [0, 360],
+                                    outputRange: ['0deg', '360deg'],
+                                })
+                            },
                             { scale: p.scaleAnim }
                         ]
                     }}
@@ -86,10 +94,61 @@ function ConfettiEffect() {
 }
 
 export default function LessonScreen() {
+    const params = useLocalSearchParams();
+    const studentId = Array.isArray(params.studentId) ? params.studentId[0] : params.studentId || '1';
+    const initialClassId = Array.isArray(params.classId) ? params.classId[0] : params.classId;
+    const initialTeacherId = Array.isArray(params.teacherId) ? params.teacherId[0] : params.teacherId;
+
+    const [classId, setClassId] = useState<string | null>(initialClassId || null);
+    const [teacherId, setTeacherId] = useState<string | null>(initialTeacherId || null);
+
+    const [activitiesList, setActivitiesList] = useState<any[]>(DEFAULT_TRACING_ACTIVITIES);
     const [activityIndex, setActivityIndex] = useState(0);
     const [isTaskDone, setIsTaskDone] = useState(false);
     const [showCongrats, setShowCongrats] = useState(false);
     const [timeLeft, setTimeLeft] = useState(15 * 60);
+
+    useEffect(() => {
+        const loadAssigned = async () => {
+            try {
+                let paths: string[] = [];
+                if (params.assignedActivities && typeof params.assignedActivities === 'string') {
+                    const parsed = JSON.parse(params.assignedActivities);
+                    if (Array.isArray(parsed) && parsed.length > 0) paths = parsed;
+                }
+                if (paths.length === 0 && studentId) {
+                    const stored = await SecureStore.getItemAsync(`student_activities_${studentId}`);
+                    if (stored) {
+                        const parsed = JSON.parse(stored);
+                        if (Array.isArray(parsed) && parsed.length > 0) paths = parsed;
+                    }
+                }
+                if (paths.length > 0) {
+                    const mapped = paths.map(p => ({
+                        path: p.startsWith('activity/tracing/') ? p : `activity/tracing/${p}`,
+                        title: formatActivityTitle(p)
+                    }));
+                    setActivitiesList(mapped);
+                }
+
+                // If classId or teacherId is missing, fetch them from DB
+                let currentClassId = initialClassId || classId;
+                let currentTeacherId = initialTeacherId || teacherId;
+                if (studentId && (!currentClassId || !currentTeacherId)) {
+                    const student = await getStudentById(studentId);
+                    if (student) {
+                        currentClassId = student.class_id;
+                        currentTeacherId = student.teacher_id;
+                    }
+                }
+                setClassId(currentClassId);
+                setTeacherId(currentTeacherId);
+            } catch (e) {
+                // Keep default on error
+            }
+        };
+        loadAssigned();
+    }, [params.assignedActivities, studentId, initialClassId, initialTeacherId]);
 
     // Fade/Slide entrance animation
     const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -114,7 +173,7 @@ export default function LessonScreen() {
 
     useEffect(() => {
         triggerEntrance();
-    }, []);
+    }, [activitiesList]);
 
     // Countdown Timer logic
     useEffect(() => {
@@ -133,7 +192,7 @@ export default function LessonScreen() {
         return () => clearInterval(interval);
     }, [showCongrats, activityIndex]);
 
-    const currentActivity = TRACING_ACTIVITIES[activityIndex];
+    const currentActivity = activitiesList[activityIndex] || DEFAULT_TRACING_ACTIVITIES[0];
     const tracingData = getTracingActivityByPath(currentActivity.path);
     const currentTask = {
         id: `lesson-1-task-${activityIndex}`,
@@ -145,14 +204,47 @@ export default function LessonScreen() {
         setIsTaskDone(true);
     };
 
-    const handleCheck = () => {
+    const handleCheck = async () => {
         if (isTaskDone) {
-            setShowCongrats(true);
+            try {
+                // Calculate how long they took (900 seconds total - timeLeft)
+                const duration = (15 * 60) - timeLeft;
+
+                // Map the category and skill domain based on the path
+                // (You can adjust this mapping logic based on your exact domains)
+                const isLines = currentActivity.path.includes('lines');
+                const category = isLines ? 'Lines' : 'Shapes';
+                const skill_domain = 'Motor'; // Tracing is primarily fine motor skills
+
+                // Fire to Supabase ONLY if we have the required IDs
+                if (studentId && classId && teacherId) {
+                    await saveStudentSession({
+                        student_id: studentId,
+                        class_id: classId,
+                        teacher_id: teacherId,
+                        activity_path: currentActivity.path,
+                        category: category,
+                        skill_domain: skill_domain,
+                        score: 15, // Matching the "+15 Stars Earned" from your UI
+                        duration_seconds: duration
+                    });
+                } else {
+                    console.warn("Missing required IDs for analytics tracking. Activity not saved.");
+                }
+
+                // Show the confetti modal after saving
+                setShowCongrats(true);
+
+            } catch (error) {
+                console.error("Failed to save session:", error);
+                // Still show congrats so the student isn't blocked by a network error
+                setShowCongrats(true);
+            }
         }
     };
 
     const handleContinue = () => {
-        setActivityIndex((prev) => (prev + 1) % TRACING_ACTIVITIES.length);
+        setActivityIndex((prev) => (prev + 1) % activitiesList.length);
         setIsTaskDone(false);
         setShowCongrats(false);
         setTimeLeft(15 * 60);
@@ -164,7 +256,7 @@ export default function LessonScreen() {
     const seconds = timeLeft % 60;
     const formattedTime = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 
-    const progressPercent = `${Math.round(((activityIndex + 1) / TRACING_ACTIVITIES.length) * 100)}%`;
+    const progressPercent = `${Math.round(((activityIndex + 1) / activitiesList.length) * 100)}%`;
 
     return (
         <Animated.View style={{ flex: 1, opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
@@ -231,21 +323,21 @@ export default function LessonScreen() {
             {showCongrats && (
                 <View className="absolute inset-0 bg-black/60 items-center justify-center p-6 z-[9999]" style={{ width: screenWidth, height: screenHeight }}>
                     <ConfettiEffect />
-                    
+
                     <View className="bg-white rounded-[32px] p-8 items-center border-[3px] border-[#FDBA74] w-full max-w-[420px] shadow-2xl">
-                        
+
                         {/* Trophy badge */}
                         <View className="w-24 h-24 bg-[#FFF7ED] rounded-full items-center justify-center border-4 border-[#FDBA74] mb-6">
                             <Ionicons name="trophy" size={54} color="#FB923C" />
                         </View>
-                        
+
                         <Text className="font-fredoka-one text-4xl text-[#FB923C] text-center mb-2">
                             Amazing!
                         </Text>
                         <Text className="font-quicksand-semibold text-lg text-[#6B7280] text-center mb-6 px-2">
                             You successfully traced the {currentActivity.title}!
                         </Text>
-                        
+
                         {/* Reward badges */}
                         <View className="flex-row items-center bg-[#FEF3C7] border border-[#FCD34D] rounded-full px-5 py-2 mb-8">
                             <Text className="text-xl mr-1.5">⭐</Text>
@@ -253,11 +345,11 @@ export default function LessonScreen() {
                                 +15 Stars Earned
                             </Text>
                         </View>
-                        
+
                         {/* Interactive Buttons */}
                         <View className="w-full gap-4">
                             {/* Next Lesson / Continue */}
-                            <Pressable 
+                            <Pressable
                                 onPress={handleContinue}
                                 className="w-full h-14 bg-[#FB923C] border-b-[4px] border-[#EA580C] rounded-full items-center justify-center active:bg-[#EA580C]"
                             >
@@ -265,9 +357,9 @@ export default function LessonScreen() {
                                     Next Activity
                                 </Text>
                             </Pressable>
-                            
+
                             {/* Go Home / Exit */}
-                            <Pressable 
+                            <Pressable
                                 onPress={() => router.back()}
                                 className="w-full h-14 bg-[#F3F4F6] border-b-[4px] border-[#D1D5DB] rounded-full items-center justify-center active:bg-[#E5E7EB]"
                             >
