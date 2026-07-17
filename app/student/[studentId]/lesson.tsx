@@ -88,6 +88,7 @@ export default function LessonScreen() {
     const studentId = Array.isArray(params.studentId) ? params.studentId[0] : params.studentId || '1';
     const initialClassId = Array.isArray(params.classId) ? params.classId[0] : params.classId;
     const initialTeacherId = Array.isArray(params.teacherId) ? params.teacherId[0] : params.teacherId;
+    const activityType = Array.isArray(params.activityType) ? params.activityType[0] : params.activityType;
 
     const [classId, setClassId] = useState<string | null>(initialClassId || null);
     const [teacherId, setTeacherId] = useState<string | null>(initialTeacherId || null);
@@ -134,6 +135,23 @@ export default function LessonScreen() {
                     }
                 }
 
+                // Filter paths based on activityType if specified
+                if (activityType === 'tracing') {
+                    paths = paths.filter(path => {
+                        const cleanPath = path.startsWith('activity/tracing/')
+                            ? path.replace('activity/tracing/', '')
+                            : path;
+                        return (
+                            cleanPath.startsWith('lines/') ||
+                            cleanPath.startsWith('shapes/') ||
+                            cleanPath.startsWith('letters/') ||
+                            cleanPath.startsWith('numbers/')
+                        );
+                    });
+                } else if (activityType === 'matching') {
+                    paths = paths.filter(path => path.includes('drag-drop'));
+                }
+
                 let dbActivities: any[] = [];
                 if (paths.length > 0) {
                     dbActivities = await getActivitiesByPaths(paths);
@@ -177,7 +195,7 @@ export default function LessonScreen() {
             }
         };
         loadAssigned();
-    }, [params.assignedActivities, studentId, initialClassId, initialTeacherId]);
+    }, [params.assignedActivities, params.activityType, studentId, initialClassId, initialTeacherId]);
 
     // Fade/Slide entrance animation
     const fadeAnim = useRef(new Animated.Value(0)).current;

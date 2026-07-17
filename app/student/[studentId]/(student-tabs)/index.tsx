@@ -58,17 +58,26 @@ export default function StudentHome() {
         loadActivities();
     }, [studentId, initialClassId, initialTeacherId, initialStudentName]);
 
-    // Logic: Check if any tracing activity is assigned
-    const hasTracingAssignment = assignedPaths.some(path =>
-        path.startsWith('lines/') ||
-        path.startsWith('shapes/') ||
-        path.startsWith('letters/') ||
-        path.startsWith('numbers/')
-    );
+    const isTracingPath = (path: string) => {
+        const cleanPath = path.startsWith('activity/tracing/')
+            ? path.replace('activity/tracing/', '')
+            : path;
+        return (
+            cleanPath.startsWith('lines/') ||
+            cleanPath.startsWith('shapes/') ||
+            cleanPath.startsWith('letters/') ||
+            cleanPath.startsWith('numbers/')
+        );
+    };
 
-    const hasMatchingAssignment = assignedPaths.some(path =>
-        path.includes('drag-drop')
-    );
+    const isMatchingPath = (path: string) => {
+        return path.includes('drag-drop');
+    };
+
+    // Logic: Check if any tracing activity is assigned
+    const hasTracingAssignment = assignedPaths.some(isTracingPath);
+
+    const hasMatchingAssignment = assignedPaths.some(isMatchingPath);
 
 
     // Derive recent activity subtitle from assigned paths
@@ -78,7 +87,12 @@ export default function StudentHome() {
         { key: 'letters', label: 'Letters' },
         { key: 'numbers', label: 'Numbers' },
     ]
-        .filter(cat => assignedPaths.some(p => p.startsWith(`${cat.key}/`)))
+        .filter(cat => assignedPaths.some(p => {
+            const cleanPath = p.startsWith('activity/tracing/')
+                ? p.replace('activity/tracing/', '')
+                : p;
+            return cleanPath.startsWith(`${cat.key}/`);
+        }))
         .map(cat => cat.label);
 
     const recentActivitySubtitle = tracingCategories.length > 0
@@ -86,14 +100,25 @@ export default function StudentHome() {
         : null;
 
     // 2. PASS THE IDs TO THE LESSON ROUTE
-    const navigateToLesson = () => {
+    const navigateToLesson = (activityType: 'tracing' | 'matching') => {
         const targetStudentId = (studentId as string) || '1';
+        
+        // Filter to only match the activityType
+        const filteredPaths = assignedPaths.filter(path => {
+            if (activityType === 'tracing') {
+                return isTracingPath(path);
+            } else {
+                return isMatchingPath(path);
+            }
+        });
+
         router.push({
             pathname: `/student/${targetStudentId}/lesson` as any,
             params: {
                 studentId: targetStudentId,
                 studentName: studentName,
-                assignedActivities: JSON.stringify(assignedPaths),
+                assignedActivities: JSON.stringify(filteredPaths),
+                activityType: activityType,
                 classId: classId as string,
                 teacherId: teacherId as string
             }
@@ -216,7 +241,7 @@ export default function StudentHome() {
                                 {/* Tracing Activity Card - Only shown if assigned */}
                                 {hasTracingAssignment && (
                                     <Pressable
-                                        onPress={navigateToLesson}
+                                        onPress={() => navigateToLesson('tracing')}
                                         className={`bg-white overflow-hidden ${isTablet
                                             ? 'w-[440px] h-[320px] rounded-[24px] border-[3px] border-b-[6px]'
                                             : 'w-[280px] h-[240px] rounded-[18px] border-[2px] border-b-[5px]'
@@ -248,7 +273,7 @@ export default function StudentHome() {
                                 {/* Matching Activity Card - Only shown if assigned */}
                                 {hasMatchingAssignment && (
                                     <Pressable
-                                        onPress={navigateToLesson}
+                                        onPress={() => navigateToLesson('matching')}
                                         className={`bg-white overflow-hidden ${isTablet
                                             ? 'w-[440px] h-[320px] rounded-[24px] border-[3px] border-b-[6px]'
                                             : 'w-[280px] h-[240px] rounded-[18px] border-[2px] border-b-[5px]'

@@ -380,7 +380,7 @@ export default function FeedbackModal({
                   </Text>
                   {teacherFeedback.trim() ? (
                     <Text className="font-quicksand-medium text-sm text-[#4B5563] leading-5">
-                      "{teacherFeedback.trim()}"
+                      &ldquo;{teacherFeedback.trim()}&rdquo;
                     </Text>
                   ) : (
                     <Text className="font-quicksand-medium text-sm text-[#9CA3AF] italic">

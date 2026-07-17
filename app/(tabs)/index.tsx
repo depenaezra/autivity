@@ -10,6 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { createClass, getClassCount, getTeacherClasses } from '../../src/services/classes';
 import { getMaterialCount } from '../../src/services/materials'; // [ADDED]
 import { getStudentCount } from '../../src/services/students';
+import { getUserProfile } from '../../src/services/profile';
 
 interface ClassItem {
   id: string;
@@ -39,8 +40,26 @@ const themeColors = [
 ];
 
 export default function TeacherHome() {
-  const { firstName } = useLocalSearchParams();
+  const { firstName: paramFirstName } = useLocalSearchParams();
+  const [firstName, setFirstName] = useState<string>((paramFirstName as string) || '');
   const router = useRouter();
+
+  useEffect(() => {
+    if (paramFirstName) {
+      setFirstName(paramFirstName as string);
+    }
+  }, [paramFirstName]);
+
+  const fetchProfile = async () => {
+    try {
+      const profileData = await getUserProfile();
+      if (profileData && profileData.first_name) {
+        setFirstName(profileData.first_name);
+      }
+    } catch (error) {
+      console.log('Error fetching profile in home screen:', error);
+    }
+  };
 
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
@@ -72,6 +91,7 @@ export default function TeacherHome() {
   useFocusEffect(
     useCallback(() => {
       fetchClasses();
+      fetchProfile();
     }, [])
   );
 

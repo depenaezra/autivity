@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useWindowDimensions, View } from "react-native";
+import { Image, useWindowDimensions, View } from "react-native";
 import { GestureDetector } from "react-native-gesture-handler";
 import Animated, {
     runOnJS,
@@ -54,12 +54,12 @@ function TracingActivityContent({
     );
 
     const animatedStyle = useAnimatedStyle(() => {
+        const size = 50;
         return {
             transform: [
-                { translateX: tracing.x.value - 25 },
-                { translateY: tracing.y.value - 25 },
+                { translateX: tracing.x.value - 0.088 * size },
+                { translateY: tracing.y.value - 0.908 * size },
             ],
-            backgroundColor: tracing.isTouchingLine.value ? "#22C55E" : "#3B82F6",
         };
     });
 
@@ -88,15 +88,28 @@ function TracingActivityContent({
                         fill="none"
                     />
 
+                    {/* broken line on top of the gray line path */}
+                    <Path
+                        d={path}
+                        stroke="#FFFFFF"
+                        strokeWidth={2}
+                        strokeDasharray="8, 8"
+                        strokeLinecap="round"
+                        fill="none"
+                    />
+
+                    {/* active/completed path */}
                     <AnimatedPath
                         d={path}
-                        stroke="#22C55E"
+                        stroke="#62A9E6"
                         strokeWidth={10}
                         strokeLinecap="round"
                         fill="none"
                         strokeDasharray={totalLength}
                         animatedProps={animatedPathProps}
                     />
+
+
 
                     {/* start circle */}
                     <Circle cx={start.x} cy={start.y} r={14} fill="#22C55E" />
@@ -116,11 +129,19 @@ function TracingActivityContent({
                             position: "absolute",
                             width: 50,
                             height: 50,
-                            borderRadius: 25,
                         },
                         animatedStyle,
                     ]}
-                />
+                >
+                    <Image
+                        source={require("../../../assets/images/pencil.png")}
+                        style={{
+                            width: 50,
+                            height: 50,
+                            resizeMode: "contain",
+                        }}
+                    />
+                </Animated.View>
             </View>
         </GestureDetector>
     );
@@ -175,7 +196,7 @@ export default function TracingActivity({
                             <Path
                                 key={index}
                                 d={path}
-                                stroke={isCompleted ? "#22C55E" : "#A0A0A0"}
+                                stroke={isCompleted ? "#62A9E6" : "#A0A0A0"}
                                 strokeWidth={10}
                                 strokeLinecap="round"
                                 fill="none"
