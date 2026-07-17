@@ -3,7 +3,7 @@ import { Feather, Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Dimensions, Pressable, Text, View, ActivityIndicator } from 'react-native';
+import { ActivityIndicator, Animated, Dimensions, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import ActivityRenderer from '@/components/activity-renderer';
@@ -101,6 +101,21 @@ export default function LessonScreen() {
 
     const [savedSessionId, setSavedSessionId] = useState<string | null>(null);
     const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+    const [bearMessage, setBearMessage] = useState("");
+
+    const currentActivity = activitiesList[activityIndex] || activitiesList[0] || {};
+    const parsedContentData = typeof currentActivity.content_data === 'string'
+        ? (() => { try { return JSON.parse(currentActivity.content_data); } catch { return {}; } })()
+        : (currentActivity.content_data || { id: currentActivity.id, paths: [] });
+
+    const currentTask = currentActivity.id ? {
+        id: currentActivity.id || `lesson-task-${activityIndex}`,
+        type: parsedContentData.type || (currentActivity.category?.toLowerCase().includes('drag') ? 'drag-and-drop' : 'tracing'),
+        title: currentActivity.title || formatActivityTitle(currentActivity.path || ''),
+        path: currentActivity.path || '',
+        data: parsedContentData,
+        content_data: parsedContentData
+    } : null;
 
     useEffect(() => {
         const loadAssigned = async () => {
@@ -142,6 +157,13 @@ export default function LessonScreen() {
                 }
                 setClassId(currentClassId);
                 setTeacherId(currentTeacherId);
+
+                // Initialize bearMessage with the first activity's instruction
+                const firstActivity = dbActivities[0] || {};
+                const firstContentData = typeof firstActivity.content_data === 'string'
+                    ? (() => { try { return JSON.parse(firstActivity.content_data); } catch { return {}; } })()
+                    : (firstActivity.content_data || {});
+                setBearMessage(firstContentData.instruction || "Let's play!");
             } catch (e) {
                 console.error("Failed to load activities from database:", e);
                 try {
@@ -182,6 +204,13 @@ export default function LessonScreen() {
         triggerEntrance();
     }, [activitiesList]);
 
+    // Sync bearMessage when current task changes (e.g. Next Activity)
+    useEffect(() => {
+        if (currentActivity && Object.keys(currentActivity).length > 0) {
+            setBearMessage(parsedContentData.instruction || "Let's play!");
+        }
+    }, [activityIndex, activitiesList]);
+
     // Countdown Timer logic
     useEffect(() => {
         if (showCongrats) return;
@@ -199,19 +228,7 @@ export default function LessonScreen() {
         return () => clearInterval(interval);
     }, [showCongrats, activityIndex]);
 
-    const currentActivity = activitiesList[activityIndex] || activitiesList[0] || {};
-    const parsedContentData = typeof currentActivity.content_data === 'string'
-        ? (() => { try { return JSON.parse(currentActivity.content_data); } catch { return {}; } })()
-        : (currentActivity.content_data || { id: currentActivity.id, paths: [] });
 
-    const currentTask = currentActivity.id ? {
-        id: currentActivity.id || `lesson-task-${activityIndex}`,
-        type: parsedContentData.type || (currentActivity.category?.toLowerCase().includes('drag') ? 'drag-and-drop' : 'tracing'),
-        title: currentActivity.title || formatActivityTitle(currentActivity.path || ''),
-        path: currentActivity.path || '',
-        data: parsedContentData,
-        content_data: parsedContentData
-    } : null;
 
     const handleTaskComplete = () => {
         setIsTaskDone(true);
@@ -329,7 +346,7 @@ export default function LessonScreen() {
                     <View className="flex-1 ml-5 justify-center relative">
                         <View className="bg-[#FCF5F5] border-[1.5px] border-[#EAD5D5] rounded-3xl p-6 justify-center z-10">
                             <Text className="text-[#6D7179] text-2xl leading-9 font-quicksand-medium">
-                                Trace the line to complete the shape by dragging the blue circle!
+                                {bearMessage}
                             </Text>
                         </View>
                     </View>
@@ -337,11 +354,12 @@ export default function LessonScreen() {
 
                 {/* Tracing Area */}
                 <View className="flex-1 px-6 pb-6 mt-1">
-                    <View className="flex-1 bg-[#FCFCFC] border-[1.5px] border-[#EBE5E5] rounded-2xl overflow-hidden">
+                    <View className={currentTask?.type === 'drag-and-drop' ? "flex-1" : "flex-1 bg-[#FCFCFC] border-[1.5px] border-[#EBE5E5] rounded-2xl overflow-hidden"}>
                         <ActivityRenderer
                             key={activityIndex}
                             activity={currentTask}
                             onComplete={handleTaskComplete}
+                            onFeedback={setBearMessage}
                         />
                     </View>
                 </View>
@@ -375,7 +393,7 @@ export default function LessonScreen() {
                             Amazing!
                         </Text>
                         <Text className="font-quicksand-semibold text-lg text-[#6B7280] text-center mb-6 px-2">
-                            You successfully traced the {currentActivity.title}!
+                            You successfully finished {currentActivity.title}!
                         </Text>
 
                         {/* Reward badges */}

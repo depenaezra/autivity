@@ -1,13 +1,14 @@
 import { TracingActivity } from '@/activities/tracing';
 import React from 'react';
-// import { DragDropActivity } from '@/activities/dragdrop'; // For later!
+import DragDropActivity from '@/activities/drag-drop/components/dragdrop-activity';
 
 type ActivityRendererProps = {
     activity: any;
     onComplete: () => void;
+    onFeedback?: (message: string) => void;
 };
 
-export default function ActivityRenderer({ activity, onComplete }: ActivityRendererProps) {
+export default function ActivityRenderer({ activity, onComplete, onFeedback }: ActivityRendererProps) {
     // Read the 'type' string from the database/data
     switch (activity.type) {
         case 'tracing':
@@ -20,8 +21,13 @@ export default function ActivityRenderer({ activity, onComplete }: ActivityRende
             );
 
         case 'drag-and-drop':
-            // return <DragDropActivity data={activity.data} onComplete={onComplete} />;
-            return null;
+            return (
+                <DragDropActivity
+                    contentData={activity.content_data}
+                    onComplete={onComplete}
+                    onFeedback={onFeedback}
+                />
+            );
 
         default:
             return null; // Safety fallback

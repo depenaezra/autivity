@@ -66,6 +66,11 @@ export default function StudentHome() {
         path.startsWith('numbers/')
     );
 
+    const hasMatchingAssignment = assignedPaths.some(path =>
+        path.includes('drag-drop')
+    );
+
+
     // Derive recent activity subtitle from assigned paths
     const tracingCategories = [
         { key: 'lines', label: 'Lines' },
@@ -146,7 +151,7 @@ export default function StudentHome() {
                             <View className={`bg-white rounded-[18px] border border-[#E5E7EB] border-b-[3px] border-b-[#D1D5DB] items-center justify-center ${isTablet ? 'h-[100px]' : 'h-[80px]'}`}>
                                 <ActivityIndicator size="small" color="#62A9E6" />
                             </View>
-                        ) : hasTracingAssignment ? (
+                        ) : hasTracingAssignment || hasMatchingAssignment ? (
                             <View
                                 className={`bg-white flex-row items-center ${isTablet ? 'rounded-[24px] px-6 py-5 gap-5 border-[3px] border-b-[6px]' : 'rounded-[18px] px-4 py-4 gap-4 border-[2px] border-b-[5px]'}`}
                                 style={{ borderColor: '#BFDBFE', borderBottomColor: '#62A9E6' }}
@@ -161,10 +166,10 @@ export default function StudentHome() {
                                 {/* Text */}
                                 <View className="flex-1">
                                     <Text className={`font-quicksand-bold text-[#374151] ${isTablet ? 'text-2xl' : 'text-lg'}`}>
-                                        Tracing
+                                        {hasTracingAssignment && hasMatchingAssignment ? 'Tracing & Matching' : hasTracingAssignment ? 'Tracing' : 'Matching'}
                                     </Text>
                                     <Text className={`font-quicksand-medium text-[#9CA3AF] ${isTablet ? 'text-lg mt-1' : 'text-sm mt-0.5'}`} numberOfLines={1}>
-                                        {recentActivitySubtitle}
+                                        {recentActivitySubtitle || (hasMatchingAssignment ? 'Matching Activities' : '')}
                                     </Text>
                                 </View>
                             </View>
@@ -239,6 +244,39 @@ export default function StudentHome() {
                                         </View>
                                     </Pressable>
                                 )}
+
+                                {/* Matching Activity Card - Only shown if assigned */}
+                                {hasMatchingAssignment && (
+                                    <Pressable
+                                        onPress={navigateToLesson}
+                                        className={`bg-white overflow-hidden ${isTablet
+                                            ? 'w-[440px] h-[320px] rounded-[24px] border-[3px] border-b-[6px]'
+                                            : 'w-[280px] h-[240px] rounded-[18px] border-[2px] border-b-[5px]'
+                                            }`}
+                                        style={{ borderColor: '#F7890F', borderBottomColor: '#D66F00' }}
+                                    >
+                                        <View className="w-full h-[60%] bg-[#FFF7ED]">
+                                            <Image
+                                                source={require('../../../../assets/images/activities/matching-header.png')}
+                                                className="w-full h-full"
+                                                resizeMode="cover"
+                                            />
+                                        </View>
+                                        <View className={`flex-1 justify-center bg-white ${isTablet ? 'px-6 py-4' : 'px-4 py-3'}`}>
+                                            <View className="flex-row items-center justify-between w-full">
+                                                <Text className={`font-quicksand-bold text-[#4B5563] ${isTablet ? 'text-4xl' : 'text-3xl'}`}>Matching</Text>
+                                                <View
+                                                    className={`flex-row items-center justify-center border-[2px] rounded-full ${isTablet ? 'px-6 py-2 gap-2' : 'px-4 py-1.5 gap-1'}`}
+                                                    style={{ borderColor: '#F7890F', backgroundColor: '#FFF3E0' }}
+                                                >
+                                                    <Ionicons name="play" size={isTablet ? 18 : 14} color="#F7890F" />
+                                                    <Text className={`font-quicksand-bold ${isTablet ? 'text-xl' : 'text-sm'}`} style={{ color: '#F7890F' }}>Start</Text>
+                                                </View>
+                                            </View>
+                                        </View>
+                                    </Pressable>
+                                )}
+
                             </ScrollView>
                         )}
                     </View>

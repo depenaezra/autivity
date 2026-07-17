@@ -5,8 +5,8 @@ import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, Text, TextInput
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 // Import your service
-import { createMilestone, deleteMilestone, getTeacherAnalyticsOverview, updateMilestoneStatus, validateSession } from '../../src/services/analytics';
 import FeedbackModal from '../../components/feedback-modal';
+import { createMilestone, deleteMilestone, getTeacherAnalyticsOverview, updateMilestoneStatus } from '../../src/services/analytics';
 import { formatActivityTitle } from '../../src/utils/format';
 
 // Theme helper
@@ -28,13 +28,13 @@ const MASTER_DOMAINS = [
     name: 'Cognitive & Sorting',
     color: '#93C5FD',
     description: 'Pattern recognition, shape/color matching',
-    subSkills: ['Letter Recognition', 'Shape Recognition', 'Number Recognition']
+    subSkills: ['Object Recognition', 'Matching', 'Categorization', 'Letter Recognition', 'Shape Recognition', 'Number Recognition']
   },
   {
     name: 'Motor Skills',
     color: '#FDE047',
     description: 'Pencil grip, tracing precision & posture',
-    subSkills: ['Fine Motor Skills', 'Visual-Motor Integration', 'Pre-Writing Skills']
+    subSkills: ['Fine Motor Skills', 'Visual-Motor Integration', 'Hand-Eye Coordination', 'Pre-Writing Skills']
   },
   {
     name: 'Communication & AAC',

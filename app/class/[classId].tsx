@@ -127,6 +127,17 @@ const ALL_TRACING_CATEGORIES = [
   }
 ];
 
+const ALL_MATCHING_CATEGORIES = [
+  {
+    id: 'fruits',
+    title: 'Fruits Matching',
+    icon: 'nutrition-outline',
+    activities: [
+      { path: 'activity/drag-drop/matching/fruits', title: 'Match Fruits' }
+    ]
+  }
+];
+
 export default function ClassScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
@@ -356,7 +367,8 @@ export default function ClassScreen() {
 
   // Toggle entire category
   const toggleCategorySelection = (categoryId: string) => {
-    const category = ALL_TRACING_CATEGORIES.find(c => c.id === categoryId);
+    const categoryList = activeActivityType === 'tracing' ? ALL_TRACING_CATEGORIES : ALL_MATCHING_CATEGORIES;
+    const category = categoryList.find(c => c.id === categoryId);
     if (!category) return;
     const categoryPaths = category.activities.map(a => a.path);
     const allSelected = categoryPaths.every(p => selectedActivityPaths.includes(p));
@@ -429,7 +441,8 @@ export default function ClassScreen() {
   };
 
   const selectedStudentObj = students.find(s => s.id === selectedStudent);
-  const activeCategory = ALL_TRACING_CATEGORIES.find(c => c.id === activeCategoryTab) || ALL_TRACING_CATEGORIES[0];
+  const activeCategoryList = activeActivityType === 'tracing' ? ALL_TRACING_CATEGORIES : ALL_MATCHING_CATEGORIES;
+  const activeCategory = activeCategoryList.find(c => c.id === activeCategoryTab) || activeCategoryList[0];
 
   return (
     <View className="flex-1 bg-[#F9FAFB]">
@@ -933,7 +946,11 @@ export default function ClassScreen() {
                 return (
                   <Pressable
                     key={type}
-                    onPress={() => setActiveActivityType(type)}
+                    onPress={() => {
+                      setActiveActivityType(type);
+                      if (type === 'tracing') setActiveCategoryTab('lines');
+                      if (type === 'matching') setActiveCategoryTab('fruits');
+                    }}
                     className={`flex-1 py-2.5 px-2 rounded-xl items-center justify-center border-b-[3px] ${isSelected
                       ? 'bg-white border-[#62A9E6]'
                       : 'bg-transparent border-transparent'
@@ -941,18 +958,18 @@ export default function ClassScreen() {
                   >
                     <Text className={`font-fredoka-regular text-sm ${isSelected ? 'text-[#62A9E6]' : 'text-[#6B7280]'}`}>
                       {label}
-                      {type !== 'tracing' && ' (Soon)'}
+                      {type === 'sound' && ' (Soon)'}
                     </Text>
                   </Pressable>
                 );
               })}
             </View>
 
-            {activeActivityType === 'tracing' ? (
+            {activeActivityType === 'tracing' || activeActivityType === 'matching' ? (
               <>
-                {/* Tracing Sub-Category Tabs */}
+                {/* Sub-Category Tabs */}
                 <View className="flex-row gap-2 mb-3">
-                  {ALL_TRACING_CATEGORIES.map((cat) => {
+                  {(activeActivityType === 'tracing' ? ALL_TRACING_CATEGORIES : ALL_MATCHING_CATEGORIES).map((cat) => {
                     const isActive = activeCategoryTab === cat.id;
                     const countInCategory = cat.activities.filter(a => selectedActivityPaths.includes(a.path)).length;
                     return (
