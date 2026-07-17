@@ -10,7 +10,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { createClass, getClassCount, getTeacherClasses } from '../../src/services/classes';
 import { getMaterialCount } from '../../src/services/materials'; // [ADDED]
 import { getStudentCount } from '../../src/services/students';
+import { Picker } from "@react-native-picker/picker";
 
+const DAYS = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
+];
 interface ClassItem {
   id: string;
   title: string;
@@ -44,6 +54,9 @@ export default function TeacherHome() {
 
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
+  const [startDay, setStartDay] = useState("");
+  const [endDay, setEndDay] = useState("");
+
 
   const [activeIndex, setActiveIndex] = useState(0);
 
@@ -70,10 +83,10 @@ export default function TeacherHome() {
 
   // [MODIFIED] Use useFocusEffect so classes refresh every time the screen is focused (e.g. after deleting a class)
   useFocusEffect(
-    useCallback(() => {
-      fetchClasses();
-    }, [])
-  );
+  useCallback(() => {
+    fetchClasses();
+  }, [])
+);
 
   // [ADDED] Function to fetch and format classes from Supabase
   const fetchClasses = async () => {
@@ -88,7 +101,9 @@ export default function TeacherHome() {
           id: dbClass.id,
           title: dbClass.title,
           level: dbClass.grade || 'Grade 1',
-          people: dbClass.students ? dbClass.students.length : 0,
+          people: Array.isArray(dbClass.students)
+  ? dbClass.students.length
+  : 0,
           schedule: dbClass.schedule,
           image: classCards[theme.name] || require('../../assets/images/polar-bear.png'),
           themeColor: theme.value,
@@ -133,11 +148,11 @@ export default function TeacherHome() {
     try {
       // Send data to Supabase
       await createClass(
-        newClassName.trim(),
-        newClassGrade.trim() || 'Grade 1',
-        newClassSchedule.trim(),
-        selectedTheme.name
-      );
+  newClassName.trim(),
+  newClassGrade.trim() || 'Grade 1',
+  `${startDay} - ${endDay} ${newClassSchedule.trim()}`,
+  selectedTheme.name
+);
 
       // Refresh the list from the database
       await fetchClasses();
@@ -437,15 +452,66 @@ export default function TeacherHome() {
               </View>
 
               <View className="mb-4">
-                <Text className="font-quicksand-bold text-[#4B5563] text-base mb-2">Schedule</Text>
-                <TextInput
-                  value={newClassSchedule}
-                  onChangeText={setNewClassSchedule}
-                  placeholder="e.g. Mon & Wed, 10:00 AM"
-                  placeholderTextColor="#9CA3AF"
-                  className="bg-[#F5F8FA] rounded-xl px-4 py-3 font-quicksand-medium text-[#4B5563]"
-                />
-              </View>
+
+  <Text className="font-quicksand-bold text-[#4B5563] text-base mb-2">
+    Start Day
+  </Text>
+
+  <View className="bg-[#F5F8FA] rounded-xl">
+    <Picker
+      selectedValue={startDay}
+      onValueChange={setStartDay}
+    >
+      <Picker.Item label="Select Start Day" value="" />
+
+      {DAYS.map((day) => (
+        <Picker.Item
+          key={day}
+          label={day}
+          value={day}
+        />
+      ))}
+
+    </Picker>
+  </View>
+
+
+  <Text className="font-quicksand-bold text-[#4B5563] text-base mt-4 mb-2">
+    End Day
+  </Text>
+
+  <View className="bg-[#F5F8FA] rounded-xl">
+    <Picker
+      selectedValue={endDay}
+      onValueChange={setEndDay}
+    >
+      <Picker.Item label="Select End Day" value="" />
+
+      {DAYS.map((day) => (
+        <Picker.Item
+          key={day}
+          label={day}
+          value={day}
+        />
+      ))}
+
+    </Picker>
+  </View>
+
+
+  <Text className="font-quicksand-bold text-[#4B5563] text-base mt-4 mb-2">
+    Time Schedule
+  </Text>
+
+  <TextInput
+    value={newClassSchedule}
+    onChangeText={setNewClassSchedule}
+    placeholder="e.g. 10:00 AM"
+    placeholderTextColor="#9CA3AF"
+    className="bg-[#F5F8FA] rounded-xl px-4 py-3 font-quicksand-medium text-[#4B5563]"
+  />
+
+</View>
 
               <View className="mb-6">
                 <Text className="font-quicksand-bold text-[#4B5563] text-base mb-2">Color Theme</Text>

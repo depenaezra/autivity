@@ -6,7 +6,7 @@ import { ActivityIndicator, Alert, Image, Pressable, ScrollView, Text, View, use
 // services
 import { logout } from '../../src/services/auth';
 import { getUserProfile } from '../../src/services/profile';
-
+import { supabase } from "../../src/lib/supabase";
 export default function ProfileScreen() {
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
@@ -30,7 +30,58 @@ export default function ProfileScreen() {
 
     fetchProfile();
   }, []);
+const handleDeleteAccount = () => {
+  Alert.alert(
+    "Delete Account",
+    "Are you sure you want to permanently delete your account? This action cannot be undone.",
+    [
+      {
+        text: "Cancel",
+        style: "cancel",
+      },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: confirmDeleteAccount,
+      },
+    ]
+  );
+};
 
+const confirmDeleteAccount = async () => {
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      Alert.alert("Error", "User not found.");
+      return;
+    }
+
+    // Delete profile record
+    const { error } = await supabase
+  .from("profiles")
+  .delete()
+  .eq("id", user.id);
+
+    if (error) throw error;
+
+    // Logout
+    await supabase.auth.signOut();
+
+    router.dismissAll();
+    router.replace("/(auth)");
+
+    Alert.alert(
+      "Success",
+      "Your account has been deleted."
+    );
+
+  } catch (error: any) {
+    Alert.alert("Error", error.message);
+  }
+};
   // [ADDED] Handle the logout process
   const handleLogout = async () => {
     try {
@@ -244,7 +295,9 @@ export default function ProfileScreen() {
             </Pressable>
 
             {/* Delete Account Button */}
-            <Pressable className={`w-full bg-[#F43F5E] rounded-full items-center justify-center ${isTablet ? 'h-[76px]' : 'h-[55px]'}`}>
+            <Pressable
+              onPress={handleDeleteAccount}
+              className={`w-full bg-[#F43F5E] rounded-full items-center justify-center ${isTablet ? 'h-[76px]' : 'h-[55px]'}`}>
               <Text className={`text-white font-fredoka-regular ${isTablet ? 'text-xl' : 'text-lg'}`}>Delete account</Text>
             </Pressable>
           </View>

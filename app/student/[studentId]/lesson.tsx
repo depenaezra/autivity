@@ -190,8 +190,10 @@ export default function LessonScreen() {
         }, 1000);
 
         return () => clearInterval(interval);
-    }, [showCongrats, activityIndex]);
-
+    }, [showCongrats]);
+            useEffect(() => {
+              console.log("Timer:", timeLeft);
+    },       [timeLeft]);
     const currentActivity = activitiesList[activityIndex] || DEFAULT_TRACING_ACTIVITIES[0];
     const tracingData = getTracingActivityByPath(currentActivity.path);
     const currentTask = {
@@ -243,13 +245,15 @@ export default function LessonScreen() {
         }
     };
 
-    const handleContinue = () => {
-        setActivityIndex((prev) => (prev + 1) % activitiesList.length);
-        setIsTaskDone(false);
-        setShowCongrats(false);
-        setTimeLeft(15 * 60);
-        triggerEntrance();
-    };
+const handleContinue = () => {
+    console.log("Current time:", timeLeft);
+
+    setActivityIndex(prev => prev + 1);
+    setIsTaskDone(false);
+    setShowCongrats(false);
+
+    triggerEntrance();
+};
 
     // Format timer
     const minutes = Math.floor(timeLeft / 60);
