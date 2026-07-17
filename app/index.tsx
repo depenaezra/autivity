@@ -1,6 +1,5 @@
-import { Redirect } from 'expo-router';
+import { Redirect } from "expo-router";
 
-export default function Index() {
-  return <Redirect href="/(auth)" />;
-  // return <Redirect href="/(tabs)" />;
+export default function AuthIndex() {
+  return <Redirect href="/(auth)/login" />;
 }
