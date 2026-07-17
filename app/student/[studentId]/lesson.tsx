@@ -3,29 +3,19 @@ import { Feather, Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Dimensions, Pressable, Text, View } from 'react-native';
+import { Animated, Dimensions, Pressable, Text, View, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-// Import the real tracing data
-import { getTracingActivityByPath } from '@/activities/tracing';
 import ActivityRenderer from '@/components/activity-renderer';
+import FeedbackModal from '@/components/feedback-modal';
 
 // Import service
+import { getActivitiesByPaths, getDefaultActivities } from '@/src/services/materials';
 import { saveStudentSession } from '@/src/services/sessions';
 import { getStudentById } from '@/src/services/students';
 import { formatActivityTitle } from '@/src/utils/format';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
-
-const DEFAULT_TRACING_ACTIVITIES = [
-    { path: "activity/tracing/lines/zigzag", title: "Zigzag Lines" },
-    { path: "activity/tracing/lines/wave", title: "Wave Lines" },
-    { path: "activity/tracing/lines/arc", title: "Arc Lines" },
-    { path: "activity/tracing/lines/horizontal", title: "Horizontal Lines" },
-    { path: "activity/tracing/lines/vertical", title: "Vertical Lines" },
-    { path: "activity/tracing/lines/diagonal-down", title: "Diagonal Down Lines" },
-    { path: "activity/tracing/lines/diagonal-up", title: "Diagonal Up Lines" }
-];
 
 // Self-contained high performance Confetti animation component
 function ConfettiEffect() {
@@ -102,14 +92,19 @@ export default function LessonScreen() {
     const [classId, setClassId] = useState<string | null>(initialClassId || null);
     const [teacherId, setTeacherId] = useState<string | null>(initialTeacherId || null);
 
-    const [activitiesList, setActivitiesList] = useState<any[]>(DEFAULT_TRACING_ACTIVITIES);
+    const [activitiesList, setActivitiesList] = useState<any[]>([]);
     const [activityIndex, setActivityIndex] = useState(0);
     const [isTaskDone, setIsTaskDone] = useState(false);
     const [showCongrats, setShowCongrats] = useState(false);
     const [timeLeft, setTimeLeft] = useState(15 * 60);
+    const [isLoading, setIsLoading] = useState(true);
+
+    const [savedSessionId, setSavedSessionId] = useState<string | null>(null);
+    const [showFeedbackModal, setShowFeedbackModal] = useState(false);
 
     useEffect(() => {
         const loadAssigned = async () => {
+            setIsLoading(true);
             try {
                 let paths: string[] = [];
                 if (params.assignedActivities && typeof params.assignedActivities === 'string') {
@@ -123,13 +118,17 @@ export default function LessonScreen() {
                         if (Array.isArray(parsed) && parsed.length > 0) paths = parsed;
                     }
                 }
+
+                let dbActivities: any[] = [];
                 if (paths.length > 0) {
-                    const mapped = paths.map(p => ({
-                        path: p.startsWith('activity/tracing/') ? p : `activity/tracing/${p}`,
-                        title: formatActivityTitle(p)
-                    }));
-                    setActivitiesList(mapped);
+                    dbActivities = await getActivitiesByPaths(paths);
                 }
+
+                if (!dbActivities || dbActivities.length === 0) {
+                    dbActivities = await getDefaultActivities(5);
+                }
+
+                setActivitiesList(dbActivities);
 
                 // If classId or teacherId is missing, fetch them from DB
                 let currentClassId = initialClassId || classId;
@@ -144,7 +143,15 @@ export default function LessonScreen() {
                 setClassId(currentClassId);
                 setTeacherId(currentTeacherId);
             } catch (e) {
-                // Keep default on error
+                console.error("Failed to load activities from database:", e);
+                try {
+                    const fallbackDbActivities = await getDefaultActivities(5);
+                    setActivitiesList(fallbackDbActivities);
+                } catch {
+                    setActivitiesList([]);
+                }
+            } finally {
+                setIsLoading(false);
             }
         };
         loadAssigned();
@@ -192,42 +199,48 @@ export default function LessonScreen() {
         return () => clearInterval(interval);
     }, [showCongrats, activityIndex]);
 
-    const currentActivity = activitiesList[activityIndex] || DEFAULT_TRACING_ACTIVITIES[0];
-    const tracingData = getTracingActivityByPath(currentActivity.path);
-    const currentTask = {
-        id: `lesson-1-task-${activityIndex}`,
-        type: "tracing" as const,
-        data: tracingData || { id: "fallback", paths: ["M 50 200 L 350 200"] }
-    };
+    const currentActivity = activitiesList[activityIndex] || activitiesList[0] || {};
+    const parsedContentData = typeof currentActivity.content_data === 'string'
+        ? (() => { try { return JSON.parse(currentActivity.content_data); } catch { return {}; } })()
+        : (currentActivity.content_data || { id: currentActivity.id, paths: [] });
+
+    const currentTask = currentActivity.id ? {
+        id: currentActivity.id || `lesson-task-${activityIndex}`,
+        type: parsedContentData.type || (currentActivity.category?.toLowerCase().includes('drag') ? 'drag-and-drop' : 'tracing'),
+        title: currentActivity.title || formatActivityTitle(currentActivity.path || ''),
+        path: currentActivity.path || '',
+        data: parsedContentData,
+        content_data: parsedContentData
+    } : null;
 
     const handleTaskComplete = () => {
         setIsTaskDone(true);
     };
 
     const handleCheck = async () => {
-        if (isTaskDone) {
+        if (isTaskDone && currentActivity) {
             try {
                 // Calculate how long they took (900 seconds total - timeLeft)
                 const duration = (15 * 60) - timeLeft;
 
-                // Map the category and skill domain based on the path
-                // (You can adjust this mapping logic based on your exact domains)
-                const isLines = currentActivity.path.includes('lines');
-                const category = isLines ? 'Lines' : 'Shapes';
-                const skill_domain = 'Motor'; // Tracing is primarily fine motor skills
+                const category = currentActivity.category || (currentActivity.path?.includes('lines') ? 'Lines' : 'Shapes');
+                const skill_domain = currentActivity.skill_domain || ['Fine Motor Skills'];
 
                 // Fire to Supabase ONLY if we have the required IDs
                 if (studentId && classId && teacherId) {
-                    await saveStudentSession({
+                    const saved = await saveStudentSession({
                         student_id: studentId,
                         class_id: classId,
                         teacher_id: teacherId,
-                        activity_path: currentActivity.path,
+                        activity_path: currentActivity.path || '',
                         category: category,
                         skill_domain: skill_domain,
                         score: 15, // Matching the "+15 Stars Earned" from your UI
                         duration_seconds: duration
                     });
+                    if (saved && Array.isArray(saved) && saved.length > 0) {
+                        setSavedSessionId(saved[0].id);
+                    }
                 } else {
                     console.warn("Missing required IDs for analytics tracking. Activity not saved.");
                 }
@@ -247,6 +260,8 @@ export default function LessonScreen() {
         setActivityIndex((prev) => (prev + 1) % activitiesList.length);
         setIsTaskDone(false);
         setShowCongrats(false);
+        setSavedSessionId(null);
+        setShowFeedbackModal(false);
         setTimeLeft(15 * 60);
         triggerEntrance();
     };
@@ -258,6 +273,31 @@ export default function LessonScreen() {
 
     const progressPercent = `${Math.round(((activityIndex + 1) / activitiesList.length) * 100)}%`;
 
+    if (isLoading) {
+        return (
+            <SafeAreaView style={{ flex: 1, backgroundColor: '#F5F7FA', justifyContent: 'center', alignItems: 'center' }}>
+                <ActivityIndicator size="large" color="#62A9E6" />
+                <Text className="mt-4 font-quicksand-bold text-[#6B7280] text-lg">Loading Lesson Activities...</Text>
+            </SafeAreaView>
+        );
+    }
+
+    if (!activitiesList || activitiesList.length === 0 || !currentTask) {
+        return (
+            <SafeAreaView style={{ flex: 1, backgroundColor: '#F5F7FA', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+                <Feather name="alert-circle" size={48} color="#9CA3AF" />
+                <Text className="mt-4 font-fredoka-one text-[#535B74] text-2xl text-center">No Activities Found</Text>
+                <Text className="mt-2 font-quicksand-medium text-[#6B7280] text-center text-base">There are currently no activities available for this lesson.</Text>
+                <Pressable
+                    onPress={() => router.back()}
+                    className="mt-6 bg-[#62A9E6] px-6 py-3 rounded-full"
+                >
+                    <Text className="text-white font-fredoka-regular text-lg">Go Back</Text>
+                </Pressable>
+            </SafeAreaView>
+        );
+    }
+
     return (
         <Animated.View style={{ flex: 1, opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
             <SafeAreaView style={{ flex: 1, backgroundColor: '#F5F7FA' }} edges={['top', 'bottom']}>
@@ -267,7 +307,7 @@ export default function LessonScreen() {
                     <Pressable onPress={() => router.back()} className="mr-4">
                         <Feather name="x" size={28} color="#535B74" />
                     </Pressable>
-                    <Text className="text-2xl font-fredoka-one text-[#535B74]">{currentActivity.title}</Text>
+                    <Text className="text-2xl font-fredoka-one text-[#535B74]">{currentActivity.title || 'Lesson Activity'}</Text>
                 </View>
 
                 {/* Progress Bar & Timer */}
@@ -348,6 +388,18 @@ export default function LessonScreen() {
 
                         {/* Interactive Buttons */}
                         <View className="w-full gap-4">
+                            {savedSessionId && (
+                                <Pressable
+                                    onPress={() => setShowFeedbackModal(true)}
+                                    className="w-full h-14 bg-[#10B981] border-b-[4px] border-[#059669] rounded-full items-center justify-center flex-row gap-2 active:bg-[#059669]"
+                                >
+                                    <Feather name="check-circle" size={22} color="white" />
+                                    <Text className="text-white font-fredoka-regular text-xl">
+                                        Add Feedback Now
+                                    </Text>
+                                </Pressable>
+                            )}
+
                             {/* Next Lesson / Continue */}
                             <Pressable
                                 onPress={handleContinue}
@@ -371,6 +423,17 @@ export default function LessonScreen() {
                     </View>
                 </View>
             )}
+
+            <FeedbackModal
+                visible={showFeedbackModal}
+                sessionId={savedSessionId}
+                activityTitle={currentActivity.title || formatActivityTitle(currentActivity.path || 'Lesson')}
+                onClose={() => setShowFeedbackModal(false)}
+                onSuccess={() => {
+                    setSavedSessionId(null);
+                    setShowFeedbackModal(false);
+                }}
+            />
         </Animated.View>
     );
 }

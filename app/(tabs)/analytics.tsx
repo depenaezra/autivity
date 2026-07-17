@@ -1,10 +1,12 @@
 import { Feather, Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 // Import your service
 import { createMilestone, deleteMilestone, getTeacherAnalyticsOverview, updateMilestoneStatus, validateSession } from '../../src/services/analytics';
+import FeedbackModal from '../../components/feedback-modal';
 import { formatActivityTitle } from '../../src/utils/format';
 
 // Theme helper
@@ -14,6 +16,39 @@ const THEME_MAP: Record<string, { themeColor: string; shadowColor: string; light
   yellow: { themeColor: '#FDE047', shadowColor: '#FACC15', lightBg: '#FEF9C3' },
   blue: { themeColor: '#93C5FD', shadowColor: '#60A5FA', lightBg: '#EFF6FF' },
 };
+
+const MASTER_DOMAINS = [
+  {
+    name: 'Sensory Regulation',
+    color: '#A7F3D0',
+    description: 'Auditory tolerance & calm task transitions',
+    subSkills: ['Sensory']
+  },
+  {
+    name: 'Cognitive & Sorting',
+    color: '#93C5FD',
+    description: 'Pattern recognition, shape/color matching',
+    subSkills: ['Letter Recognition', 'Shape Recognition', 'Number Recognition']
+  },
+  {
+    name: 'Motor Skills',
+    color: '#FDE047',
+    description: 'Pencil grip, tracing precision & posture',
+    subSkills: ['Fine Motor Skills', 'Visual-Motor Integration', 'Pre-Writing Skills']
+  },
+  {
+    name: 'Communication & AAC',
+    color: '#FCA5A5',
+    description: 'PECS card exchange & spontaneous requests',
+    subSkills: ['Communication', 'AAC']
+  },
+  {
+    name: 'Social & Turn-Taking',
+    color: '#C084FC',
+    description: 'Joint attention & shared play activities',
+    subSkills: ['Social']
+  }
+];
 
 // --- TYPES ---
 interface ClassInfo {
@@ -55,6 +90,7 @@ interface SessionRecord {
   studentId: string;
   activityName: string;
   category: string;
+  skill_domain: string[];
   date: string;
   duration: string;
   score: string;
@@ -70,6 +106,7 @@ export default function AnalyticsScreen() {
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
+  const [expandedDomain, setExpandedDomain] = useState<string | null>(null);
 
   // --- DYNAMIC DATA STATE ---
   const [isLoading, setIsLoading] = useState(true);
@@ -81,10 +118,19 @@ export default function AnalyticsScreen() {
   const [newMilestoneTitle, setNewMilestoneTitle] = useState('');
   const [newMilestoneDate, setNewMilestoneDate] = useState('');
 
+  const [activeModalSession, setActiveModalSession] = useState<{
+    id: string;
+    studentId: string;
+    classId: string;
+    activityName: string;
+  } | null>(null);
+
   // --- FETCH AND PROCESS DATA ---
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchDashboardData();
+    }, [])
+  );
 
   const fetchDashboardData = async () => {
     setIsLoading(true);
@@ -95,13 +141,49 @@ export default function AnalyticsScreen() {
       const processedSessions: SessionRecord[] = data.sessions.map((s: any) => ({
         id: s.id,
         studentId: s.student_id,
-        activityName: s.activity_path ? formatActivityTitle(s.activity_path) : 'Unknown Activity',
+        activityName: s.activity_path
+          ? formatActivityTitle(s.activity_path)
+          : 'Unknown Activity',
         category: s.category || 'General',
+        skill_domain: (() => {
+          if (Array.isArray(s.skill_domain)) return s.skill_domain;
+
+          if (typeof s.skill_domain === 'string') {
+            // Changed: explicitly typed as string so TypeScript can infer the type in .map()
+            const trimmed: string = s.skill_domain.trim();
+
+            if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+              try {
+                return JSON.parse(trimmed);
+              } catch (e) {
+                // fall through
+              }
+            }
+
+            if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+              return trimmed
+                .slice(1, -1)
+                .split(',')
+                .map(item => item.trim().replace(/^"|"$/g, ''))
+                .filter(Boolean);
+            }
+
+            return trimmed
+              .split(',')
+              .map(item => item.trim())
+              .filter(Boolean);
+          }
+
+          return [];
+        })(),
         date: new Date(s.created_at).toLocaleDateString(),
-        duration: s.duration_seconds ? `${Math.floor(s.duration_seconds / 60)} mins` : '5 mins',
+        duration: s.duration_seconds
+          ? `${Math.floor(s.duration_seconds / 60)} mins`
+          : '5 mins',
         score: s.score != null ? `${s.score}%` : 'N/A',
-        status: s.status as 'pending' | 'validated'
+        status: s.status as 'pending' | 'validated',
       }));
+
       setSessions(processedSessions);
 
       // Process Milestones
@@ -118,12 +200,12 @@ export default function AnalyticsScreen() {
       const processedStudents: StudentInfo[] = data.students.map((st: any) => {
         const studentSessions = processedSessions.filter((s) => s.studentId === st.id);
         const pending = studentSessions.filter((s) => s.status === 'pending').length;
-        const validated = studentSessions.filter((s) => s.status === 'validated');
+        const completedSessions = studentSessions.filter((s) => s.status === 'validated' || s.status === 'pending');
 
         let avg = 0;
-        if (validated.length > 0) {
-          const scores = validated.map(s => parseInt(s.score.replace('%', '')) || 0);
-          avg = Math.round(scores.reduce((a, b) => a + b, 0) / validated.length);
+        if (completedSessions.length > 0) {
+          const scores = completedSessions.map(s => parseInt(s.score.replace('%', '')) || 0);
+          avg = Math.round(scores.reduce((a, b) => a + b, 0) / completedSessions.length);
         }
 
         return {
@@ -149,13 +231,13 @@ export default function AnalyticsScreen() {
         );
 
         const pendingCount = classSessions.filter((s) => s.status === 'pending').length;
-        const completedCount = classSessions.filter((s) => s.status === 'validated').length;
+        const completedCount = classSessions.filter((s) => s.status === 'validated' || s.status === 'pending').length;
 
-        const validatedSessions = classSessions.filter((s) => s.status === 'validated');
+        const completedSessions = classSessions.filter((s) => s.status === 'validated' || s.status === 'pending');
         let classAvg = 0;
-        if (validatedSessions.length > 0) {
-          const scores = validatedSessions.map(s => parseInt(s.score.replace('%', '')) || 0);
-          classAvg = Math.round(scores.reduce((a, b) => a + b, 0) / validatedSessions.length);
+        if (completedSessions.length > 0) {
+          const scores = completedSessions.map(s => parseInt(s.score.replace('%', '')) || 0);
+          classAvg = Math.round(scores.reduce((a, b) => a + b, 0) / completedSessions.length);
         }
 
         const colors = THEME_MAP[cls.theme_name] || THEME_MAP.green;
@@ -184,37 +266,46 @@ export default function AnalyticsScreen() {
   const handleSelectClass = (classId: string) => {
     setSelectedClassId(classId);
     setSelectedStudentId(null);
+    setExpandedDomain(null);
     setCurrentView('class');
   };
 
   const handleSelectStudent = (studentId: string) => {
     setSelectedStudentId(studentId);
+    setExpandedDomain(null);
     setCurrentView('student');
   };
 
-  const handleValidateSession = async (sessionId: string, studentId: string, classId: string) => {
-    try {
-      await validateSession(sessionId);
+  const handleValidateSession = (session: SessionRecord, classId: string) => {
+    setActiveModalSession({
+      id: session.id,
+      studentId: session.studentId,
+      classId: classId,
+      activityName: session.activityName,
+    });
+  };
 
-      // Update UI Optimistically
-      setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, status: 'validated' } : s));
-      setStudentsData(prev => prev.map(st => {
-        if (st.id === studentId && st.pendingCount > 0) {
-          return { ...st, pendingCount: st.pendingCount - 1 };
-        }
-        return st;
-      }));
-      setClassesData(prev => prev.map(cl => {
-        if (cl.id === classId && cl.pendingFeedback > 0) {
-          return { ...cl, pendingFeedback: cl.pendingFeedback - 1 };
-        }
-        return cl;
-      }));
+  const handleValidationSuccess = () => {
+    if (!activeModalSession) return;
+    const { id: sessionId, studentId, classId } = activeModalSession;
 
-      Alert.alert("Validated", "Session synced successfully!");
-    } catch (error: any) {
-      Alert.alert("Error", error.message);
-    }
+    // Update UI Optimistically
+    setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, status: 'validated' } : s));
+    setStudentsData(prev => prev.map(st => {
+      if (st.id === studentId && st.pendingCount > 0) {
+        return { ...st, pendingCount: st.pendingCount - 1 };
+      }
+      return st;
+    }));
+    setClassesData(prev => prev.map(cl => {
+      if (cl.id === classId && cl.pendingFeedback > 0) {
+        return { ...cl, pendingFeedback: cl.pendingFeedback - 1 };
+      }
+      return cl;
+    }));
+
+    setActiveModalSession(null);
+    Alert.alert("Validated", "Session synced and feedback published successfully!");
   };
 
   // Toggle milestone logic
@@ -461,7 +552,7 @@ export default function AnalyticsScreen() {
         {/* STUDENTS LIST */}
         <View className={isTablet ? 'px-12' : 'px-6'}>
           <Text className={`font-quicksand-bold text-[#9CA3AF] tracking-wider uppercase mb-3 ${isTablet ? 'text-sm' : 'text-xs'}`}>
-            Learners in {currentClass.name} (Tap to Drill Down)
+            Learners in {currentClass.name} (Tap a Learner)
           </Text>
 
           {classStudents.length === 0 ? (
@@ -520,19 +611,16 @@ export default function AnalyticsScreen() {
   const renderStudentView = () => {
     if (!currentStudent) return null;
 
-    // [ADDED] TARGET A: Dynamic Skills Math
-    // This dynamically calculates progress for each skill based on validated sessions
-    const dynamicSkills = [
-      { name: 'Sensory Regulation', matchWords: ['Sensory'], color: '#A7F3D0', description: 'Auditory tolerance & calm task transitions' },
-      { name: 'Cognitive & Sorting', matchWords: ['Cognitive', 'Numbers'], color: '#93C5FD', description: 'Pattern recognition, shape/color matching' },
-      { name: 'Motor Skills', matchWords: ['Motor', 'Tracing', 'lines', 'shapes'], color: '#FDE047', description: 'Pencil grip, tracing precision & posture' },
-      { name: 'Communication & AAC', matchWords: ['Communication', 'AAC'], color: '#FCA5A5', description: 'PECS card exchange & spontaneous requests' },
-      { name: 'Social & Turn-Taking', matchWords: ['Social'], color: '#C084FC', description: 'Joint attention & shared play activities' },
-    ].map(skill => {
-      // Find validated sessions that match this specific skill domain keyword
+    // [ADDED] TARGET A: Dynamic Skills Math (Roll-up Strategy)
+    // This dynamically calculates progress for each master domain based on completed sessions
+    const dynamicSkillsProgress = MASTER_DOMAINS.map(domain => {
+      // Find completed sessions (validated or pending) that match any subSkill in this master domain
       const relevantSessions = studentSessions.filter(s =>
-        s.status === 'validated' &&
-        skill.matchWords.some(word => s.category.toLowerCase().includes(word.toLowerCase()) || s.activityName.toLowerCase().includes(word.toLowerCase()))
+        (s.status === 'validated' || s.status === 'pending') &&
+        Array.isArray(s.skill_domain) &&
+        s.skill_domain.some(tag =>
+          domain.subSkills.some(sub => sub.trim().toLowerCase() === tag.trim().toLowerCase())
+        )
       );
 
       let progress = 0;
@@ -540,15 +628,26 @@ export default function AnalyticsScreen() {
         const scores = relevantSessions.map(s => parseInt(s.score.replace('%', '')) || 0);
         progress = Math.round(scores.reduce((a, b) => a + b, 0) / relevantSessions.length);
       }
-      return { ...skill, progress };
+
+      return {
+        ...domain,
+        sessionCount: relevantSessions.length,
+        progress,
+        relevantSessions
+      };
     });
+
+    const dynamicSkills = dynamicSkillsProgress;
 
     return (
       <View className="w-full">
         {/* BACK BUTTON */}
         <View className={isTablet ? 'px-12 mt-4' : 'px-6 mt-3'}>
           <TouchableOpacity
-            onPress={() => setCurrentView('class')}
+            onPress={() => {
+              setExpandedDomain(null);
+              setCurrentView('class');
+            }}
             className="flex-row items-center bg-[#EBF5FF] self-start px-4 py-2 rounded-full border border-[#A3CFF1] mb-4"
           >
             <Feather name="arrow-left" size={isTablet ? 18 : 16} color="#62A9E6" />
@@ -601,18 +700,83 @@ export default function AnalyticsScreen() {
           </Text>
 
           <View className="bg-white rounded-2xl border border-[#E5E7EB] p-5 gap-5 shadow-sm">
-            {dynamicSkills.map((skill, idx) => (
-              <View key={idx} className="w-full">
-                <View className="flex-row justify-between items-center mb-1">
-                  <Text className={`font-quicksand-bold text-[#4B5563] ${isTablet ? 'text-base' : 'text-sm'}`}>{skill.name}</Text>
-                  <Text className={`font-quicksand-bold text-[#4B5563] ${isTablet ? 'text-base' : 'text-sm'}`}>{skill.progress}%</Text>
+            {dynamicSkills.map((skill, idx) => {
+              const isExpanded = expandedDomain === skill.name;
+              return (
+                <View key={idx} className="w-full">
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => setExpandedDomain(isExpanded ? null : skill.name)}
+                    className="w-full"
+                  >
+                    <View className="flex-row justify-between items-center mb-1">
+                      <Text className={`font-quicksand-bold text-[#4B5563] ${isTablet ? 'text-base' : 'text-sm'}`}>{skill.name}</Text>
+                      <View className="flex-row items-center gap-2">
+                        <Text className={`font-quicksand-bold text-[#4B5563] ${isTablet ? 'text-base' : 'text-sm'}`}>{skill.progress}%</Text>
+                        <Feather
+                          name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                          size={isTablet ? 18 : 16}
+                          color="#6B7280"
+                        />
+                      </View>
+                    </View>
+                    <Text className={`font-quicksand-medium text-[#9CA3AF] mb-2 ${isTablet ? 'text-sm' : 'text-xs'}`}>{skill.description}</Text>
+                    <View className="w-full h-2.5 bg-[#F3F4F6] rounded-full overflow-hidden">
+                      <View className="h-full rounded-full" style={{ width: `${skill.progress}%`, backgroundColor: skill.color }} />
+                    </View>
+                  </TouchableOpacity>
+
+                  {isExpanded && (
+                    <View
+                      className="mt-3 ml-2 pl-3.5 py-3 pr-3 rounded-r-xl border-l-[4px] gap-3 bg-[#F8FAFC]"
+                      style={{ borderColor: skill.color }}
+                    >
+                      {skill.subSkills.map((subskill, subIdx) => {
+                        const subSessions = (skill.relevantSessions || []).filter(s =>
+                          Array.isArray(s.skill_domain) && (
+                            s.skill_domain.includes(subskill) ||
+                            s.skill_domain.some(tag => tag.trim().toLowerCase() === subskill.trim().toLowerCase())
+                          )
+                        );
+                        const sessionCount = subSessions.length;
+                        let subTotalScore = 0;
+                        if (sessionCount > 0) {
+                          const scores = subSessions.map(s => parseInt(s.score.replace('%', '')) || 0);
+                          subTotalScore = scores.reduce((a, b) => a + b, 0);
+                        }
+                        const subMasteryPercentage = sessionCount > 0
+                          ? Math.round(subTotalScore / sessionCount)
+                          : 0;
+
+                        return (
+                          <View key={subIdx} className="w-full">
+                            <View className="flex-row justify-between items-center mb-1">
+                              <Text className={`font-quicksand-bold text-[#4B5563] ${isTablet ? 'text-sm' : 'text-xs'}`}>
+                                {subskill}
+                              </Text>
+                              <View className="flex-row items-center gap-1.5">
+                                <Text className={`font-quicksand-medium text-[#9CA3AF] ${isTablet ? 'text-xs' : 'text-[10px]'}`}>
+                                  ({sessionCount} {sessionCount === 1 ? 'session' : 'sessions'})
+                                </Text>
+                                <Text className={`font-quicksand-bold text-[#4B5563] ${isTablet ? 'text-sm' : 'text-xs'}`}>
+                                  {subMasteryPercentage}%
+                                </Text>
+                              </View>
+                            </View>
+                            <View className="w-full h-1.5 bg-[#E5E7EB] rounded-full overflow-hidden">
+                              <View
+                                className="h-full rounded-full"
+                                style={{ width: `${subMasteryPercentage}%`, backgroundColor: skill.color }}
+                              />
+                            </View>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  )}
                 </View>
-                <Text className={`font-quicksand-medium text-[#9CA3AF] mb-2 ${isTablet ? 'text-sm' : 'text-xs'}`}>{skill.description}</Text>
-                <View className="w-full h-2.5 bg-[#F3F4F6] rounded-full overflow-hidden">
-                  <View className="h-full rounded-full" style={{ width: `${skill.progress}%`, backgroundColor: skill.color }} />
-                </View>
-              </View>
-            ))}
+              );
+            })}
           </View>
         </View>
 
@@ -729,7 +893,7 @@ export default function AnalyticsScreen() {
                   {session.status === 'pending' ? (
                     <TouchableOpacity
                       activeOpacity={0.8}
-                      onPress={() => handleValidateSession(session.id, session.studentId, currentClass.id)}
+                      onPress={() => handleValidateSession(session, currentClass.id)}
                       className="bg-[#EA580C] px-3.5 py-1.5 rounded-full flex-row items-center gap-1 shadow-sm"
                     >
                       <Feather name="check" size={13} color="white" />
@@ -850,6 +1014,14 @@ export default function AnalyticsScreen() {
           </View>
         </Modal>
 
+        <FeedbackModal
+          visible={!!activeModalSession}
+          sessionId={activeModalSession?.id || null}
+          activityTitle={activeModalSession?.activityName}
+          studentName={currentStudent?.name}
+          onClose={() => setActiveModalSession(null)}
+          onSuccess={handleValidationSuccess}
+        />
       </ScrollView>
     </SafeAreaView>
   );

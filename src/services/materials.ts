@@ -15,6 +15,35 @@ export const getMaterials = async () => {
     return data;
 };
 
+// Fetch specific activities matching the given path strings from Supabase activities table
+export const getActivitiesByPaths = async (paths: string[]) => {
+    if (!paths || paths.length === 0) return [];
+    // Ensure we match regardless of optional activity/tracing prefix
+    const expandedPaths = Array.from(new Set([
+        ...paths,
+        ...paths.map(p => p.startsWith('activity/tracing/') ? p.replace(/^activity\/tracing\//, '') : `activity/tracing/${p}`)
+    ]));
+
+    const { data, error } = await supabase
+        .from('activities')
+        .select('*')
+        .in('path', expandedPaths);
+
+    if (error) throw new Error(error.message);
+    return data || [];
+};
+
+// Fetch default/random activities directly from Supabase activities table when no assigned paths exist
+export const getDefaultActivities = async (limit: number = 5) => {
+    const { data, error } = await supabase
+        .from('activities')
+        .select('*')
+        .limit(limit);
+
+    if (error) throw new Error(error.message);
+    return data || [];
+};
+
 // Upload file to Storage AND save metadata to Database
 export const uploadMaterial = async (
     fileUri: string,
