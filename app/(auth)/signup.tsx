@@ -28,13 +28,24 @@ export default function Signup() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  const isStrongPassword = (password: string) => {
+  return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(password);
+};
+
+
   // [MODIFIED] Made handleRegister async to wait for the database
   const handleRegister = async () => {
     if (!firstName || !lastName || !email || !password) {
       Alert.alert('Missing Information', 'Please fill out all fields to register.');
       return;
     }
-
+if (!isStrongPassword(password)) {
+  Alert.alert(
+    "Weak Password",
+    "Password must:\n\n• Be at least 8 characters\n• Have at least 1 uppercase letter\n• Have at least 1 lowercase letter\n• Have at least 1 number\n\nExample: Autivity123"
+  );
+  return;
+}
     // [ADDED] Start loading spinner
     setIsLoading(true);
 
@@ -152,7 +163,21 @@ export default function Signup() {
               </Pressable>
             </View>
           </View>
+<Text
+  className={`text-[#9CA3AF] px-2 ${
+    isTablet ? "text-base mt-2" : "text-xs mt-2"
+  }`}
+>
+  Must be at least 8 characters with uppercase, lowercase, and number.
+</Text>
 
+<Text
+  className={`text-[#62A9E6] px-2 ${
+    isTablet ? "text-base" : "text-xs"
+  }`}
+>
+  Example: Autivity123
+</Text>
           {/* REGISTER BUTTON */}
           <View className={`w-full ${isTablet ? 'mt-8' : 'mt-6'}`}>
             <Pressable

@@ -1,9 +1,10 @@
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from "expo-router";
-import React, { useState } from 'react';
 import { ActivityIndicator, Alert, Keyboard, Pressable, Text, TextInput, TouchableWithoutFeedback, View, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import React, { useEffect, useState } from "react";
+import { supabase } from "../../src/lib/supabase";
 // login service
 import { login } from '../../src/services/auth';
 
@@ -24,7 +25,47 @@ export default function Login() {
 
   // Loading State
   const [isLoading, setIsLoading] = useState(false);
+useEffect(() => {
+  loadRememberedUser();
+}, []);
 
+const loadRememberedUser = async () => {
+  try {
+    const savedEmail = await AsyncStorage.getItem("remember_email");
+    const remembered = await AsyncStorage.getItem("remember_me");
+
+    if (remembered === "true" && savedEmail) {
+      setEmail(savedEmail);
+      setRememberMe(true);
+    }
+  } catch (error) {
+    console.log(error);
+  }
+};
+const handleForgotPassword = async () => {
+  if (!email) {
+    Alert.alert(
+      "Email Required",
+      "Please enter your email address first."
+    );
+    return;
+  }
+
+  try {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: "autivity://reset-password",
+    });
+
+    if (error) throw error;
+
+    Alert.alert(
+      "Success",
+      "Password reset link has been sent to your email."
+    );
+  } catch (error: any) {
+    Alert.alert("Error", error.message);
+  }
+};
   // Database Connection
   const handleLogin = async () => {
     if (!email || !password) {
@@ -32,16 +73,28 @@ export default function Login() {
       return;
     }
 
-    setIsLoading(true);
-    try {
-      await login(email, password);
-      router.replace('/(tabs)');
-    } catch (error: any) {
-      Alert.alert('Login Failed', error.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+setIsLoading(true);
+
+try {
+  await login(email, password);
+
+  // Save or remove remembered email
+  if (rememberMe) {
+    await AsyncStorage.setItem("remember_email", email);
+    await AsyncStorage.setItem("remember_me", "true");
+  } else {
+    await AsyncStorage.removeItem("remember_email");
+    await AsyncStorage.setItem("remember_me", "false");
+  }
+
+  router.replace('/(tabs)');
+
+} catch (error: any) {
+  Alert.alert('Login Failed', error.message);
+} finally {
+  setIsLoading(false);
+}
+  }
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -129,7 +182,7 @@ export default function Login() {
             </Pressable>
 
             {/* Forgot Password Link */}
-            <Pressable>
+            <Pressable onPress={handleForgotPassword}>
               <Text className={`font-quicksand-semibold text-[#62A9E6] ${isTablet ? 'text-xl' : 'text-base'}`}>
                 Forgot password?
               </Text>

@@ -244,9 +244,17 @@ export default function LessonScreen() {
         }, 1000);
 
         return () => clearInterval(interval);
-    }, [showCongrats, activityIndex]);
-
-
+    }, [showCongrats]);
+    useEffect(() => {
+        console.log("Timer:", timeLeft);
+    }, [timeLeft]);
+    const currentActivity = activitiesList[activityIndex] || DEFAULT_TRACING_ACTIVITIES[0];
+    const tracingData = getTracingActivityByPath(currentActivity.path);
+    const currentTask = {
+        id: `lesson-1-task-${activityIndex}`,
+        type: "tracing" as const,
+        data: tracingData || { id: "fallback", paths: ["M 50 200 L 350 200"] }
+    };
 
     const handleTaskComplete = () => {
         setIsTaskDone(true);

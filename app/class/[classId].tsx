@@ -3,14 +3,44 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Animated, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
+import DateTimePicker from "@react-native-community/datetimepicker";
 import BlueHeaderSvg from '../../assets/images/class-headers/blue-header.svg';
 import GreenHeaderSvg from '../../assets/images/class-headers/green-header.svg';
 import OrangeHeaderSvg from '../../assets/images/class-headers/orange-header.svg';
 import YellowHeaderSvg from '../../assets/images/class-headers/yellow-header.svg';
+import { Picker } from "@react-native-picker/picker";
+import {
+  getClassById,
+  getTeacherClasses,
+  updateClass,
+  deleteClass,
+} from "../../src/services/classes";
+import {
+  addStudent,
+  getClassStudents,
+  moveStudentClass,
+  updateStudentActivities,
+} from "../../src/services/students";
+import { supabase } from "../../src/lib/supabase";
+const AVATARS = [
+  "😀","😃","😄","😊","🙂","😍",
+  "👧","👦","👶","🧒",
+  "🐶","🐱","🐭","🐹","🐰","🦊",
+  "🐻","🐼","🐨","🐯","🦁","🐸",
+  "🐵","🐧","🐤","🦄","🐙","🐢",
+  "🦋","🐝","🐬","🐳","🦖","🦕"
+];
 
-import { getClassById, getTeacherClasses, updateClass, deleteClass } from '../../src/services/classes';
-import { addStudent, deleteStudent, getClassStudents, moveStudentClass, updateStudentActivities } from '../../src/services/students';
+
+export async function deleteStudent(studentId: string) {
+  const { error } = await supabase
+    .from("students")
+    .delete()
+    .eq("id", studentId);
+
+  if (error) throw error;
+}
+
 
 export const THEME_CONFIG: Record<string, {
   themeColor: string;
@@ -144,13 +174,23 @@ export default function ClassScreen() {
   const isTablet = width >= 600;
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
-
+const [startDay, setStartDay] = useState("");
+const [endDay, setEndDay] = useState("");
+const [editClassSchedule, setEditClassSchedule] = useState("");
   const safeId = Array.isArray(params.classId) ? params.classId[0] : params.classId || (Array.isArray(params.id) ? params.id[0] : params.id);
   const paramName = Array.isArray(params.name) ? params.name[0] : params.name;
   const paramGrade = Array.isArray(params.grade) ? params.grade[0] : params.grade || (Array.isArray(params.level) ? params.level[0] : params.level);
   const paramThemeName = Array.isArray(params.themeName) ? params.themeName[0] : params.themeName;
   const paramThemeColor = Array.isArray(params.themeColor) ? params.themeColor[0] : params.themeColor;
-
+const DAYS = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
+];
   // Local state for dynamic class details (so edits update instantly)
   const [classDetails, setClassDetails] = useState({
     id: safeId as string,
@@ -161,33 +201,36 @@ export default function ClassScreen() {
     themeColor: paramThemeColor || THEME_CONFIG.green.themeColor,
   });
 
-  useEffect(() => {
-    if (safeId) {
-      fetchClassDetails();
-      fetchStudents();
-    }
-  }, [safeId]);
+ useEffect(() => {
+  if (safeId) {
+    fetchClassDetails();
+    fetchStudents();
+  }
+}, [safeId]);
 
-  const fetchClassDetails = async () => {
-    try {
-      const data = await getClassById(safeId as string);
-      if (data) {
-        let resThemeName = data.theme_name || classDetails.themeName;
-        const matchedColor = themeColors.find(t => t.name === resThemeName) || themeColors.find(t => t.name === 'green');
-        setClassDetails({
-          id: data.id,
-          name: data.title || classDetails.name,
-          level: data.grade || classDetails.level,
-          schedule: data.schedule || '',
-          themeName: resThemeName,
-          themeColor: matchedColor ? matchedColor.value : THEME_CONFIG.green.themeColor,
-        });
-      }
-    } catch (e) {
-      // Keep existing params if fetch fails
-    }
-  };
+const fetchClassDetails = async () => {
+  try {
+    const data = await getClassById(safeId as string);
 
+    if (!data) return;
+
+    const selectedTheme =
+      themeColors.find(t => t.name === data.theme_name)
+      || themeColors[3];
+
+    setClassDetails({
+      id: data.id,
+      name: data.title,
+      level: data.grade,
+      schedule: data.schedule || "",
+      themeName: selectedTheme.name,
+      themeColor: selectedTheme.value,
+    });
+
+  } catch (e) {
+    console.log(e);
+  }
+};
   const themeConfig = THEME_CONFIG[classDetails.themeName] || THEME_CONFIG.green;
 
   // State for students
@@ -197,14 +240,15 @@ export default function ClassScreen() {
 
   // State for Add Student Modal
   const [isAddStudentModalVisible, setAddStudentModalVisible] = useState(false);
-  const [newStudentName, setNewStudentName] = useState('');
+ const [selectedAvatar, setSelectedAvatar] = useState("😀");
+const [newStudentName, setNewStudentName] = useState("");
   const [isCreatingStudent, setIsCreatingStudent] = useState(false);
 
   // State for Edit Class Modal
   const [isEditClassModalVisible, setEditClassModalVisible] = useState(false);
   const [editClassName, setEditClassName] = useState('');
   const [editClassGrade, setEditClassGrade] = useState('');
-  const [editClassSchedule, setEditClassSchedule] = useState('');
+ 
   const [editClassTheme, setEditClassTheme] = useState('#86EFAC');
   const [isUpdatingClass, setIsUpdatingClass] = useState(false);
 
@@ -226,7 +270,7 @@ export default function ClassScreen() {
   const fetchStudents = async () => {
     try {
       setIsLoadingStudents(true);
-      const data = await getClassStudents(classDetails.id);
+      const data = await getClassStudents(safeId as string);
       setStudents(data);
     } catch (error: any) {
       Alert.alert("Error fetching students", error.message);
@@ -254,7 +298,11 @@ export default function ClassScreen() {
 
     setIsCreatingStudent(true);
     try {
-      await addStudent(classDetails.id, newStudentName.trim());
+await addStudent(
+  classDetails.id,
+  newStudentName.trim(),
+ 
+);
       await fetchStudents();
       setAddStudentModalVisible(false);
       setNewStudentName('');
@@ -266,44 +314,113 @@ export default function ClassScreen() {
   };
 
   // Open Edit Class Modal
-  const handleOpenEditClass = () => {
-    setEditClassName(classDetails.name);
-    setEditClassGrade(classDetails.level);
-    setEditClassSchedule(classDetails.schedule || '');
-    setEditClassTheme(classDetails.themeColor);
-    setEditClassModalVisible(true);
-  };
+const handleOpenEditClass = () => {
+  setEditClassName(classDetails.name);
+  setEditClassGrade(classDetails.level);
+
+  const selected =
+    themeColors.find(t => t.name === classDetails.themeName);
+
+  setEditClassTheme(
+    selected ? selected.value : themeColors[3].value
+  );
+
+  const schedule = classDetails.schedule || "";
+
+  const match = schedule.match(
+    /^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\s*-\s*(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\s*(.*)$/
+  );
+
+  if (match) {
+    setStartDay(match[1]);
+    setEndDay(match[2]);
+    setEditClassSchedule(match[3].trim());
+  } else {
+    setStartDay("Monday");
+    setEndDay("Friday");
+    setEditClassSchedule(schedule);
+  }
+
+  setEditClassModalVisible(true);
+};
 
   // Handle saving edited class details
-  const handleSaveClassEdit = async () => {
-    if (!editClassName.trim()) return;
+const handleSaveClassEdit = async () => {
 
-    const selectedTheme = themeColors.find(c => c.value === editClassTheme) || themeColors[3];
-    setIsUpdatingClass(true);
-    try {
-      const updated = await updateClass(
-        classDetails.id,
-        editClassName.trim(),
-        editClassGrade.trim() || 'Grade 1',
-        editClassSchedule.trim(),
-        selectedTheme.name
-      );
-      setClassDetails({
-        id: classDetails.id,
-        name: editClassName.trim(),
-        level: editClassGrade.trim() || 'Grade 1',
-        schedule: editClassSchedule.trim(),
-        themeName: selectedTheme.name,
-        themeColor: selectedTheme.value,
-      });
-      setEditClassModalVisible(false);
-      Alert.alert("Success", "Class details updated!");
-    } catch (error: any) {
-      Alert.alert("Error updating class", error.message);
-    } finally {
-      setIsUpdatingClass(false);
-    }
-  };
+  if (!editClassName.trim()) {
+    Alert.alert("Error", "Class name is required");
+    return;
+  }
+
+  setIsUpdatingClass(true);
+
+  try {
+
+    const selectedTheme =
+      themeColors.find(c => c.value === editClassTheme)
+      || themeColors[3];
+
+
+   const scheduleText = [
+  startDay,
+  endDay ? `- ${endDay}` : "",
+  editClassSchedule.trim(),
+]
+.filter(Boolean)
+.join(" ");
+
+
+    console.log("Saving class:", {
+      id: classDetails.id,
+      name: editClassName,
+      grade: editClassGrade,
+      scheduleText,
+      theme: selectedTheme.name
+    });
+
+
+    await updateClass(
+      classDetails.id,
+      editClassName.trim(),
+      editClassGrade.trim() || "Grade 1",
+      scheduleText,
+      selectedTheme.name
+    );
+
+
+    setClassDetails(prev => ({
+      ...prev,
+      name: editClassName.trim(),
+      level: editClassGrade.trim() || "Grade 1",
+      schedule: scheduleText,
+      themeName: selectedTheme.name,
+      themeColor: selectedTheme.value
+    }));
+
+
+    setEditClassModalVisible(false);
+
+    Alert.alert(
+      "Success",
+      "Class updated successfully!"
+    );
+
+
+  } catch(error:any){
+
+    console.log("UPDATE ERROR:", error);
+
+    Alert.alert(
+      "Update Failed",
+      error.message
+    );
+
+  } finally {
+
+    setIsUpdatingClass(false);
+
+  }
+};
 
   // Handle deleting this class
   const handleDeleteClass = () => {
@@ -427,13 +544,20 @@ export default function ClassScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              await deleteStudent(studentObj.id);
-              setSelectedStudent(null);
-              await fetchStudents();
-              Alert.alert("Deleted", `${studentObj.name} removed from class.`);
-            } catch (error: any) {
-              Alert.alert("Error deleting student", error.message);
-            }
+  console.log("Deleting student:", studentObj.id);
+
+  await deleteStudent(studentObj.id);
+
+  console.log("Deleted successfully");
+
+  setSelectedStudent(null);
+  await fetchStudents();
+
+  Alert.alert("Deleted", `${studentObj.name} removed from class.`);
+} catch (error: any) {
+  console.log(error);
+  Alert.alert("Error deleting student", error.message);
+}
           }
         }
       ]
@@ -536,7 +660,7 @@ export default function ClassScreen() {
                         } ${isSelected ? '' : 'border-[#E5E7EB]'}`}
                       style={isSelected ? { borderColor: themeConfig.themeColor } : {}}
                     >
-                      <Ionicons name="person" size={isTablet ? 56 : 40} color={isSelected ? themeConfig.themeColor : '#D1D5DB'} />
+                      <Text style={{ fontSize: isTablet ? 56 : 42 }}> {student.avatar || "😀"} </Text>
 
                       {/* Assigned Activities Badge */}
                       {assignedCount > 0 && (
@@ -682,17 +806,42 @@ export default function ClassScreen() {
             </View>
 
             <View className="mb-8">
-              <Text className="font-quicksand-bold text-[#4B5563] text-base mb-2">Student Name</Text>
-              <TextInput
+                <Text className="font-quicksand-bold text-[#4B5563] text-base mb-2">
+                Student Name
+                </Text>
+                <TextInput
                 value={newStudentName}
                 onChangeText={setNewStudentName}
-                placeholder="e.g. Alex"
-                placeholderTextColor="#9CA3AF"
-                className="bg-[#F5F8FA] rounded-xl px-4 py-3 font-quicksand-medium text-[#4B5563]"
-                autoFocus
-              />
-            </View>
+               placeholder="e.g. Juan Dela Cruz"
+               placeholderTextColor="#9CA3AF"
+               className="bg-[#F5F8FA] rounded-xl px-4 py-3 font-quicksand-medium text-[#4B5563]"
+                />
+              </View>
+<Text className="font-quicksand-bold text-[#4B5563] text-base mb-3">
+  Choose Avatar
+</Text>
 
+<View className="flex-row flex-wrap justify-between mb-6">
+  {AVATARS.map((avatar) => {
+    const selected = selectedAvatar === avatar;
+
+    return (
+      <Pressable
+        key={avatar}
+        onPress={() => setSelectedAvatar(avatar)}
+        className={`w-[22%] aspect-square rounded-2xl mb-3 items-center justify-center border-2 ${
+          selected
+            ? "border-[#62A9E6] bg-[#EFF6FF]"
+            : "border-[#E5E7EB] bg-white"
+        }`}
+      >
+        <Text style={{ fontSize: 34 }}>
+          {avatar}
+        </Text>
+      </Pressable>
+    );
+  })}
+</View>
             <Pressable
               onPress={handleAddStudent}
               className={`py-4 rounded-xl items-center ${newStudentName.trim() && !isCreatingStudent ? 'bg-[#9ACBF9]' : 'bg-[#E5E7EB]'}`}
@@ -773,16 +922,59 @@ export default function ClassScreen() {
               </View>
 
               <View className="mb-4">
-                <Text className="font-quicksand-bold text-[#4B5563] text-base mb-2">Schedule</Text>
-                <TextInput
-                  value={editClassSchedule}
-                  onChangeText={setEditClassSchedule}
-                  placeholder="e.g. Mon & Wed, 10:00 AM"
-                  placeholderTextColor="#9CA3AF"
-                  className="bg-[#F5F8FA] rounded-xl px-4 py-3 font-quicksand-medium text-[#4B5563]"
-                />
-              </View>
 
+  <Text className="font-quicksand-bold text-[#4B5563] text-base mb-2">
+    Start Day
+  </Text>
+
+  <View className="bg-[#F5F8FA] rounded-xl">
+    <Picker
+      selectedValue={startDay}
+      onValueChange={(value) => setStartDay(value)}
+    >
+      {DAYS.map((day) => (
+        <Picker.Item
+          key={day}
+          label={day}
+          value={day}
+        />
+      ))}
+    </Picker>
+  </View>
+
+  <Text className="font-quicksand-bold text-[#4B5563] text-base mt-4 mb-2">
+    End Day
+  </Text>
+
+  <View className="bg-[#F5F8FA] rounded-xl">
+    <Picker
+      selectedValue={endDay}
+      onValueChange={(value) => setEndDay(value)}
+    >
+      <Picker.Item label="Select End Day" value="" />
+      {DAYS.map((day) => (
+        <Picker.Item
+          key={day}
+          label={day}
+          value={day}
+        />
+      ))}
+    </Picker>
+  </View>
+
+  <Text className="font-quicksand-bold text-[#4B5563] text-base mt-4 mb-2">
+    Time Schedule
+  </Text>
+
+  <TextInput
+    value={editClassSchedule}
+    onChangeText={setEditClassSchedule}
+    placeholder="e.g. 10:00 AM"
+    placeholderTextColor="#9CA3AF"
+    className="bg-[#F5F8FA] rounded-xl px-4 py-3 font-quicksand-medium text-[#4B5563]"
+  />
+
+</View>
               <View className="mb-6">
                 <Text className="font-quicksand-bold text-[#4B5563] text-base mb-2">Color Theme</Text>
                 <View className="flex-row gap-4">
@@ -809,20 +1001,40 @@ export default function ClassScreen() {
               </View>
 
               <Pressable
-                onPress={handleSaveClassEdit}
-                className={`py-4 rounded-xl items-center mb-3 ${editClassName.trim() && !isUpdatingClass ? 'bg-[#9ACBF9]' : 'bg-[#E5E7EB]'}`}
-                disabled={!editClassName.trim() || isUpdatingClass}
-              >
-                {isUpdatingClass ? (
-                  <ActivityIndicator color="white" />
-                ) : (
-                  <Text className="font-quicksand-bold text-white text-lg">Update Class</Text>
-                )}
-              </Pressable>
+  onPress={() => {
+    console.log("UPDATE CLICKED");
+    console.log({
+      name: editClassName,
+      grade: editClassGrade,
+      schedule: editClassSchedule,
+      startDay,
+      endDay,
+    });
+
+    handleSaveClassEdit();
+  }}
+  className={`py-4 rounded-xl items-center mb-3 ${
+    editClassName.trim() && !isUpdatingClass
+      ? 'bg-[#9ACBF9]'
+      : 'bg-[#E5E7EB]'
+  }`}
+  disabled={isUpdatingClass}
+>
+  {isUpdatingClass ? (
+    <ActivityIndicator color="white" />
+  ) : (
+    <Text className="font-quicksand-bold text-white text-lg">
+      Update Class
+    </Text>
+  )}
+</Pressable>
 
               {/* Delete Class Button */}
               <Pressable
-                onPress={handleDeleteClass}
+  onPress={() => {
+    console.log("DELETE CLICKED");
+    handleDeleteClass();
+  }}
                 className="py-4 rounded-xl items-center mb-8 border border-[#FECACA] bg-[#FEF2F2] flex-row justify-center gap-2"
               >
                 <Ionicons name="trash-outline" size={18} color="#EF4444" />
