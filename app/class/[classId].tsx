@@ -16,7 +16,6 @@ import {
   deleteClass,
 } from "../../src/services/classes";
 import {
-  addStudent,
   getClassStudents,
   moveStudentClass,
   updateStudentActivities,
@@ -28,7 +27,7 @@ const AVATARS = [
   "🐶","🐱","🐭","🐹","🐰","🦊",
   "🐻","🐼","🐨","🐯","🦁","🐸",
   "🐵","🐧","🐤","🦄","🐙","🐢",
-  "🦋","🐝","🐬","🐳","🦖","🦕"
+  "🦋","🐝","🐬","🐳"
 ];
 
 
@@ -282,25 +281,47 @@ const [newStudentName, setNewStudentName] = useState("");
   }, [isAddStudentModalVisible, isEditClassModalVisible, isMoveModalVisible, isAssignModalVisible]);
 
   // Handle adding a student
-  const handleAddStudent = async () => {
-    if (!newStudentName.trim()) return;
+const handleAddStudent = async () => {
+  if (!newStudentName.trim()) return;
 
-    setIsCreatingStudent(true);
-    try {
-await addStudent(
-  classDetails.id,
-  newStudentName.trim(),
- 
-);
-      await fetchStudents();
-      setAddStudentModalVisible(false);
-      setNewStudentName('');
-    } catch (error: any) {
-      Alert.alert("Error adding student", error.message);
-    } finally {
-      setIsCreatingStudent(false);
+  setIsCreatingStudent(true);
+
+  try {
+    // Kunin ang current logged-in teacher
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      throw new Error("User not logged in");
     }
-  };
+
+    const { error } = await supabase
+      .from("students")
+      .insert([
+        {
+          teacher_id: user.id,           // <-- IDAGDAG ITO
+          class_id: classDetails.id,
+          name: newStudentName.trim(),
+          avatar: selectedAvatar,
+        },
+      ]);
+
+    if (error) throw error;
+
+    await fetchStudents();
+
+    setNewStudentName("");
+    setSelectedAvatar("😀");
+    setAddStudentModalVisible(false);
+
+    Alert.alert("Success", "Student added successfully.");
+  } catch (error: any) {
+    Alert.alert("Error", error.message);
+  } finally {
+    setIsCreatingStudent(false);
+  }
+};
 
   // Open Edit Class Modal
 const handleOpenEditClass = () => {
@@ -783,7 +804,7 @@ const handleSaveClassEdit = async () => {
           <Pressable className="flex-1" onPress={() => setAddStudentModalVisible(false)} />
           <Animated.View
             style={{ transform: [{ translateY: slideAnim }] }}
-            className={`bg-white rounded-t-3xl p-6 ${isTablet ? 'h-[40%]' : 'h-[50%]'}`}
+            className={`bg-white rounded-t-3xl p-6 ${isTablet ? 'h-[55%]' : 'h-[80%]'}`}
           >
             <View className="flex-row justify-between items-center mb-6">
               <Text className="font-fredoka-one text-2xl text-[#4B5563]">Add New Student</Text>
@@ -808,26 +829,36 @@ const handleSaveClassEdit = async () => {
   Choose Avatar
 </Text>
 
-<View className="flex-row flex-wrap justify-between mb-6">
-  {AVATARS.map((avatar) => {
-    const selected = selectedAvatar === avatar;
+<View className="flex-1">
+  <ScrollView
+    showsVerticalScrollIndicator={false}
+    contentContainerStyle={{
+      flexDirection: "row",
+      flexWrap: "wrap",
+      justifyContent: "space-between",
+      paddingBottom: 20,
+    }}
+  >
+    {AVATARS.map((avatar) => {
+      const selected = selectedAvatar === avatar;
 
-    return (
-      <Pressable
-        key={avatar}
-        onPress={() => setSelectedAvatar(avatar)}
-        className={`w-[22%] aspect-square rounded-2xl mb-3 items-center justify-center border-2 ${
-          selected
-            ? "border-[#62A9E6] bg-[#EFF6FF]"
-            : "border-[#E5E7EB] bg-white"
-        }`}
-      >
-        <Text style={{ fontSize: 34 }}>
-          {avatar}
-        </Text>
-      </Pressable>
-    );
-  })}
+      return (
+        <Pressable
+          key={avatar}
+          onPress={() => setSelectedAvatar(avatar)}
+          className={`w-[22%] aspect-square rounded-2xl mb-3 items-center justify-center border-2 ${
+            selected
+              ? "border-[#62A9E6] bg-[#EFF6FF]"
+              : "border-[#E5E7EB] bg-white"
+          }`}
+        >
+          <Text style={{ fontSize: 34 }}>
+            {avatar}
+          </Text>
+        </Pressable>
+      );
+    })}
+  </ScrollView>
 </View>
             <Pressable
               onPress={handleAddStudent}

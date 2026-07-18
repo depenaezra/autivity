@@ -1,7 +1,17 @@
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Image, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+  useWindowDimensions,
+} from "react-native";
 
 // services
 import { logout } from '../../src/services/auth';
@@ -14,19 +24,56 @@ export default function ProfileScreen() {
   // [ADDED] State to hold the fetched profile data
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-
+const [studentCount, setStudentCount] = useState(0);
+const [classCount, setClassCount] = useState(0);
+const [isEditing, setIsEditing] = useState(false);
+const [firstName, setFirstName] = useState("");
+const [lastName, setLastName] = useState("");
+const [email, setEmail] = useState("");
+const [university, setUniversity] = useState("");
   // [ADDED] Fetch the profile data as soon as the screen loads
   useEffect(() => {
     const fetchProfile = async () => {
-      try {
-        const data = await getUserProfile();
-        setProfile(data);
-      } catch (error: any) {
-        Alert.alert("Error loading profile", error.message);
-      } finally {
-        setLoading(false);
-      }
-    };
+  try {
+    const data = await getUserProfile();
+    setProfile(data);
+    setFirstName(data?.first_name || "");
+    setLastName(data?.last_name || "");
+    setUniversity(data?.university || "");
+    setEmail(data?.email || "");
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (user) {
+      // Count students
+      const { count: students } = await supabase
+        .from("students")
+        .select("*", {
+          count: "exact",
+          head: true,
+        })
+        .eq("teacher_id", user.id);
+
+      setStudentCount(students ?? 0);
+
+      // Count classes
+      const { count: classes } = await supabase
+        .from("classes")
+        .select("*", {
+          count: "exact",
+          head: true,
+        })
+        .eq("teacher_id", user.id);
+
+      setClassCount(classes ?? 0);
+    }
+  } catch (error: any) {
+    Alert.alert("Error loading profile", error.message);
+  } finally {
+    setLoading(false);
+  }
+};
 
     fetchProfile();
   }, []);
@@ -82,25 +129,74 @@ const confirmDeleteAccount = async () => {
     Alert.alert("Error", error.message);
   }
 };
-  // [ADDED] Handle the logout process
-  const handleLogout = async () => {
-    try {
-      await logout();
+const handleSaveProfile = async () => {
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-      // 1. Clear the entire navigation stack so (tabs) is completely destroyed
-      router.dismissAll();
+    if (!user) return;
 
-      // 2. Set the absolute root of the app back to your auth index
-      router.replace('/(auth)');
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+      first_name: firstName,
+      last_name: lastName,
+      email: email,
+      university: university,
+})
+      .eq("id", user.id);
 
-      // 3. Push the login screen on top so the back button perfectly routes to auth/index
-      router.push('/(auth)/login');
+    if (error) throw error;
 
-    } catch (error: any) {
-      Alert.alert("Logout Failed", error.message);
+    setProfile({
+  ...profile,
+  first_name: firstName,
+  last_name: lastName,
+  email: email,
+  university: university,
+});
+
+    setIsEditing(false);
+
+    Alert.alert("Success", "Profile updated.");
+  } catch (error: any) {
+    Alert.alert("Error", error.message);
+  }
+};
+
+const handleLogout = async () => {
+  try {
+    await logout();
+
+    router.dismissAll();
+    router.replace("/(auth)");
+    router.push("/(auth)/login");
+  } catch (error: any) {
+    Alert.alert("Logout Failed", error.message);
+  }
+};
+const handleResetPassword = async () => {
+  try {
+    if (!profile?.email) {
+      Alert.alert("Error", "No email found.");
+      return;
     }
-  };
 
+    const { error } = await supabase.auth.resetPasswordForEmail(
+      profile.email
+    );
+
+    if (error) throw error;
+
+    Alert.alert(
+      "Success",
+      "A password reset link has been sent to your email."
+    );
+  } catch (error: any) {
+    Alert.alert("Reset Password Failed", error.message);
+  }
+};
   // [ADDED] Show a loading spinner while fetching data
   if (loading) {
     return (
@@ -152,40 +248,109 @@ const confirmDeleteAccount = async () => {
             </Pressable>
           </View>
 
-          {/* [MODIFIED] Replaced static name with dynamic first and last name */}
-          <Text className={`font-fredoka-one text-[#374151] ${isTablet ? 'text-4xl mt-3' : 'text-2xl mt-2'}`}>
-            {profile?.first_name} {profile?.last_name}
-          </Text>
+
         </View>
 
         {/* MAIN CONTENT WRAPPER */}
         <View className="px-6">
 
-          {/* PROFILE SECTION */}
-          <View className={isTablet ? 'mt-8' : 'mt-6'}>
-            <View className="flex-row items-center mb-3">
-              <Text className={`text-[#6B7280] font-quicksand-semibold tracking-widest mr-2 ${isTablet ? 'text-base' : 'text-sm'}`}>PROFILE</Text>
-              <Feather name="edit-2" size={isTablet ? 14 : 12} color="#62A9E6" />
-            </View>
+        {/* PROFILE SECTION */}
+        <View className={isTablet ? "mt-8" : "mt-6"}>
+        <View className="flex-row items-center justify-between mb-3">
+        <Text className={`text-[#6B7280] font-quicksand-semibold tracking-widest ${
+      isTablet ? "text-base" : "text-sm"
+    }`}
+  >
+    PROFILE
+  </Text>
+
+  <Pressable
+    onPress={() => setIsEditing(!isEditing)}
+    className="flex-row items-center bg-[#E1F0FF] border border-[#9ACBF9] rounded-full px-3 py-2"
+  >
+    <Feather
+      name="edit-2"
+      size={isTablet ? 18 : 16}
+      color="#0284C7"
+    />
+
+    <Text
+      className={`text-[#0284C7] font-quicksand-bold ml-2 ${
+        isTablet ? "text-base" : "text-sm"
+      }`}
+    >
+      {isEditing ? "Done" : "Edit"}
+    </Text>
+  </Pressable>
+</View>
 
             <View className={`bg-white rounded-[20px] shadow-sm border border-[#F3F4F6] ${isTablet ? 'p-6' : 'p-4'}`}>
               {/* Name Row */}
               <View className={`flex-row items-center border-b border-[#F3F4F6] ${isTablet ? 'pb-4 mb-4' : 'pb-3 mb-3'}`}>
-                <Text className={`font-quicksand-medium text-[#4B5563] ${isTablet ? 'w-[120px] text-lg' : 'w-[90px] text-sm'}`}>Name</Text>
-                {/* [MODIFIED] Dynamic Name */}
-                <Text className={`font-quicksand-medium flex-1 text-[#9CA3AF] ${isTablet ? 'text-lg' : 'text-sm'}`}>
-                  {profile?.first_name} {profile?.last_name}
-                </Text>
-              </View>
+  <Text
+    className={`font-quicksand-medium text-[#4B5563] ${
+      isTablet ? 'w-[120px] text-lg' : 'w-[90px] text-sm'
+    }`}
+  >
+    Name
+  </Text>
+
+  {isEditing ? (
+    <View className="flex-1">
+      <TextInput
+        value={firstName}
+        onChangeText={setFirstName}
+        placeholder="First Name"
+        className="border border-gray-300 rounded-lg px-3 py-2 mb-2"
+      />
+
+      <TextInput
+        value={lastName}
+        onChangeText={setLastName}
+        placeholder="Last Name"
+        className="border border-gray-300 rounded-lg px-3 py-2"
+      />
+    </View>
+  ) : (
+    <Text
+      className={`font-quicksand-medium flex-1 text-[#9CA3AF] ${
+        isTablet ? 'text-lg' : 'text-sm'
+      }`}
+    >
+      {firstName} {lastName}
+    </Text>
+  )}
+</View>
 
               {/* Email Row */}
               <View className={`flex-row items-center border-b border-[#F3F4F6] ${isTablet ? 'pb-4 mb-4' : 'pb-3 mb-3'}`}>
-                <Text className={`font-quicksand-medium text-[#4B5563] ${isTablet ? 'w-[120px] text-lg' : 'w-[90px] text-sm'}`}>Email</Text>
-                {/* [MODIFIED] Dynamic Email */}
-                <Text className={`font-quicksand-medium flex-1 text-[#9CA3AF] ${isTablet ? 'text-lg' : 'text-sm'}`}>
-                  {profile?.email}
-                </Text>
-              </View>
+  <Text
+    className={`font-quicksand-medium text-[#4B5563] ${
+      isTablet ? 'w-[120px] text-lg' : 'w-[90px] text-sm'
+    }`}
+  >
+    Email
+  </Text>
+
+  {isEditing ? (
+    <TextInput
+      value={email}
+      onChangeText={setEmail}
+      placeholder="Email"
+      keyboardType="email-address"
+      autoCapitalize="none"
+      className="flex-1 border border-gray-300 rounded-lg px-3 py-2"
+    />
+  ) : (
+    <Text
+      className={`font-quicksand-medium flex-1 text-[#9CA3AF] ${
+        isTablet ? 'text-lg' : 'text-sm'
+      }`}
+    >
+      {email}
+    </Text>
+  )}
+</View>
 
               {/* Password Row */}
               <View className={`flex-row items-center border-b border-[#F3F4F6] ${isTablet ? 'pb-4 mb-4' : 'pb-3 mb-3'}`}>
@@ -195,16 +360,63 @@ const confirmDeleteAccount = async () => {
 
               {/* University Row */}
               <View className="flex-row items-center">
-                <Text className={`font-quicksand-medium text-[#4B5563] ${isTablet ? 'w-[120px] text-lg' : 'w-[90px] text-sm'}`}>University</Text>
-                {/* [MODIFIED] Dynamic University with fallback if null */}
-                <Text className={`font-quicksand-medium flex-1 text-[#9CA3AF] ${isTablet ? 'text-lg' : 'text-sm'}`}>
-                  {profile?.university || 'Not set'}
-                </Text>
-              </View>
-            </View>
-          </View>
+  <Text
+    className={`font-quicksand-medium text-[#4B5563] ${
+      isTablet ? "w-[120px] text-lg" : "w-[90px] text-sm"
+    }`}
+  >
+    University
+  </Text>
 
-          {/* PREFERENCES & CLASSROOM SECTION */}
+  {isEditing ? (
+    <TextInput
+      value={university}
+      onChangeText={setUniversity}
+      className="flex-1 border border-gray-300 rounded-lg px-3 py-2"
+      placeholder="University"
+    />
+  ) : (
+    <Text
+      className={`font-quicksand-medium flex-1 text-[#9CA3AF] ${
+        isTablet ? "text-lg" : "text-sm"
+      }`}
+    >
+      {profile?.university || "Not set"}
+    </Text>
+  )}
+</View>
+            </View>
+
+
+{isEditing && (
+  <View className="flex-row justify-end mt-4 gap-3">
+    <Pressable
+      onPress={() => {
+  setFirstName(profile?.first_name || "");
+  setLastName(profile?.last_name || "");
+  setEmail(profile?.email || "");
+  setUniversity(profile?.university || "");
+  setIsEditing(false);
+}}
+      className="bg-gray-300 rounded-full px-5 py-2"
+    >
+      <Text>Cancel</Text>
+    </Pressable>
+
+    <Pressable
+      onPress={handleSaveProfile}
+      className="bg-[#62A9E6] rounded-full px-5 py-2"
+    >
+      <Text className="text-white">Save</Text>
+    </Pressable>
+  </View>
+)}
+
+</View>
+
+{/* PREFERENCES & CLASSROOM SECTION */}
+
+          
           <View className={isTablet ? 'mt-8' : 'mt-6'}>
             <View className="flex-row items-center mb-3">
               <Text className={`text-[#6B7280] font-quicksand-semibold tracking-widest mr-2 ${isTablet ? 'text-base' : 'text-sm'}`}>PREFERENCES & CLASSROOM</Text>
@@ -232,13 +444,13 @@ const confirmDeleteAccount = async () => {
               {/* Students Row */}
               <View className={`flex-row items-center border-b border-[#F3F4F6] ${isTablet ? 'pb-4 mb-4' : 'pb-3 mb-3'}`}>
                 <Text className={`font-quicksand-medium text-[#4B5563] ${isTablet ? 'w-[120px] text-lg' : 'w-[90px] text-sm'}`}>Students</Text>
-                <Text className={`font-quicksand-medium flex-1 text-[#9CA3AF] ${isTablet ? 'text-lg' : 'text-sm'}`}>10</Text>
+                <Text className={`font-quicksand-medium flex-1 text-[#9CA3AF] ${isTablet ? 'text-lg' : 'text-sm'}`}>{studentCount}</Text>
               </View>
 
               {/* Classes Row */}
               <View className="flex-row items-center">
                 <Text className={`font-quicksand-medium text-[#4B5563] ${isTablet ? 'w-[120px] text-lg' : 'w-[90px] text-sm'}`}>Classes</Text>
-                <Text className={`font-quicksand-medium flex-1 text-[#9CA3AF] ${isTablet ? 'text-lg' : 'text-sm'}`}>3</Text>
+                <Text className={`font-quicksand-medium flex-1 text-[#9CA3AF] ${isTablet ? 'text-lg' : 'text-sm'}`}>{classCount}</Text>
               </View>
             </View>
           </View>
@@ -255,10 +467,15 @@ const confirmDeleteAccount = async () => {
               {/* Reset Password Row */}
               <View className={`flex-row items-center justify-between border-b border-[#F3F4F6] ${isTablet ? 'pb-4 mb-4' : 'pb-3 mb-3'}`}>
                 <Text className={`font-quicksand-medium text-[#4B5563] ${isTablet ? 'text-lg' : 'text-sm'}`}>Reset Password</Text>
-                <Pressable className={`flex-row items-center bg-[#E1F0FF] border border-[#9ACBF9] rounded-full ${isTablet ? 'px-4 py-2' : 'px-3 py-1.5'}`}>
-                  <Feather name="mail" size={isTablet ? 14 : 12} color="#0284C7" />
-                  <Text className={`text-[#0284C7] font-quicksand-bold ml-1.5 ${isTablet ? 'text-sm' : 'text-xs'}`}>Send reset link</Text>
-                </Pressable>
+                <Pressable
+  onPress={() => router.push("/change-password")}
+  className="flex-row items-center bg-[#E1F0FF] border border-[#9ACBF9] rounded-full px-3 py-1.5"
+>
+  <Feather name="lock" size={12} color="#0284C7" />
+  <Text className="text-[#0284C7] font-quicksand-bold ml-1.5">
+    Change Password
+  </Text>
+</Pressable>
               </View>
 
               {/* System Updates Row */}
