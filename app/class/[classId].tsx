@@ -219,14 +219,15 @@ const [newStudentName, setNewStudentName] = useState("");
 
     setIsCreatingStudent(true);
     try {
-await addStudent(
-  classDetails.id,
-  newStudentName.trim(),
- 
-);
+      await addStudent(
+        classDetails.id,
+        newStudentName.trim(),
+        selectedAvatar
+      );
       await fetchStudents();
       setAddStudentModalVisible(false);
       setNewStudentName('');
+      setSelectedAvatar('😀');
     } catch (error: any) {
       Alert.alert("Error adding student", error.message);
     } finally {

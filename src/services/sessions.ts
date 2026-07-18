@@ -61,4 +61,21 @@ export const validateSession = async (
     }
 
     return data;
+};
+
+// Fetch the very latest session for a specific student
+export const getLatestStudentSession = async (studentId: string) => {
+    const { data, error } = await supabase
+        .from('student_sessions')
+        .select('*')
+        .eq('student_id', studentId)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+    if (error) {
+        console.error("Error fetching latest student session:", error);
+        throw new Error(error.message);
+    }
+
+    return data && data.length > 0 ? data[0] : null;
 };

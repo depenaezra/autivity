@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import * as FileSystem from 'expo-file-system/src/legacy/index';
 
 // Fetch all materials for the logged-in teacher
 export const getMaterials = async () => {
@@ -61,6 +62,44 @@ export const getDefaultActivities = async (limit: number = 5) => {
     return data || [];
 };
 
+// Helper to decode base64 string to ArrayBuffer in React Native
+const decodeBase64 = (base64: string): ArrayBuffer => {
+    const cleanBase64 = base64.replace(/\s/g, '');
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+    const lookup = new Uint8Array(256);
+    for (let i = 0; i < chars.length; i++) {
+        lookup[chars.charCodeAt(i)] = i;
+    }
+
+    let bufferLength = cleanBase64.length * 0.75;
+    if (cleanBase64.endsWith('==')) {
+        bufferLength -= 2;
+    } else if (cleanBase64.endsWith('=')) {
+        bufferLength -= 1;
+    }
+
+    const arrayBuffer = new ArrayBuffer(bufferLength);
+    const bytes = new Uint8Array(arrayBuffer);
+
+    let p = 0;
+    for (let i = 0; i < cleanBase64.length; i += 4) {
+        const encoded1 = lookup[cleanBase64.charCodeAt(i)];
+        const encoded2 = lookup[cleanBase64.charCodeAt(i + 1)];
+        const encoded3 = lookup[cleanBase64.charCodeAt(i + 2)];
+        const encoded4 = lookup[cleanBase64.charCodeAt(i + 3)];
+
+        bytes[p++] = (encoded1 << 2) | (encoded2 >> 4);
+        if (p < bufferLength) {
+            bytes[p++] = ((encoded2 & 15) << 4) | (encoded3 >> 2);
+        }
+        if (p < bufferLength) {
+            bytes[p++] = ((encoded3 & 3) << 6) | (encoded4 & 63);
+        }
+    }
+
+    return arrayBuffer;
+};
+
 // Upload file to Storage AND save metadata to Database
 export const uploadMaterial = async (
     fileUri: string,
@@ -71,18 +110,23 @@ export const uploadMaterial = async (
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) throw new Error('User not logged in');
 
-    // 1. Convert the local file URI to a Blob (Binary Large Object) for uploading
-    const response = await fetch(fileUri);
-    const blob = await response.blob();
+    // 1. Read the local file as base64 string
+    const base64 = await FileSystem.readAsStringAsync(fileUri, {
+        encoding: FileSystem.EncodingType.Base64,
+    });
 
-    // 2. Create a unique file path so files with the same name don't overwrite each other
+    // 2. Convert base64 to ArrayBuffer
+    const arrayBuffer = decodeBase64(base64);
+
+    // 3. Create a unique file path so files with the same name don't overwrite each other
     const uniqueFilePath = `${user.id}/${Date.now()}_${fileName}`;
 
-    // 3. Upload to Supabase Storage
+    // 4. Upload to Supabase Storage
     const { error: uploadError } = await supabase.storage
         .from('materials')
-        .upload(uniqueFilePath, blob, {
+        .upload(uniqueFilePath, arrayBuffer, {
             contentType: mimeType,
+            upsert: true,
         });
 
     if (uploadError) throw new Error(`Storage upload failed: ${uploadError.message}`);

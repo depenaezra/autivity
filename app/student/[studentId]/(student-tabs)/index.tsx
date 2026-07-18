@@ -5,6 +5,7 @@ import { ActivityIndicator, Image, Pressable, ScrollView, Text, View, useWindowD
 
 // Import your student services
 import { getStudentActivities, getStudentById } from '../../../../src/services/students';
+import { getLatestStudentSession } from '../../../../src/services/sessions';
 
 export default function StudentHome() {
     const router = useRouter();
@@ -18,6 +19,7 @@ export default function StudentHome() {
 
     // State for dynamic activities
     const [assignedPaths, setAssignedPaths] = useState<string[]>([]);
+    const [latestSession, setLatestSession] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [classId, setClassId] = useState<string | null>((initialClassId as string) || null);
     const [teacherId, setTeacherId] = useState<string | null>((initialTeacherId as string) || null);
@@ -32,6 +34,9 @@ export default function StudentHome() {
             try {
                 const paths = await getStudentActivities(studentId as string);
                 setAssignedPaths(paths);
+
+                const session = await getLatestStudentSession(studentId as string);
+                setLatestSession(session);
 
                 let currentClassId = (initialClassId as string) || classId;
                 let currentTeacherId = (initialTeacherId as string) || teacherId;
@@ -179,7 +184,7 @@ export default function StudentHome() {
                             <View className={`bg-white rounded-[18px] border border-[#E5E7EB] border-b-[3px] border-b-[#D1D5DB] items-center justify-center ${isTablet ? 'h-[100px]' : 'h-[80px]'}`}>
                                 <ActivityIndicator size="small" color="#62A9E6" />
                             </View>
-                        ) : hasTracingAssignment || hasMatchingAssignment ? (
+                        ) : latestSession ? (
                             <View
                                 className={`bg-white flex-row items-center ${isTablet ? 'rounded-[24px] px-6 py-5 gap-5 border-[3px] border-b-[6px]' : 'rounded-[18px] px-4 py-4 gap-4 border-[2px] border-b-[5px]'}`}
                                 style={{ borderColor: '#BFDBFE', borderBottomColor: '#62A9E6' }}
@@ -188,16 +193,20 @@ export default function StudentHome() {
                                 <View
                                     className={`items-center justify-center rounded-2xl bg-[#EFF6FF] ${isTablet ? 'w-[72px] h-[72px]' : 'w-[56px] h-[56px]'}`}
                                 >
-                                    <Ionicons name="pencil" size={isTablet ? 36 : 28} color="#62A9E6" />
+                                    <Ionicons 
+                                        name={latestSession.category && (latestSession.category.toLowerCase().includes('matching') || latestSession.category.toLowerCase().includes('fruit')) ? "grid" : "pencil"} 
+                                        size={isTablet ? 36 : 28} 
+                                        color="#62A9E6" 
+                                    />
                                 </View>
 
                                 {/* Text */}
                                 <View className="flex-1">
                                     <Text className={`font-quicksand-bold text-[#374151] ${isTablet ? 'text-2xl' : 'text-lg'}`}>
-                                        {hasTracingAssignment && hasMatchingAssignment ? 'Tracing & Matching' : hasTracingAssignment ? 'Tracing' : 'Matching'}
+                                        {latestSession.category || 'Activity'}
                                     </Text>
                                     <Text className={`font-quicksand-medium text-[#9CA3AF] ${isTablet ? 'text-lg mt-1' : 'text-sm mt-0.5'}`} numberOfLines={1}>
-                                        {recentActivitySubtitle || (hasMatchingAssignment ? 'Matching Activities' : '')}
+                                        Completed on {new Date(latestSession.created_at).toLocaleDateString()}
                                     </Text>
                                 </View>
                             </View>

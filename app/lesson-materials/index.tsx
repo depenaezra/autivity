@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import React, { useEffect, useState } from 'react';
 
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Linking, Modal, Platform, Pressable, ScrollView, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import LessonMaterialsHeaderSvg from '../../assets/images/headers/lesson-materials-header.svg';
@@ -193,10 +193,17 @@ export default function LessonMaterialsScreen() {
         // Dismiss the modal first to avoid concurrent transition deadlock on iOS/Android
         setPreviewMaterial(null);
         await new Promise((resolve) => setTimeout(resolve, 400));
-        await WebBrowser.openBrowserAsync(item.url);
+        
+        // Try opening with Linking first (default system browser / handler)
+        await Linking.openURL(item.url);
       } catch (err) {
-        console.error('Failed to open document:', err);
-        Alert.alert('Error', 'Failed to open the file link.');
+        console.error('Failed to open document with Linking, trying WebBrowser:', err);
+        try {
+          await WebBrowser.openBrowserAsync(item.url);
+        } catch (webErr) {
+          console.error('Failed to open with WebBrowser:', webErr);
+          Alert.alert('Error', 'Failed to open the file link.');
+        }
       }
     } else {
       Alert.alert('Error', 'No document file source available.');

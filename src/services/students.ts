@@ -17,7 +17,7 @@ export const getClassStudents = async (classId: string) => {
 };
 
 // Add a new student to a class
-export const addStudent = async (classId: string, name: string) => {
+export const addStudent = async (classId: string, name: string, avatar: string) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) throw new Error('User not logged in');
 
@@ -28,6 +28,7 @@ export const addStudent = async (classId: string, name: string) => {
                 class_id: classId,
                 teacher_id: user.id,
                 name: name,
+                avatar: avatar,
             }
         ])
         .select()

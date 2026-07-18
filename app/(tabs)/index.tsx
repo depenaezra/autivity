@@ -38,7 +38,7 @@ const classCards: Record<string, any> = {
   green: require('../../assets/images/class-cards/class-frog.png'),
   orange: require('../../assets/images/class-cards/class-hamster.png'),
   yellow: require('../../assets/images/class-cards/class-penguin.png'),
-  blue: require('../../assets/images/polar-bear.png'),
+  blue: require('../../assets/images/class-cards/class-whale.png'),
 };
 
 // [ADDED] Helper to map database theme names to UI colors
