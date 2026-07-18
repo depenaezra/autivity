@@ -33,6 +33,23 @@ export const getActivitiesByPaths = async (paths: string[]) => {
     return data || [];
 };
 
+// Fetch all activities that belong to the assigned subcategories
+// subcategories = ['lines', 'Matching Fruits', etc.] — matches sub_category column in DB
+export const getActivitiesBySubcategories = async (subcategories: string[]) => {
+    if (!subcategories || subcategories.length === 0) return [];
+
+    const { data, error } = await supabase
+        .from('activities')
+        .select('*')
+        .in('sub_category', subcategories);
+
+    if (error) {
+        console.error('Error fetching activities by subcategory:', error);
+        return [];
+    }
+    return data || [];
+};
+
 // Fetch default/random activities directly from Supabase activities table when no assigned paths exist
 export const getDefaultActivities = async (limit: number = 5) => {
     const { data, error } = await supabase

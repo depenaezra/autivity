@@ -59,6 +59,9 @@ export default function StudentHome() {
     }, [studentId, initialClassId, initialTeacherId, initialStudentName]);
 
     const isTracingPath = (path: string) => {
+        if (['lines', 'shapes', 'letters', 'numbers'].includes(path.toLowerCase())) {
+            return true;
+        }
         const cleanPath = path.startsWith('activity/tracing/')
             ? path.replace('activity/tracing/', '')
             : path;
@@ -71,7 +74,7 @@ export default function StudentHome() {
     };
 
     const isMatchingPath = (path: string) => {
-        return path.includes('drag-drop');
+        return path.toLowerCase() === 'matching fruits' || path.includes('drag-drop');
     };
 
     // Logic: Check if any tracing activity is assigned
@@ -90,8 +93,8 @@ export default function StudentHome() {
         .filter(cat => assignedPaths.some(p => {
             const cleanPath = p.startsWith('activity/tracing/')
                 ? p.replace('activity/tracing/', '')
-                : p;
-            return cleanPath.startsWith(`${cat.key}/`);
+                : p.toLowerCase();
+            return cleanPath === cat.key || cleanPath.startsWith(`${cat.key}/`);
         }))
         .map(cat => cat.label);
 

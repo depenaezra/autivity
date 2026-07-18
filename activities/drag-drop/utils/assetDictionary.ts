@@ -5,6 +5,7 @@ export const dragDropAssets: Record<string, any> = {
     orange_icon: require('../../../assets/images/activities/drag-drop/orange.png'),
     strawberry_icon: require('../../../assets/images/activities/drag-drop/strawberry.png'),
     grape_icon: require('../../../assets/images/activities/drag-drop/grape.png'),
+    grapes_icon: require('../../../assets/images/activities/drag-drop/grape.png'),
 
     // register image assets here
 };

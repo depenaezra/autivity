@@ -76,96 +76,18 @@ const themeColors = [
   { name: 'green', value: '#86EFAC', shadow: '#4ADE80' },
 ];
 
+// Each category maps to a sub_category value in the DB activities table.
+// Teachers assign whole subcategories — not individual activity paths.
 const ALL_TRACING_CATEGORIES = [
-  {
-    id: 'lines',
-    title: 'Lines Tracing',
-    icon: 'create-outline',
-    activities: [
-      { path: 'lines/horizontal', title: 'Horizontal Lines' },
-      { path: 'lines/vertical', title: 'Vertical Lines' },
-      { path: 'lines/diagonal-down', title: 'Diagonal Down Lines' },
-      { path: 'lines/diagonal-up', title: 'Diagonal Up Lines' },
-      { path: 'lines/zigzag', title: 'Zigzag Lines' },
-      { path: 'lines/wave', title: 'Wave Lines' },
-      { path: 'lines/arc', title: 'Arc Lines' },
-    ]
-  },
-  {
-    id: 'shapes',
-    title: 'Shapes Tracing',
-    icon: 'shapes-outline',
-    activities: [
-      { path: 'shapes/cross', title: 'Cross Shape' },
-      { path: 'shapes/square', title: 'Square Shape' },
-      { path: 'shapes/triangle', title: 'Triangle Shape' },
-      { path: 'shapes/circle', title: 'Circle Shape' },
-      { path: 'shapes/star', title: 'Star Shape' },
-      { path: 'shapes/rectangle', title: 'Rectangle Shape' },
-      { path: 'shapes/heart', title: 'Heart Shape' },
-    ]
-  },
-  {
-    id: 'letters',
-    title: 'Letters Tracing',
-    icon: 'text-outline',
-    activities: [
-      { path: 'letters/A', title: 'Letter A' },
-      { path: 'letters/B', title: 'Letter B' },
-      { path: 'letters/C', title: 'Letter C' },
-      { path: 'letters/D', title: 'Letter D' },
-      { path: 'letters/E', title: 'Letter E' },
-      { path: 'letters/F', title: 'Letter F' },
-      { path: 'letters/G', title: 'Letter G' },
-      { path: 'letters/H', title: 'Letter H' },
-      { path: 'letters/I', title: 'Letter I' },
-      { path: 'letters/J', title: 'Letter J' },
-      { path: 'letters/K', title: 'Letter K' },
-      { path: 'letters/L', title: 'Letter L' },
-      { path: 'letters/M', title: 'Letter M' },
-      { path: 'letters/N', title: 'Letter N' },
-      { path: 'letters/O', title: 'Letter O' },
-      { path: 'letters/P', title: 'Letter P' },
-      { path: 'letters/Q', title: 'Letter Q' },
-      { path: 'letters/R', title: 'Letter R' },
-      { path: 'letters/S', title: 'Letter S' },
-      { path: 'letters/T', title: 'Letter T' },
-      { path: 'letters/U', title: 'Letter U' },
-      { path: 'letters/V', title: 'Letter V' },
-      { path: 'letters/W', title: 'Letter W' },
-      { path: 'letters/X', title: 'Letter X' },
-      { path: 'letters/Y', title: 'Letter Y' },
-      { path: 'letters/Z', title: 'Letter Z' },
-    ]
-  },
-  {
-    id: 'numbers',
-    title: 'Numbers Tracing',
-    icon: 'calculator-outline',
-    activities: [
-      { path: 'numbers/0', title: 'Number 0' },
-      { path: 'numbers/1', title: 'Number 1' },
-      { path: 'numbers/2', title: 'Number 2' },
-      { path: 'numbers/3', title: 'Number 3' },
-      { path: 'numbers/4', title: 'Number 4' },
-      { path: 'numbers/5', title: 'Number 5' },
-      { path: 'numbers/6', title: 'Number 6' },
-      { path: 'numbers/7', title: 'Number 7' },
-      { path: 'numbers/8', title: 'Number 8' },
-      { path: 'numbers/9', title: 'Number 9' },
-    ]
-  }
+  { id: 'Lines',   title: 'Lines Tracing',   icon: 'create-outline' },
+  { id: 'Shapes',  title: 'Shapes Tracing',  icon: 'shapes-outline' },
+  { id: 'Letters', title: 'Letters Tracing', icon: 'text-outline' },
+  { id: 'Numbers', title: 'Numbers Tracing', icon: 'calculator-outline' },
 ];
 
 const ALL_MATCHING_CATEGORIES = [
-  {
-    id: 'fruits',
-    title: 'Fruits Matching',
-    icon: 'nutrition-outline',
-    activities: [
-      { path: 'activity/drag-drop/matching/fruits', title: 'Match Fruits' }
-    ]
-  }
+  // id must match the sub_category value stored in the DB
+  { id: 'Matching Fruits', title: 'Fruits Matching', icon: 'nutrition-outline' },
 ];
 
 export default function ClassScreen() {
@@ -261,7 +183,6 @@ const [newStudentName, setNewStudentName] = useState("");
   // State for Assign Activities Modal
   const [isAssignModalVisible, setAssignModalVisible] = useState(false);
   const [activeActivityType, setActiveActivityType] = useState('tracing');
-  const [activeCategoryTab, setActiveCategoryTab] = useState('lines');
   const [selectedActivityPaths, setSelectedActivityPaths] = useState<string[]>([]);
   const [isSavingActivities, setIsSavingActivities] = useState(false);
 
@@ -453,11 +374,10 @@ const handleSaveClassEdit = async () => {
     const currentAssigned = studentObj.assigned_activities || [];
     setSelectedActivityPaths([...currentAssigned]);
     setActiveActivityType('tracing');
-    setActiveCategoryTab('lines');
     setAssignModalVisible(true);
   };
 
-  // Handle saving assigned activities
+  // Handle saving assigned activities — unchanged, saves array of subcategory IDs
   const handleSaveAssignedActivities = async () => {
     if (!selectedStudent) return;
     setIsSavingActivities(true);
@@ -473,29 +393,11 @@ const handleSaveClassEdit = async () => {
     }
   };
 
-  // Toggle single activity assignment
-  const toggleActivityPath = (path: string) => {
-    if (selectedActivityPaths.includes(path)) {
-      setSelectedActivityPaths(selectedActivityPaths.filter(p => p !== path));
-    } else {
-      setSelectedActivityPaths([...selectedActivityPaths, path]);
-    }
-  };
-
-  // Toggle entire category
-  const toggleCategorySelection = (categoryId: string) => {
-    const categoryList = activeActivityType === 'tracing' ? ALL_TRACING_CATEGORIES : ALL_MATCHING_CATEGORIES;
-    const category = categoryList.find(c => c.id === categoryId);
-    if (!category) return;
-    const categoryPaths = category.activities.map(a => a.path);
-    const allSelected = categoryPaths.every(p => selectedActivityPaths.includes(p));
-
-    if (allSelected) {
-      setSelectedActivityPaths(selectedActivityPaths.filter(p => !categoryPaths.includes(p)));
-    } else {
-      const newPaths = new Set([...selectedActivityPaths, ...categoryPaths]);
-      setSelectedActivityPaths(Array.from(newPaths));
-    }
+  // Toggle a whole subcategory on/off (replaces per-activity toggles)
+  const toggleSubcategory = (id: string) => {
+    setSelectedActivityPaths(prev =>
+      prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]
+    );
   };
 
   // Open Move Student Modal
@@ -565,8 +467,6 @@ const handleSaveClassEdit = async () => {
   };
 
   const selectedStudentObj = students.find(s => s.id === selectedStudent);
-  const activeCategoryList = activeActivityType === 'tracing' ? ALL_TRACING_CATEGORIES : ALL_MATCHING_CATEGORIES;
-  const activeCategory = activeCategoryList.find(c => c.id === activeCategoryTab) || activeCategoryList[0];
 
   return (
     <View className="flex-1 bg-[#F9FAFB]">
@@ -796,7 +696,7 @@ const handleSaveClassEdit = async () => {
           <Pressable className="flex-1" onPress={() => setAddStudentModalVisible(false)} />
           <Animated.View
             style={{ transform: [{ translateY: slideAnim }] }}
-            className={`bg-white rounded-t-3xl p-6 ${isTablet ? 'h-[40%]' : 'h-[50%]'}`}
+            className={`bg-white rounded-t-3xl p-6 ${isTablet ? 'h-[60%]' : 'h-[75%]'}`}
           >
             <View className="flex-row justify-between items-center mb-6">
               <Text className="font-fredoka-one text-2xl text-[#4B5563]">Add New Student</Text>
@@ -805,54 +705,58 @@ const handleSaveClassEdit = async () => {
               </Pressable>
             </View>
 
-            <View className="mb-8">
+            <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
+              <View className="mb-8">
                 <Text className="font-quicksand-bold text-[#4B5563] text-base mb-2">
-                Student Name
+                  Student Name
                 </Text>
                 <TextInput
-                value={newStudentName}
-                onChangeText={setNewStudentName}
-               placeholder="e.g. Juan Dela Cruz"
-               placeholderTextColor="#9CA3AF"
-               className="bg-[#F5F8FA] rounded-xl px-4 py-3 font-quicksand-medium text-[#4B5563]"
+                  value={newStudentName}
+                  onChangeText={setNewStudentName}
+                  placeholder="e.g. Juan Dela Cruz"
+                  placeholderTextColor="#9CA3AF"
+                  className="bg-[#F5F8FA] rounded-xl px-4 py-3 font-quicksand-medium text-[#4B5563]"
                 />
               </View>
-<Text className="font-quicksand-bold text-[#4B5563] text-base mb-3">
-  Choose Avatar
-</Text>
 
-<View className="flex-row flex-wrap justify-between mb-6">
-  {AVATARS.map((avatar) => {
-    const selected = selectedAvatar === avatar;
+              <Text className="font-quicksand-bold text-[#4B5563] text-base mb-3">
+                Choose Avatar
+              </Text>
 
-    return (
-      <Pressable
-        key={avatar}
-        onPress={() => setSelectedAvatar(avatar)}
-        className={`w-[22%] aspect-square rounded-2xl mb-3 items-center justify-center border-2 ${
-          selected
-            ? "border-[#62A9E6] bg-[#EFF6FF]"
-            : "border-[#E5E7EB] bg-white"
-        }`}
-      >
-        <Text style={{ fontSize: 34 }}>
-          {avatar}
-        </Text>
-      </Pressable>
-    );
-  })}
-</View>
-            <Pressable
-              onPress={handleAddStudent}
-              className={`py-4 rounded-xl items-center ${newStudentName.trim() && !isCreatingStudent ? 'bg-[#9ACBF9]' : 'bg-[#E5E7EB]'}`}
-              disabled={!newStudentName.trim() || isCreatingStudent}
-            >
-              {isCreatingStudent ? (
-                <ActivityIndicator color="white" />
-              ) : (
-                <Text className="font-quicksand-bold text-white text-lg">Add Student</Text>
-              )}
-            </Pressable>
+              <View className="flex-row flex-wrap justify-between mb-6">
+                {AVATARS.map((avatar) => {
+                  const selected = selectedAvatar === avatar;
+
+                  return (
+                    <Pressable
+                      key={avatar}
+                      onPress={() => setSelectedAvatar(avatar)}
+                      className={`w-[22%] aspect-square rounded-2xl mb-3 items-center justify-center border-2 ${
+                        selected
+                          ? "border-[#62A9E6] bg-[#EFF6FF]"
+                          : "border-[#E5E7EB] bg-white"
+                      }`}
+                    >
+                      <Text style={{ fontSize: 34 }}>
+                        {avatar}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              <Pressable
+                onPress={handleAddStudent}
+                className={`py-4 rounded-xl items-center mb-4 ${newStudentName.trim() && !isCreatingStudent ? 'bg-[#9ACBF9]' : 'bg-[#E5E7EB]'}`}
+                disabled={!newStudentName.trim() || isCreatingStudent}
+              >
+                {isCreatingStudent ? (
+                  <ActivityIndicator color="white" />
+                ) : (
+                  <Text className="font-quicksand-bold text-white text-lg">Add Student</Text>
+                )}
+              </Pressable>
+            </ScrollView>
           </Animated.View>
         </KeyboardAvoidingView>
       </Modal>
@@ -1160,8 +1064,6 @@ const handleSaveClassEdit = async () => {
                     key={type}
                     onPress={() => {
                       setActiveActivityType(type);
-                      if (type === 'tracing') setActiveCategoryTab('lines');
-                      if (type === 'matching') setActiveCategoryTab('fruits');
                     }}
                     className={`flex-1 py-2.5 px-2 rounded-xl items-center justify-center border-b-[3px] ${isSelected
                       ? 'bg-white border-[#62A9E6]'
@@ -1178,77 +1080,48 @@ const handleSaveClassEdit = async () => {
             </View>
 
             {activeActivityType === 'tracing' || activeActivityType === 'matching' ? (
-              <>
-                {/* Sub-Category Tabs */}
-                <View className="flex-row gap-2 mb-3">
+              <ScrollView className="flex-1 mb-4" showsVerticalScrollIndicator={false}>
+                <Text className="font-quicksand-bold text-[#4B5563] text-sm mb-3 px-1">
+                  Tap a category to assign the full set to this student
+                </Text>
+                <View className="flex-row flex-wrap justify-between gap-y-3">
                   {(activeActivityType === 'tracing' ? ALL_TRACING_CATEGORIES : ALL_MATCHING_CATEGORIES).map((cat) => {
-                    const isActive = activeCategoryTab === cat.id;
-                    const countInCategory = cat.activities.filter(a => selectedActivityPaths.includes(a.path)).length;
+                    const isSelected = selectedActivityPaths.includes(cat.id);
                     return (
                       <Pressable
                         key={cat.id}
-                        onPress={() => setActiveCategoryTab(cat.id)}
-                        className={`flex-1 py-2 px-1 rounded-xl items-center justify-center border-2 border-b-[4px] ${isActive
-                          ? 'bg-[#F0F9FF] border-[#62A9E6]'
-                          : 'bg-[#F9FAFB] border-[#E5E7EB] border-b-[#D1D5DB]'
-                          }`}
+                        onPress={() => toggleSubcategory(cat.id)}
+                        className={`w-[48%] p-4 rounded-2xl border-2 border-b-[4px] items-center justify-center gap-2 active:border-b-[2px] active:mt-[2px] ${
+                          isSelected
+                            ? 'bg-[#F0F9FF] border-[#62A9E6] border-b-[#4A90D9]'
+                            : 'bg-[#F9FAFB] border-[#E5E7EB] border-b-[#D1D5DB]'
+                        }`}
                       >
-                        <Text className={`font-quicksand-bold text-xs capitalize ${isActive ? 'text-[#62A9E6]' : 'text-[#6B7280]'}`}>
-                          {cat.id}
+                        <View className={`w-12 h-12 rounded-full items-center justify-center ${
+                          isSelected ? 'bg-[#DBEAFE]' : 'bg-[#F3F4F6]'
+                        }`}>
+                          <Ionicons name={cat.icon as any} size={26} color={isSelected ? '#62A9E6' : '#9CA3AF'} />
+                        </View>
+                        <Text className={`font-quicksand-bold text-sm text-center ${
+                          isSelected ? 'text-[#62A9E6]' : 'text-[#4B5563]'
+                        }`}>
+                          {cat.title}
                         </Text>
-                        {countInCategory > 0 && (
-                          <View className="bg-[#62A9E6] rounded-full px-1.5 py-0.2 mt-0.5">
-                            <Text className="text-white text-[9px] font-quicksand-bold">{countInCategory}</Text>
+                        {isSelected ? (
+                          <View className="bg-[#62A9E6] rounded-full px-2.5 py-0.5 flex-row items-center gap-1">
+                            <Ionicons name="checkmark" size={11} color="white" />
+                            <Text className="text-white text-[10px] font-quicksand-bold">Assigned</Text>
+                          </View>
+                        ) : (
+                          <View className="bg-[#F3F4F6] rounded-full px-2.5 py-0.5">
+                            <Text className="text-[#9CA3AF] text-[10px] font-quicksand-bold">Tap to assign</Text>
                           </View>
                         )}
                       </Pressable>
                     );
                   })}
                 </View>
-
-                {/* Select All Toggle for active category */}
-                <View className="flex-row justify-between items-center mb-3 px-1">
-                  <Text className="font-quicksand-bold text-[#4B5563] text-base">
-                    {activeCategory.title}
-                  </Text>
-                  <Pressable
-                    onPress={() => toggleCategorySelection(activeCategory.id)}
-                    className="bg-white px-3 py-1.5 rounded-lg border-2 border-b-[4px] border-[#E5E7EB] border-b-[#D1D5DB] active:border-b-[2px] active:mt-[2px]"
-                  >
-                    <Text className="font-quicksand-bold text-xs text-[#4B5563]">
-                      {activeCategory.activities.every(a => selectedActivityPaths.includes(a.path))
-                        ? 'Deselect All'
-                        : 'Select All'}
-                    </Text>
-                  </Pressable>
-                </View>
-
-                {/* Activity Checkbox List */}
-                <ScrollView className="flex-1 mb-4" showsVerticalScrollIndicator={false}>
-                  <View className="flex-row flex-wrap justify-between gap-y-2">
-                    {activeCategory.activities.map((item) => {
-                      const isChecked = selectedActivityPaths.includes(item.path);
-                      return (
-                        <Pressable
-                          key={item.path}
-                          onPress={() => toggleActivityPath(item.path)}
-                          className={`flex-row items-center justify-between p-3.5 rounded-xl border-2 border-b-[4px] w-[48%] ${isChecked
-                            ? 'bg-[#F0F9FF] border-[#62A9E6]'
-                            : 'bg-[#F9FAFB] border-[#E5E7EB] border-b-[#D1D5DB]'
-                            }`}
-                        >
-                          <Text className={`font-quicksand-bold text-xs flex-1 mr-2 ${isChecked ? 'text-[#62A9E6]' : 'text-[#4B5563]'}`} numberOfLines={2}>
-                            {item.title}
-                          </Text>
-                          <View className={`w-5 h-5 rounded-md border-2 items-center justify-center ${isChecked ? 'border-[#62A9E6] bg-[#62A9E6]' : 'border-[#D1D5DB]'}`}>
-                            {isChecked && <Ionicons name="checkmark" size={12} color="white" />}
-                          </View>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                </ScrollView>
-              </>
+              </ScrollView>
             ) : (
               <View className="flex-1 items-center justify-center py-10 px-4">
                 <View className="w-16 h-16 bg-[#F0F9FF] rounded-full items-center justify-center mb-4 border-2 border-b-[4px] border-[#62A9E6]">

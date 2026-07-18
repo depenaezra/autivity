@@ -4,7 +4,7 @@ interface SessionPayload {
     student_id: string;
     class_id: string;
     teacher_id: string;
-    activity_path: string;
+    activity_path: string[]; // text[] in DB — stores all paths of a completed set
     category: string;
     skill_domain: string | string[];
     score: number;

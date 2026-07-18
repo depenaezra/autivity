@@ -67,7 +67,7 @@ export default function DragDropDemoScreen() {
                 const { data, error } = await supabase
                     .from('activities')
                     .select('content_data')
-                    .eq('path', 'activity/drag-drop/matching/fruits')
+                    .eq('path', 'activity/drag-drop/matching/fruits-3')
                     .single();
 
                 if (error) throw error;

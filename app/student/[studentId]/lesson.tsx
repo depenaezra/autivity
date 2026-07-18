@@ -9,8 +9,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import ActivityRenderer from '@/components/activity-renderer';
 import FeedbackModal from '@/components/feedback-modal';
 
-// Import service
-import { getActivitiesByPaths, getDefaultActivities } from '@/src/services/materials';
+// Import services
+import { getActivitiesBySubcategories, getDefaultActivities } from '@/src/services/materials';
 import { saveStudentSession } from '@/src/services/sessions';
 import { getStudentById } from '@/src/services/students';
 import { formatActivityTitle } from '@/src/utils/format';
@@ -83,34 +83,52 @@ function ConfettiEffect() {
     );
 }
 
+const SET_SIZE = 3;
+
+const SUCCESS_MESSAGES = [
+    "Great job! 🌟",
+    "Excellent! 🎉",
+    "Amazing work! ✨",
+    "Well done! 👏",
+    "Fantastic! 🌈",
+    "You're a star! ⭐",
+    "Superb! 🏆",
+    "Keep it up! 💪",
+];
+
 export default function LessonScreen() {
     const params = useLocalSearchParams();
     const studentId = Array.isArray(params.studentId) ? params.studentId[0] : params.studentId || '1';
     const initialClassId = Array.isArray(params.classId) ? params.classId[0] : params.classId;
     const initialTeacherId = Array.isArray(params.teacherId) ? params.teacherId[0] : params.teacherId;
+
     const activityType = Array.isArray(params.activityType) ? params.activityType[0] : params.activityType;
 
     const [classId, setClassId] = useState<string | null>(initialClassId || null);
     const [teacherId, setTeacherId] = useState<string | null>(initialTeacherId || null);
 
-    const [activitiesList, setActivitiesList] = useState<any[]>([]);
-    const [activityIndex, setActivityIndex] = useState(0);
-    const [isTaskDone, setIsTaskDone] = useState(false);
-    const [showCongrats, setShowCongrats] = useState(false);
+    // Set-based session state
+    const [currentSet, setCurrentSet] = useState<any[]>([]);  // 3 randomly picked activities
+    const [setIndex, setSetIndex] = useState(0);               // 0, 1, 2
+    const [isActivityDone, setIsActivityDone] = useState(false); // onComplete fired
+    const [bearMessage, setBearMessage] = useState('');
+    const [successMode, setSuccessMode] = useState(false);     // CHECK pressed → bear shows praise
+    const [errorMode, setErrorMode] = useState(false);         // Drag-drop mismatch error occurred
+    const [isSetComplete, setIsSetComplete] = useState(false); // all 3 done → show congrats
+    const [savedSetSessionId, setSavedSetSessionId] = useState<string | null>(null);
+    const [showFeedbackModal, setShowFeedbackModal] = useState(false);
     const [timeLeft, setTimeLeft] = useState(15 * 60);
     const [isLoading, setIsLoading] = useState(true);
 
-    const [savedSessionId, setSavedSessionId] = useState<string | null>(null);
-    const [showFeedbackModal, setShowFeedbackModal] = useState(false);
-    const [bearMessage, setBearMessage] = useState("");
+    const setStartTimeRef = useRef<number>(Date.now());
 
-    const currentActivity = activitiesList[activityIndex] || activitiesList[0] || {};
+    const currentActivity = currentSet[setIndex] || {};
     const parsedContentData = typeof currentActivity.content_data === 'string'
         ? (() => { try { return JSON.parse(currentActivity.content_data); } catch { return {}; } })()
         : (currentActivity.content_data || { id: currentActivity.id, paths: [] });
 
     const currentTask = currentActivity.id ? {
-        id: currentActivity.id || `lesson-task-${activityIndex}`,
+        id: currentActivity.id || `lesson-task-${setIndex}`,
         type: parsedContentData.type || (currentActivity.category?.toLowerCase().includes('drag') ? 'drag-and-drop' : 'tracing'),
         title: currentActivity.title || formatActivityTitle(currentActivity.path || ''),
         path: currentActivity.path || '',
@@ -122,48 +140,51 @@ export default function LessonScreen() {
         const loadAssigned = async () => {
             setIsLoading(true);
             try {
-                let paths: string[] = [];
+                // Parse assigned subcategory IDs (e.g. ['lines', 'Matching Fruits'])
+                let subcategories: string[] = [];
                 if (params.assignedActivities && typeof params.assignedActivities === 'string') {
                     const parsed = JSON.parse(params.assignedActivities);
-                    if (Array.isArray(parsed) && parsed.length > 0) paths = parsed;
+                    if (Array.isArray(parsed) && parsed.length > 0) subcategories = parsed;
                 }
-                if (paths.length === 0 && studentId) {
+                // Fallback: SecureStore cache
+                if (subcategories.length === 0 && studentId) {
                     const stored = await SecureStore.getItemAsync(`student_activities_${studentId}`);
                     if (stored) {
                         const parsed = JSON.parse(stored);
-                        if (Array.isArray(parsed) && parsed.length > 0) paths = parsed;
+                        if (Array.isArray(parsed) && parsed.length > 0) subcategories = parsed;
                     }
                 }
 
-                // Filter paths based on activityType if specified
+                // Fetch the full pool from matching subcategories
+                let pool: any[] = [];
+                if (subcategories.length > 0) {
+                    pool = await getActivitiesBySubcategories(subcategories);
+                }
+                if (!pool || pool.length === 0) {
+                    pool = await getDefaultActivities(20);
+                }
+
+                // Filter pool by activityType if specified to prevent leakage of unassigned matching/tracing tasks
                 if (activityType === 'tracing') {
-                    paths = paths.filter(path => {
-                        const cleanPath = path.startsWith('activity/tracing/')
-                            ? path.replace('activity/tracing/', '')
-                            : path;
-                        return (
-                            cleanPath.startsWith('lines/') ||
-                            cleanPath.startsWith('shapes/') ||
-                            cleanPath.startsWith('letters/') ||
-                            cleanPath.startsWith('numbers/')
-                        );
+                    pool = pool.filter(a => {
+                        const path = a.path || '';
+                        const isDragDrop = path.includes('drag-drop') || a.category?.toLowerCase().includes('drag');
+                        return !isDragDrop;
                     });
                 } else if (activityType === 'matching') {
-                    paths = paths.filter(path => path.includes('drag-drop'));
+                    pool = pool.filter(a => {
+                        const path = a.path || '';
+                        return path.includes('drag-drop') || a.category?.toLowerCase().includes('drag');
+                    });
                 }
 
-                let dbActivities: any[] = [];
-                if (paths.length > 0) {
-                    dbActivities = await getActivitiesByPaths(paths);
-                }
+                // Pick SET_SIZE random activities from the pool
+                const shuffled = [...pool].sort(() => Math.random() - 0.5);
+                const set = shuffled.slice(0, Math.min(SET_SIZE, pool.length));
+                setCurrentSet(set);
+                setStartTimeRef.current = Date.now();
 
-                if (!dbActivities || dbActivities.length === 0) {
-                    dbActivities = await getDefaultActivities(5);
-                }
-
-                setActivitiesList(dbActivities);
-
-                // If classId or teacherId is missing, fetch them from DB
+                // Resolve classId / teacherId if missing
                 let currentClassId = initialClassId || classId;
                 let currentTeacherId = initialTeacherId || teacherId;
                 if (studentId && (!currentClassId || !currentTeacherId)) {
@@ -176,26 +197,39 @@ export default function LessonScreen() {
                 setClassId(currentClassId);
                 setTeacherId(currentTeacherId);
 
-                // Initialize bearMessage with the first activity's instruction
-                const firstActivity = dbActivities[0] || {};
+                // Bear says the first activity's instruction
+                const firstActivity = set[0] || {};
                 const firstContentData = typeof firstActivity.content_data === 'string'
                     ? (() => { try { return JSON.parse(firstActivity.content_data); } catch { return {}; } })()
                     : (firstActivity.content_data || {});
                 setBearMessage(firstContentData.instruction || "Let's play!");
             } catch (e) {
-                console.error("Failed to load activities from database:", e);
+                console.error('Failed to load activities:', e);
                 try {
-                    const fallbackDbActivities = await getDefaultActivities(5);
-                    setActivitiesList(fallbackDbActivities);
+                    let fallback = await getDefaultActivities(20);
+                    if (activityType === 'tracing') {
+                        fallback = fallback.filter(a => {
+                            const path = a.path || '';
+                            const isDragDrop = path.includes('drag-drop') || a.category?.toLowerCase().includes('drag');
+                            return !isDragDrop;
+                        });
+                    } else if (activityType === 'matching') {
+                        fallback = fallback.filter(a => {
+                            const path = a.path || '';
+                            return path.includes('drag-drop') || a.category?.toLowerCase().includes('drag');
+                        });
+                    }
+                    const set = fallback.slice(0, Math.min(SET_SIZE, fallback.length));
+                    setCurrentSet(set);
                 } catch {
-                    setActivitiesList([]);
+                    setCurrentSet([]);
                 }
             } finally {
                 setIsLoading(false);
             }
         };
         loadAssigned();
-    }, [params.assignedActivities, params.activityType, studentId, initialClassId, initialTeacherId]);
+    }, [params.assignedActivities, studentId, initialClassId, initialTeacherId, activityType]);
 
     // Fade/Slide entrance animation
     const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -220,18 +254,19 @@ export default function LessonScreen() {
 
     useEffect(() => {
         triggerEntrance();
-    }, [activitiesList]);
+    }, [currentSet]);
 
-    // Sync bearMessage when current task changes (e.g. Next Activity)
+    // Sync bear message when advancing to next activity in set
     useEffect(() => {
-        if (currentActivity && Object.keys(currentActivity).length > 0) {
+        if (!successMode && currentActivity && Object.keys(currentActivity).length > 0) {
             setBearMessage(parsedContentData.instruction || "Let's play!");
+            setErrorMode(false);
         }
-    }, [activityIndex, activitiesList]);
+    }, [setIndex, currentSet]);
 
-    // Countdown Timer logic
+    // Countdown Timer — stops when the set is complete
     useEffect(() => {
-        if (showCongrats) return;
+        if (isSetComplete) return;
 
         const interval = setInterval(() => {
             setTimeLeft((prev) => {
@@ -244,77 +279,78 @@ export default function LessonScreen() {
         }, 1000);
 
         return () => clearInterval(interval);
-    }, [showCongrats]);
-    useEffect(() => {
-        console.log("Timer:", timeLeft);
-    }, [timeLeft]);
-    const currentActivity = activitiesList[activityIndex] || DEFAULT_TRACING_ACTIVITIES[0];
-    const tracingData = getTracingActivityByPath(currentActivity.path);
-    const currentTask = {
-        id: `lesson-1-task-${activityIndex}`,
-        type: "tracing" as const,
-        data: tracingData || { id: "fallback", paths: ["M 50 200 L 350 200"] }
+    }, [isSetComplete]);
+
+    const handleFeedback = (message: string) => {
+        setBearMessage(message);
+        if (message.toLowerCase().includes('not the correct') || message.toLowerCase().includes('try again')) {
+            setErrorMode(true);
+        } else {
+            setErrorMode(false);
+        }
     };
 
     const handleTaskComplete = () => {
-        setIsTaskDone(true);
+        setIsActivityDone(true);
     };
 
     const handleCheck = async () => {
-        if (isTaskDone && currentActivity) {
-            try {
-                // Calculate how long they took (900 seconds total - timeLeft)
-                const duration = (15 * 60) - timeLeft;
+        if (!isActivityDone) return;
 
-                const category = currentActivity.category || (currentActivity.path?.includes('lines') ? 'Lines' : 'Shapes');
-                const skill_domain = currentActivity.skill_domain || ['Fine Motor Skills'];
+        if (!successMode) {
+            // First press — show inline praise in bear bubble
+            setSuccessMode(true);
+            setBearMessage(SUCCESS_MESSAGES[Math.floor(Math.random() * SUCCESS_MESSAGES.length)]);
+        } else {
+            // Second press — "Next Activity" logic
+            if (setIndex < currentSet.length - 1) {
+                // Advance to next activity in set
+                setSetIndex(prev => prev + 1);
+                setIsActivityDone(false);
+                setSuccessMode(false);
+                setErrorMode(false);
+                // bear message resets via useEffect on setIndex change
+            } else {
+                // All activities in set done — save combined session row
+                try {
+                    const duration = Math.round((Date.now() - setStartTimeRef.current) / 1000);
+                    const paths = currentSet.map(a => a.path || '');
+                    const category = currentActivity.category || 'Activity';
+                    const skill_domain = currentActivity.skill_domain || ['Fine Motor Skills'];
 
-                // Fire to Supabase ONLY if we have the required IDs
-                if (studentId && classId && teacherId) {
-                    const saved = await saveStudentSession({
-                        student_id: studentId,
-                        class_id: classId,
-                        teacher_id: teacherId,
-                        activity_path: currentActivity.path || '',
-                        category: category,
-                        skill_domain: skill_domain,
-                        score: 15, // Matching the "+15 Stars Earned" from your UI
-                        duration_seconds: duration
-                    });
-                    if (saved && Array.isArray(saved) && saved.length > 0) {
-                        setSavedSessionId(saved[0].id);
+                    if (studentId && classId && teacherId) {
+                        const saved = await saveStudentSession({
+                            student_id: studentId,
+                            class_id: classId,
+                            teacher_id: teacherId,
+                            activity_path: paths,  // string[] — all 3 paths
+                            category,
+                            skill_domain,
+                            score: 15 * currentSet.length,
+                            duration_seconds: duration,
+                        });
+                        if (saved && Array.isArray(saved) && saved.length > 0) {
+                            setSavedSetSessionId(saved[0].id);
+                        }
+                    } else {
+                        console.warn('Missing required IDs — session not saved.');
                     }
-                } else {
-                    console.warn("Missing required IDs for analytics tracking. Activity not saved.");
+                } catch (error) {
+                    console.error('Failed to save set session:', error);
+                } finally {
+                    setIsSetComplete(true);
                 }
-
-                // Show the confetti modal after saving
-                setShowCongrats(true);
-
-            } catch (error) {
-                console.error("Failed to save session:", error);
-                // Still show congrats so the student isn't blocked by a network error
-                setShowCongrats(true);
             }
         }
     };
 
-    const handleContinue = () => {
-        setActivityIndex((prev) => (prev + 1) % activitiesList.length);
-        setIsTaskDone(false);
-        setShowCongrats(false);
-        setSavedSessionId(null);
-        setShowFeedbackModal(false);
-        setTimeLeft(15 * 60);
-        triggerEntrance();
-    };
+    // Progress tracks position within the current set (1/3, 2/3, 3/3)
+    const progressPercent = `${Math.round(((setIndex + 1) / Math.max(currentSet.length, 1)) * 100)}%`;
 
     // Format timer
     const minutes = Math.floor(timeLeft / 60);
     const seconds = timeLeft % 60;
     const formattedTime = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-
-    const progressPercent = `${Math.round(((activityIndex + 1) / activitiesList.length) * 100)}%`;
 
     if (isLoading) {
         return (
@@ -325,7 +361,7 @@ export default function LessonScreen() {
         );
     }
 
-    if (!activitiesList || activitiesList.length === 0 || !currentTask) {
+    if (!currentSet || currentSet.length === 0 || !currentTask) {
         return (
             <SafeAreaView style={{ flex: 1, backgroundColor: '#F5F7FA', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
                 <Feather name="alert-circle" size={48} color="#9CA3AF" />
@@ -368,9 +404,15 @@ export default function LessonScreen() {
                 <View className="flex-row items-center px-6 pb-4">
                     <ActivityBear width={180} height={180} />
 
-                    {/* Speech Bubble Container */}
+                    {/* Speech Bubble — turns green in success mode, red on error */}
                     <View className="flex-1 ml-5 justify-center relative">
-                        <View className="bg-[#FCF5F5] border-[1.5px] border-[#EAD5D5] rounded-3xl p-6 justify-center z-10">
+                        <View className={`rounded-3xl p-6 justify-center z-10 border-[1.5px] ${
+                            successMode
+                                ? 'bg-[#F0FDF4] border-[#86EFAC]'
+                                : errorMode
+                                ? 'bg-[#FEF2F2] border-[#FCA5A5]'
+                                : 'bg-[#FCF5F5] border-[#EAD5D5]'
+                            }`}>
                             <Text className="text-[#6D7179] text-2xl leading-9 font-quicksand-medium">
                                 {bearMessage}
                             </Text>
@@ -382,29 +424,31 @@ export default function LessonScreen() {
                 <View className="flex-1 px-6 pb-6 mt-1">
                     <View className={currentTask?.type === 'drag-and-drop' ? "flex-1" : "flex-1 bg-[#FCFCFC] border-[1.5px] border-[#EBE5E5] rounded-2xl overflow-hidden"}>
                         <ActivityRenderer
-                            key={activityIndex}
+                            key={setIndex}
                             activity={currentTask}
                             onComplete={handleTaskComplete}
-                            onFeedback={setBearMessage}
+                            onFeedback={handleFeedback}
                         />
                     </View>
                 </View>
 
-                {/* CHECK Button */}
+                {/* CHECK / NEXT ACTIVITY Button */}
                 <View className="px-6 pb-4">
                     <Pressable
-                        disabled={!isTaskDone}
+                        disabled={!isActivityDone}
                         onPress={handleCheck}
-                        className={`w-full flex items-center justify-center border-b-[4px] p-[10px] h-[60px] rounded-full ${isTaskDone ? 'bg-[#62A9E6] border-[#5298D4]' : 'bg-[#D1D5DB] border-[#9CA3AF]'}`}
+                        className={`w-full flex items-center justify-center border-b-[4px] p-[10px] h-[60px] rounded-full ${isActivityDone ? 'bg-[#62A9E6] border-[#5298D4]' : 'bg-[#D1D5DB] border-[#9CA3AF]'}`}
                     >
-                        <Text className="text-white font-fredoka-regular text-2xl">CHECK</Text>
+                        <Text className="text-white font-fredoka-regular text-2xl">
+                            {successMode ? 'Next Activity' : 'CHECK'}
+                        </Text>
                     </Pressable>
                 </View>
 
             </SafeAreaView>
 
-            {/* Congratulations Modal Overlay */}
-            {showCongrats && (
+            {/* End-of-Set Congratulations — full screen, only shown when all 3 activities done */}
+            {isSetComplete && (
                 <View className="absolute inset-0 bg-black/60 items-center justify-center p-6 z-[9999]" style={{ width: screenWidth, height: screenHeight }}>
                     <ConfettiEffect />
 
@@ -416,51 +460,38 @@ export default function LessonScreen() {
                         </View>
 
                         <Text className="font-fredoka-one text-4xl text-[#FB923C] text-center mb-2">
-                            Amazing!
+                            Session Complete!
                         </Text>
                         <Text className="font-quicksand-semibold text-lg text-[#6B7280] text-center mb-6 px-2">
-                            You successfully finished {currentActivity.title}!
+                            You finished all {currentSet.length} activities! Great work! 🎉
                         </Text>
 
-                        {/* Reward badges */}
+                        {/* Stars earned for the full set */}
                         <View className="flex-row items-center bg-[#FEF3C7] border border-[#FCD34D] rounded-full px-5 py-2 mb-8">
                             <Text className="text-xl mr-1.5">⭐</Text>
                             <Text className="font-quicksand-bold text-[#D97706] text-lg">
-                                +15 Stars Earned
+                                +{15 * currentSet.length} Stars Earned
                             </Text>
                         </View>
 
-                        {/* Interactive Buttons */}
+                        {/* Action Buttons */}
                         <View className="w-full gap-4">
-                            {savedSessionId && (
-                                <Pressable
-                                    onPress={() => setShowFeedbackModal(true)}
-                                    className="w-full h-14 bg-[#10B981] border-b-[4px] border-[#059669] rounded-full items-center justify-center flex-row gap-2 active:bg-[#059669]"
-                                >
-                                    <Feather name="check-circle" size={22} color="white" />
-                                    <Text className="text-white font-fredoka-regular text-xl">
-                                        Add Feedback Now
-                                    </Text>
-                                </Pressable>
-                            )}
-
-                            {/* Next Lesson / Continue */}
                             <Pressable
-                                onPress={handleContinue}
-                                className="w-full h-14 bg-[#FB923C] border-b-[4px] border-[#EA580C] rounded-full items-center justify-center active:bg-[#EA580C]"
+                                onPress={() => setShowFeedbackModal(true)}
+                                className="w-full h-14 bg-[#10B981] border-b-[4px] border-[#059669] rounded-full items-center justify-center flex-row gap-2 active:bg-[#059669]"
                             >
+                                <Feather name="check-circle" size={22} color="white" />
                                 <Text className="text-white font-fredoka-regular text-xl">
-                                    Next Activity
+                                    Add Feedback Now
                                 </Text>
                             </Pressable>
 
-                            {/* Go Home / Exit */}
                             <Pressable
                                 onPress={() => router.back()}
                                 className="w-full h-14 bg-[#F3F4F6] border-b-[4px] border-[#D1D5DB] rounded-full items-center justify-center active:bg-[#E5E7EB]"
                             >
                                 <Text className="text-[#4B5563] font-fredoka-regular text-xl">
-                                    Back to Home
+                                    Maybe Later
                                 </Text>
                             </Pressable>
                         </View>
@@ -470,13 +501,10 @@ export default function LessonScreen() {
 
             <FeedbackModal
                 visible={showFeedbackModal}
-                sessionId={savedSessionId}
-                activityTitle={currentActivity.title || formatActivityTitle(currentActivity.path || 'Lesson')}
-                onClose={() => setShowFeedbackModal(false)}
-                onSuccess={() => {
-                    setSavedSessionId(null);
-                    setShowFeedbackModal(false);
-                }}
+                sessionId={savedSetSessionId}
+                activityTitle={`Set of ${currentSet.length} Activities`}
+                onClose={() => { setShowFeedbackModal(false); router.back(); }}
+                onSuccess={() => { setShowFeedbackModal(false); router.back(); }}
             />
         </Animated.View>
     );
