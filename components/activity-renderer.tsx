@@ -4,11 +4,12 @@ import DragDropActivity from '@/activities/drag-drop/components/dragdrop-activit
 
 type ActivityRendererProps = {
     activity: any;
-    onComplete: () => void;
+    onComplete: (score: number, timeSpent: number, mistakes: number) => void;
     onFeedback?: (message: string) => void;
+    onIncorrectAttempt?: () => void;
 };
 
-export default function ActivityRenderer({ activity, onComplete, onFeedback }: ActivityRendererProps) {
+export default function ActivityRenderer({ activity, onComplete, onFeedback, onIncorrectAttempt }: ActivityRendererProps) {
     // Read the 'type' string from the database/data
     switch (activity.type) {
         case 'tracing':
@@ -17,6 +18,7 @@ export default function ActivityRenderer({ activity, onComplete, onFeedback }: A
                 <TracingActivity
                     activity={activity.data}
                     onComplete={onComplete}
+                    onIncorrectAttempt={onIncorrectAttempt}
                 />
             );
 
@@ -26,6 +28,7 @@ export default function ActivityRenderer({ activity, onComplete, onFeedback }: A
                     contentData={activity.content_data}
                     onComplete={onComplete}
                     onFeedback={onFeedback}
+                    onIncorrectAttempt={onIncorrectAttempt}
                 />
             );
 

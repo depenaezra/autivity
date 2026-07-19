@@ -1,15 +1,18 @@
-import { Feather, Ionicons } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import ClassView from '../../components/analytics/ClassView';
+import OverviewView from '../../components/analytics/OverviewView';
+import StudentView from '../../components/analytics/StudentView';
 
-// Import your service
+// import services
 import FeedbackModal from '../../components/feedback-modal';
 import { createMilestone, deleteMilestone, getTeacherAnalyticsOverview, updateMilestoneStatus } from '../../src/services/analytics';
 import { formatActivityTitle } from '../../src/utils/format';
 
-// Theme helper
+// color themes
 const THEME_MAP: Record<string, { themeColor: string; shadowColor: string; lightBg: string }> = {
   green: { themeColor: '#86EFAC', shadowColor: '#4ADE80', lightBg: '#F0FDF4' },
   orange: { themeColor: '#FDBA74', shadowColor: '#FB923C', lightBg: '#FFF7ED' },
@@ -17,7 +20,7 @@ const THEME_MAP: Record<string, { themeColor: string; shadowColor: string; light
   blue: { themeColor: '#93C5FD', shadowColor: '#60A5FA', lightBg: '#EFF6FF' },
 };
 
-const MASTER_DOMAINS = [
+export const MASTER_DOMAINS = [
   {
     name: 'Sensory Regulation',
     color: '#A7F3D0',
@@ -50,8 +53,7 @@ const MASTER_DOMAINS = [
   }
 ];
 
-// --- TYPES ---
-interface ClassInfo {
+export interface ClassInfo {
   id: string;
   name: string;
   level: string;
@@ -64,7 +66,7 @@ interface ClassInfo {
   lightBg: string;
 }
 
-interface StudentInfo {
+export interface StudentInfo {
   id: string;
   classId: string;
   name: string;
@@ -77,7 +79,7 @@ interface StudentInfo {
   behavior: string;
 }
 
-interface Milestone {
+export interface Milestone {
   id: string;
   studentId: string;
   title: string;
@@ -85,7 +87,7 @@ interface Milestone {
   date: string;
 }
 
-interface SessionRecord {
+export interface SessionRecord {
   id: string;
   studentId: string;
   activityName: string;
@@ -101,14 +103,13 @@ export default function AnalyticsScreen() {
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
 
-  // --- NAVIGATION STATE ---
+  // navigation states  
   const [currentView, setCurrentView] = useState<'overview' | 'class' | 'student'>('overview');
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
-  const [expandedDomain, setExpandedDomain] = useState<string | null>(null);
 
-  // --- DYNAMIC DATA STATE ---
+  // dynamic data states
   const [isLoading, setIsLoading] = useState(true);
   const [classesData, setClassesData] = useState<ClassInfo[]>([]);
   const [studentsData, setStudentsData] = useState<StudentInfo[]>([]);
@@ -125,7 +126,7 @@ export default function AnalyticsScreen() {
     activityName: string;
   } | null>(null);
 
-  // --- FETCH AND PROCESS DATA ---
+  // fetch and process data
   useFocusEffect(
     useCallback(() => {
       fetchDashboardData();
@@ -137,19 +138,26 @@ export default function AnalyticsScreen() {
     try {
       const data = await getTeacherAnalyticsOverview();
 
-      // Process Sessions
+      // process sessions
       const processedSessions: SessionRecord[] = data.sessions.map((s: any) => ({
         id: s.id,
         studentId: s.student_id,
-        activityName: s.activity_path
-          ? formatActivityTitle(s.activity_path)
-          : 'Unknown Activity',
+        activityName: (() => {
+          if (Array.isArray(s.activity_path)) {
+            return s.activity_path.length > 0
+              ? formatActivityTitle(s.activity_path[0])
+              : 'Unknown Activity';
+          }
+          if (typeof s.activity_path === 'string') {
+            return formatActivityTitle(s.activity_path);
+          }
+          return 'Unknown Activity';
+        })(),
         category: s.category || 'General',
         skill_domain: (() => {
           if (Array.isArray(s.skill_domain)) return s.skill_domain;
 
           if (typeof s.skill_domain === 'string') {
-            // Changed: explicitly typed as string so TypeScript can infer the type in .map()
             const trimmed: string = s.skill_domain.trim();
 
             if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
@@ -186,7 +194,7 @@ export default function AnalyticsScreen() {
 
       setSessions(processedSessions);
 
-      // Process Milestones
+      // process milestones
       const processedMilestones: Milestone[] = data.milestones.map((m: any) => ({
         id: m.id,
         studentId: m.student_id,
@@ -196,7 +204,7 @@ export default function AnalyticsScreen() {
       }));
       setMilestones(processedMilestones);
 
-      // Process Students 
+      // process students
       const processedStudents: StudentInfo[] = data.students.map((st: any) => {
         const studentSessions = processedSessions.filter((s) => s.studentId === st.id);
         const pending = studentSessions.filter((s) => s.status === 'pending').length;
@@ -223,7 +231,7 @@ export default function AnalyticsScreen() {
       });
       setStudentsData(processedStudents);
 
-      // Process Classes
+      // process classes
       const processedClasses: ClassInfo[] = data.classes.map((cls: any) => {
         const classStudents = processedStudents.filter((s) => s.classId === cls.id);
         const classSessions = processedSessions.filter((s) =>
@@ -262,17 +270,17 @@ export default function AnalyticsScreen() {
     }
   };
 
-  // --- ACTIONS ---
+  // actions
   const handleSelectClass = (classId: string) => {
     setSelectedClassId(classId);
     setSelectedStudentId(null);
-    setExpandedDomain(null);
+
     setCurrentView('class');
   };
 
   const handleSelectStudent = (studentId: string) => {
     setSelectedStudentId(studentId);
-    setExpandedDomain(null);
+
     setCurrentView('student');
   };
 
@@ -289,7 +297,6 @@ export default function AnalyticsScreen() {
     if (!activeModalSession) return;
     const { id: sessionId, studentId, classId } = activeModalSession;
 
-    // Update UI Optimistically
     setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, status: 'validated' } : s));
     setStudentsData(prev => prev.map(st => {
       if (st.id === studentId && st.pendingCount > 0) {
@@ -308,9 +315,8 @@ export default function AnalyticsScreen() {
     Alert.alert("Validated", "Session synced and feedback published successfully!");
   };
 
-  // Toggle milestone logic
+  // toggle milestone logic
   const handleToggleMilestone = async (milestoneId: string, currentStatus: string) => {
-    // Cycle logic: Target Set -> In Progress -> Achieved -> Target Set
     const statusCycle: any = {
       'Target Set': 'In Progress',
       'In Progress': 'Achieved',
@@ -319,13 +325,11 @@ export default function AnalyticsScreen() {
     const nextStatus = statusCycle[currentStatus];
 
     try {
-      // Optimistic UI update for snappy feel
       setMilestones(prev => prev.map(m => m.id === milestoneId ? { ...m, status: nextStatus } : m));
-      // Save to database
       await updateMilestoneStatus(milestoneId, nextStatus);
     } catch (error: any) {
       Alert.alert("Error", "Failed to update milestone status.");
-      fetchDashboardData(); // Revert on failure
+      fetchDashboardData();
     }
   };
 
@@ -340,12 +344,11 @@ export default function AnalyticsScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              // Optimistic UI update
               setMilestones(prev => prev.filter(m => m.id !== milestoneId));
               await deleteMilestone(milestoneId);
             } catch (error: any) {
               Alert.alert("Error", "Failed to delete milestone.");
-              fetchDashboardData(); // Revert on failure
+              fetchDashboardData();
             }
           }
         }
@@ -353,7 +356,7 @@ export default function AnalyticsScreen() {
     );
   };
 
-  // --- HELPERS ---
+  // helpers
   const currentClass = classesData.find(c => c.id === selectedClassId) || classesData[0];
   const classStudents = (studentsData || []).filter(s => s.classId === currentClass?.id);
   const currentStudent = (studentsData || []).find(s => s.id === selectedStudentId) || classStudents[0] || studentsData[0];
@@ -363,7 +366,7 @@ export default function AnalyticsScreen() {
 
   const totalPendingAllClasses = classesData.reduce((sum, c) => sum + c.pendingFeedback, 0);
 
-  // --- LOADING CHECK ---
+  // loading check
   if (isLoading) {
     return (
       <SafeAreaView className="flex-1 bg-[#F5F8FA] justify-center items-center">
@@ -373,552 +376,7 @@ export default function AnalyticsScreen() {
     );
   }
 
-  // ==========================================
-  // RENDER 1: OVERVIEW VIEW (ALL CLASSES)
-  // ==========================================
-  const renderOverview = () => (
-    <View className="w-full">
-      {/* QUICK STATS TOP ROW */}
-      <View className={`flex-row justify-between ${isTablet ? 'px-12 mt-6 gap-4' : 'px-6 mt-4 gap-2'}`}>
-        <View className="flex-1 border-[2px] border-[#A3CFF1] bg-white rounded-2xl overflow-hidden shadow-sm">
-          <View className={`bg-[#EBF5FF] flex-row items-center justify-center border-b-[2px] border-b-[#A3CFF1] ${isTablet ? 'py-5 gap-3' : 'py-3 gap-2'}`}>
-            <Ionicons name="stats-chart" size={isTablet ? 36 : 20} color="#62A9E6" />
-            <Text className={`font-quicksand-bold text-[#62A9E6] ${isTablet ? 'text-4xl' : 'text-xl'}`}>
-              {classesData.length > 0 ? Math.round(classesData.reduce((sum, c) => sum + c.avgProgress, 0) / classesData.length) : 0}%
-            </Text>
-          </View>
-          <View className="bg-white items-center justify-center py-2">
-            <Text className={`text-[#4B5563] font-quicksand-semibold tracking-wider ${isTablet ? 'text-sm' : 'text-[10px]'}`}>OVERALL AVG. PROGRESS</Text>
-          </View>
-        </View>
-
-        <View className="flex-1 border-[2px] border-[#FDBA74] bg-white rounded-2xl overflow-hidden shadow-sm">
-          <View className={`bg-[#FFF7ED] flex-row items-center justify-center border-b-[2px] border-b-[#FDBA74] ${isTablet ? 'py-5 gap-3' : 'py-3 gap-2'}`}>
-            <Ionicons name="time-outline" size={isTablet ? 36 : 20} color="#EA580C" />
-            <Text className={`font-quicksand-bold text-[#EA580C] ${isTablet ? 'text-4xl' : 'text-xl'}`}>{totalPendingAllClasses}</Text>
-          </View>
-          <View className="bg-white items-center justify-center py-2">
-            <Text className={`text-[#4B5563] font-quicksand-semibold tracking-wider ${isTablet ? 'text-sm' : 'text-[10px]'}`}>PENDING VALIDATIONS</Text>
-          </View>
-        </View>
-      </View>
-
-      {/* CLASS PERFORMANCE OVERVIEW CARDS */}
-      <View className={isTablet ? 'px-12 mt-8' : 'px-6 mt-6'}>
-        <View className="flex-row items-center justify-between mb-4">
-          <Text className={`font-fredoka-one text-[#4B5563] ${isTablet ? 'text-3xl' : 'text-lg'}`}>
-            Class Performance Overview
-          </Text>
-          <Text className={`font-quicksand-medium text-[#9CA3AF] ${isTablet ? 'text-base' : 'text-xs'}`}>Tap class to inspect learners</Text>
-        </View>
-
-        {classesData.length === 0 ? (
-          <View className="bg-white p-6 rounded-xl border border-[#E5E7EB] items-center justify-center">
-            <Text className="font-quicksand-medium text-sm text-[#9CA3AF]">No classes created yet.</Text>
-          </View>
-        ) : (
-          <View className="gap-4">
-            {classesData.map((cls) => (
-              <TouchableOpacity
-                key={cls.id}
-                activeOpacity={0.9}
-                onPress={() => handleSelectClass(cls.id)}
-                className="bg-white rounded-2xl border-[2px] overflow-hidden shadow-sm"
-                style={{ borderColor: cls.themeColor }}
-              >
-                {/* Card Header */}
-                <View className="flex-row items-center justify-between px-5 py-4 border-b border-[#F3F4F6]" style={{ backgroundColor: cls.lightBg }}>
-                  <View className="flex-1">
-                    <View className="flex-row items-center gap-2">
-                      <Text className={`font-fredoka-one text-[#4B5563] ${isTablet ? 'text-3xl' : 'text-lg'}`}>
-                        {cls.name}
-                      </Text>
-                      {cls.pendingFeedback > 0 && (
-                        <View className="bg-[#F87171] px-2 py-0.5 rounded-full flex-row items-center gap-1">
-                          <Feather name="alert-circle" size={isTablet ? 12 : 10} color="white" />
-                          <Text className={`font-quicksand-bold text-white ${isTablet ? 'text-xs' : 'text-[10px]'}`}>{cls.pendingFeedback} Pending</Text>
-                        </View>
-                      )}
-                    </View>
-                    <Text className={`font-quicksand-medium text-[#6B7280] mt-0.5 ${isTablet ? 'text-base' : 'text-xs'}`}>{cls.level}</Text>
-                  </View>
-
-                  <View className="flex-row items-center bg-white px-3 py-1.5 rounded-full border border-[#E5E7EB]">
-                    <Text className={`font-quicksand-bold text-[#62A9E6] mr-1 ${isTablet ? 'text-base' : 'text-xs'}`}>Inspect</Text>
-                    <Feather name="chevron-right" size={isTablet ? 16 : 14} color="#62A9E6" />
-                  </View>
-                </View>
-
-                {/* Card Stats Body */}
-                <View className="p-5">
-                  <View className="flex-row items-center justify-between mb-2">
-                    <Text className={`font-quicksand-medium text-[#6B7280] ${isTablet ? 'text-lg' : 'text-sm'}`}>
-                      Learners: <Text className="font-quicksand-bold text-[#4B5563]">{cls.totalStudents}</Text> • Completed Activities: <Text className="font-quicksand-bold text-[#4B5563]">{cls.completedActivities}</Text>
-                    </Text>
-                    <Text className={`font-quicksand-bold text-[#4B5563] ${isTablet ? 'text-lg' : 'text-sm'}`}>{cls.avgProgress}% Avg</Text>
-                  </View>
-
-                  {/* Progress Bar */}
-                  <View className="w-full h-3 bg-[#F3F4F6] rounded-full overflow-hidden">
-                    <View
-                      className="h-full rounded-full"
-                      style={{ width: `${cls.avgProgress}%`, backgroundColor: cls.shadowColor }}
-                    />
-                  </View>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-      </View>
-    </View>
-  );
-
-  // ==========================================
-  // RENDER 2: CLASS-LEVEL VIEW
-  // ==========================================
-  const renderClassView = () => {
-    if (!currentClass) return null;
-    return (
-      <View className="w-full">
-        {/* BACK BUTTON & CLASS TITLE */}
-        <View className={isTablet ? 'px-12 mt-4' : 'px-6 mt-3'}>
-          <TouchableOpacity
-            onPress={() => setCurrentView('overview')}
-            className="flex-row items-center bg-[#EBF5FF] self-start px-4 py-2 rounded-full border border-[#A3CFF1] mb-4"
-          >
-            <Feather name="arrow-left" size={isTablet ? 18 : 16} color="#62A9E6" />
-            <Text className={`font-quicksand-bold text-[#62A9E6] ml-1.5 ${isTablet ? 'text-base' : 'text-xs'}`}>Back to All Classes</Text>
-          </TouchableOpacity>
-
-          <View className="bg-white p-5 rounded-2xl border-[2px] shadow-sm mb-6" style={{ borderColor: currentClass.themeColor, backgroundColor: currentClass.lightBg }}>
-            <View className="flex-row justify-between items-center">
-              <View>
-                <Text className={`font-fredoka-one text-[#4B5563] ${isTablet ? 'text-4xl' : 'text-xl'}`}>
-                  {currentClass.name}
-                </Text>
-                <Text className={`font-quicksand-medium text-[#6B7280] mt-0.5 ${isTablet ? 'text-lg' : 'text-sm'}`}>{currentClass.level}</Text>
-              </View>
-              <View className="items-end">
-                <Text className={`font-quicksand-bold text-[#4B5563] ${isTablet ? 'text-4xl' : 'text-2xl'}`}>{currentClass.avgProgress}%</Text>
-                <Text className={`font-quicksand-semibold text-[#9CA3AF] ${isTablet ? 'text-sm' : 'text-[11px]'}`}>CLASS AVERAGE</Text>
-              </View>
-            </View>
-          </View>
-        </View>
-
-        {/* TIME RANGE FILTER */}
-        <View className={`flex-row justify-between items-center ${isTablet ? 'px-12' : 'px-6'}`}>
-          <Text className={`font-fredoka-one text-[#4B5563] ${isTablet ? 'text-2xl' : 'text-base'}`}>
-            Progress Trends & Learners
-          </Text>
-          <View className="flex-row bg-[#E5E7EB] p-1 rounded-full">
-            {(['daily', 'weekly', 'monthly'] as const).map((range) => (
-              <Pressable
-                key={range}
-                onPress={() => setTimeRange(range)}
-                className={`px-3 py-1 rounded-full ${timeRange === range ? 'bg-[#62A9E6]' : 'bg-transparent'}`}
-              >
-                <Text className={`font-quicksand-semibold capitalize ${timeRange === range ? 'text-white' : 'text-[#6B7280]'} ${isTablet ? 'text-base' : 'text-xs'}`}>
-                  {range}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-
-        {/* TRENDS SUMMARY BOX */}
-        <View className={isTablet ? 'px-12 mt-3' : 'px-6 mt-3'}>
-          <View className="bg-white p-4 rounded-xl border border-[#E5E7EB] flex-row items-center justify-between mb-6">
-            <View className="flex-row items-center gap-3 flex-1">
-              <View className="w-10 h-10 rounded-full bg-[#ECFDF5] items-center justify-center">
-                <Ionicons name="trending-up" size={isTablet ? 24 : 20} color="#10B981" />
-              </View>
-              <View className="flex-1 mr-2">
-                <Text className={`font-quicksand-bold text-[#4B5563] ${isTablet ? 'text-lg' : 'text-sm'}`}>
-                  {timeRange === 'daily' ? '+0.0% Daily Growth' : timeRange === 'weekly' ? '+0.0% Weekly Growth' : '+0.0% Monthly Gain'}
-                </Text>
-                <Text className={`font-quicksand-medium text-[#6B7280] ${isTablet ? 'text-base' : 'text-xs'}`}>
-                  Data will populate as students complete activities.
-                </Text>
-              </View>
-            </View>
-            <View className="bg-[#F3F4F6] px-3 py-1.5 rounded-lg">
-              <Text className={`font-quicksand-bold text-[#4B5563] ${isTablet ? 'text-base' : 'text-xs'}`}>{currentClass.completedActivities} Activities</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* STUDENTS LIST */}
-        <View className={isTablet ? 'px-12' : 'px-6'}>
-          <Text className={`font-quicksand-bold text-[#9CA3AF] tracking-wider uppercase mb-3 ${isTablet ? 'text-sm' : 'text-xs'}`}>
-            Learners in {currentClass.name} (Tap a Learner)
-          </Text>
-
-          {classStudents.length === 0 ? (
-            <View className="bg-white p-6 rounded-xl border border-[#E5E7EB] items-center justify-center">
-              <Text className="font-quicksand-medium text-sm text-[#9CA3AF]">No students added to this class yet.</Text>
-            </View>
-          ) : (
-            <View className="gap-3">
-              {classStudents.map((student) => (
-                <TouchableOpacity
-                  key={student.id}
-                  activeOpacity={0.85}
-                  onPress={() => handleSelectStudent(student.id)}
-                  className="bg-white border-[1.5px] border-[#E5E7EB] rounded-2xl p-4 shadow-sm flex-row items-center justify-between"
-                >
-                  <View className="flex-row items-center gap-3 flex-1">
-                    <View className="w-12 h-12 rounded-full items-center justify-center border border-[#E5E7EB]" style={{ backgroundColor: student.avatarBg }}>
-                      <Feather name="user" size={isTablet ? 24 : 20} color="#62A9E6" />
-                    </View>
-                    <View className="flex-1">
-                      <View className="flex-row items-center gap-2">
-                        <Text className={`font-quicksand-bold text-[#4B5563] ${isTablet ? 'text-xl' : 'text-base'}`}>
-                          {student.name}
-                        </Text>
-                        {student.pendingCount > 0 && (
-                          <View className="bg-[#EA580C] px-2 py-0.5 rounded-full flex-row items-center gap-1">
-                            <Text className={`font-quicksand-bold text-white ${isTablet ? 'text-xs' : 'text-[10px]'}`}>{student.pendingCount} to validate</Text>
-                          </View>
-                        )}
-                      </View>
-                      <Text className={`font-quicksand-medium text-[#6B7280] mt-0.5 ${isTablet ? 'text-base' : 'text-xs'}`}>
-                        Focus: {student.focusScore} • {student.behavior}
-                      </Text>
-                    </View>
-                  </View>
-
-                  {/* Mini Progress Indicator */}
-                  <View className="items-end ml-3 w-28">
-                    <Text className={`font-quicksand-bold text-[#4B5563] mb-1 ${isTablet ? 'text-base' : 'text-sm'}`}>{student.overallProgress}% Overall</Text>
-                    <View className="w-full h-2 bg-[#F3F4F6] rounded-full overflow-hidden">
-                      <View className="h-full rounded-full" style={{ width: `${student.overallProgress}%`, backgroundColor: student.statusColor }} />
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-        </View>
-      </View>
-    );
-  };
-
-  // ==========================================
-  // RENDER 3: STUDENT-LEVEL VIEW
-  // ==========================================
-  const renderStudentView = () => {
-    if (!currentStudent) return null;
-
-    // [ADDED] TARGET A: Dynamic Skills Math (Roll-up Strategy)
-    // This dynamically calculates progress for each master domain based on completed sessions
-    const dynamicSkillsProgress = MASTER_DOMAINS.map(domain => {
-      // Find completed sessions (validated or pending) that match any subSkill in this master domain
-      const relevantSessions = studentSessions.filter(s =>
-        (s.status === 'validated' || s.status === 'pending') &&
-        Array.isArray(s.skill_domain) &&
-        s.skill_domain.some(tag =>
-          domain.subSkills.some(sub => sub.trim().toLowerCase() === tag.trim().toLowerCase())
-        )
-      );
-
-      let progress = 0;
-      if (relevantSessions.length > 0) {
-        const scores = relevantSessions.map(s => parseInt(s.score.replace('%', '')) || 0);
-        progress = Math.round(scores.reduce((a, b) => a + b, 0) / relevantSessions.length);
-      }
-
-      return {
-        ...domain,
-        sessionCount: relevantSessions.length,
-        progress,
-        relevantSessions
-      };
-    });
-
-    const dynamicSkills = dynamicSkillsProgress;
-
-    return (
-      <View className="w-full">
-        {/* BACK BUTTON */}
-        <View className={isTablet ? 'px-12 mt-4' : 'px-6 mt-3'}>
-          <TouchableOpacity
-            onPress={() => {
-              setExpandedDomain(null);
-              setCurrentView('class');
-            }}
-            className="flex-row items-center bg-[#EBF5FF] self-start px-4 py-2 rounded-full border border-[#A3CFF1] mb-4"
-          >
-            <Feather name="arrow-left" size={isTablet ? 18 : 16} color="#62A9E6" />
-            <Text className={`font-quicksand-bold text-[#62A9E6] ml-1.5 ${isTablet ? 'text-base' : 'text-xs'}`}>Back to {currentClass.name}</Text>
-          </TouchableOpacity>
-
-          {/* STUDENT HEADER CARD */}
-          <View className="bg-white p-5 rounded-2xl border-[2px] border-[#A3CFF1] shadow-sm mb-6">
-            <View className="flex-row items-center justify-between">
-              <View className="flex-row items-center gap-4">
-                <View className="w-16 h-16 rounded-full bg-[#EBF5FF] items-center justify-center border-[2px] border-[#62A9E6]">
-                  <Feather name="user" size={isTablet ? 36 : 30} color="#62A9E6" />
-                </View>
-                <View>
-                  <View className="flex-row items-center gap-2">
-                    <Text className={`font-fredoka-one text-[#4B5563] ${isTablet ? 'text-4xl' : 'text-2xl'}`}>
-                      {currentStudent.name}
-                    </Text>
-                    {currentStudent.pendingCount > 0 && (
-                      <View className="bg-[#F87171] px-2.5 py-0.5 rounded-full">
-                        <Text className={`font-quicksand-bold text-white ${isTablet ? 'text-xs' : 'text-[11px]'}`}>{currentStudent.pendingCount} Pending Reviews</Text>
-                      </View>
-                    )}
-                  </View>
-                  <Text className={`font-quicksand-medium text-[#6B7280] ${isTablet ? 'text-base' : 'text-sm'}`}>
-                    Class: {currentClass.name}
-                  </Text>
-                  <View className="flex-row items-center mt-1">
-                    <View className="w-2 h-2 rounded-full mr-1.5" style={{ backgroundColor: currentStudent.statusColor }} />
-                    <Text className={`font-quicksand-bold text-[#4B5563] uppercase ${isTablet ? 'text-sm' : 'text-xs'}`}>{currentStudent.behavior}</Text>
-                  </View>
-                </View>
-              </View>
-
-              <View className="items-end">
-                <Text className={`font-quicksand-bold text-[#4B5563] ${isTablet ? 'text-4xl' : 'text-3xl'}`}>{currentStudent.overallProgress}%</Text>
-                <Text className={`font-quicksand-semibold text-[#9CA3AF] ${isTablet ? 'text-sm' : 'text-xs'}`}>DEVELOPMENT INDEX</Text>
-              </View>
-            </View>
-          </View>
-        </View>
-
-        {/* SKILL DEVELOPMENT REPORTS */}
-        <View className={isTablet ? 'px-12 mb-6' : 'px-6 mb-6'}>
-          <Text className={`font-fredoka-one text-[#4B5563] mb-1 ${isTablet ? 'text-2xl' : 'text-lg'}`}>
-            Skill Development Reports
-          </Text>
-          <Text className={`font-quicksand-medium text-[#6B7280] mb-3 ${isTablet ? 'text-base' : 'text-sm'}`}>
-            Progress calculated automatically from validated game sessions.
-          </Text>
-
-          <View className="bg-white rounded-2xl border border-[#E5E7EB] p-5 gap-5 shadow-sm">
-            {dynamicSkills.map((skill, idx) => {
-              const isExpanded = expandedDomain === skill.name;
-              return (
-                <View key={idx} className="w-full">
-                  <TouchableOpacity
-                    activeOpacity={0.7}
-                    onPress={() => setExpandedDomain(isExpanded ? null : skill.name)}
-                    className="w-full"
-                  >
-                    <View className="flex-row justify-between items-center mb-1">
-                      <Text className={`font-quicksand-bold text-[#4B5563] ${isTablet ? 'text-base' : 'text-sm'}`}>{skill.name}</Text>
-                      <View className="flex-row items-center gap-2">
-                        <Text className={`font-quicksand-bold text-[#4B5563] ${isTablet ? 'text-base' : 'text-sm'}`}>{skill.progress}%</Text>
-                        <Feather
-                          name={isExpanded ? 'chevron-up' : 'chevron-down'}
-                          size={isTablet ? 18 : 16}
-                          color="#6B7280"
-                        />
-                      </View>
-                    </View>
-                    <Text className={`font-quicksand-medium text-[#9CA3AF] mb-2 ${isTablet ? 'text-sm' : 'text-xs'}`}>{skill.description}</Text>
-                    <View className="w-full h-2.5 bg-[#F3F4F6] rounded-full overflow-hidden">
-                      <View className="h-full rounded-full" style={{ width: `${skill.progress}%`, backgroundColor: skill.color }} />
-                    </View>
-                  </TouchableOpacity>
-
-                  {isExpanded && (
-                    <View
-                      className="mt-3 ml-2 pl-3.5 py-3 pr-3 rounded-r-xl border-l-[4px] gap-3 bg-[#F8FAFC]"
-                      style={{ borderColor: skill.color }}
-                    >
-                      {skill.subSkills.map((subskill, subIdx) => {
-                        const subSessions = (skill.relevantSessions || []).filter(s =>
-                          Array.isArray(s.skill_domain) && (
-                            s.skill_domain.includes(subskill) ||
-                            s.skill_domain.some(tag => tag.trim().toLowerCase() === subskill.trim().toLowerCase())
-                          )
-                        );
-                        const sessionCount = subSessions.length;
-                        let subTotalScore = 0;
-                        if (sessionCount > 0) {
-                          const scores = subSessions.map(s => parseInt(s.score.replace('%', '')) || 0);
-                          subTotalScore = scores.reduce((a, b) => a + b, 0);
-                        }
-                        const subMasteryPercentage = sessionCount > 0
-                          ? Math.round(subTotalScore / sessionCount)
-                          : 0;
-
-                        return (
-                          <View key={subIdx} className="w-full">
-                            <View className="flex-row justify-between items-center mb-1">
-                              <Text className={`font-quicksand-bold text-[#4B5563] ${isTablet ? 'text-sm' : 'text-xs'}`}>
-                                {subskill}
-                              </Text>
-                              <View className="flex-row items-center gap-1.5">
-                                <Text className={`font-quicksand-medium text-[#9CA3AF] ${isTablet ? 'text-xs' : 'text-[10px]'}`}>
-                                  ({sessionCount} {sessionCount === 1 ? 'session' : 'sessions'})
-                                </Text>
-                                <Text className={`font-quicksand-bold text-[#4B5563] ${isTablet ? 'text-sm' : 'text-xs'}`}>
-                                  {subMasteryPercentage}%
-                                </Text>
-                              </View>
-                            </View>
-                            <View className="w-full h-1.5 bg-[#E5E7EB] rounded-full overflow-hidden">
-                              <View
-                                className="h-full rounded-full"
-                                style={{ width: `${subMasteryPercentage}%`, backgroundColor: skill.color }}
-                              />
-                            </View>
-                          </View>
-                        );
-                      })}
-                    </View>
-                  )}
-                </View>
-              );
-            })}
-          </View>
-        </View>
-
-        {/* DEVELOPMENT TRACKING & MILESTONES */}
-        <View className={isTablet ? 'px-12 mb-6' : 'px-6 mb-6'}>
-          <View className="flex-row justify-between items-center mb-3">
-            <Text className={`font-fredoka-one text-[#4B5563] ${isTablet ? 'text-2xl' : 'text-lg'}`}>
-              Milestone Tracking
-            </Text>
-            {/* [ADDED THIS BUTTON] */}
-            <TouchableOpacity onPress={() => setMilestoneModalVisible(true)} className="flex-row items-center gap-1">
-              <Text className={`font-quicksand-medium text-[#62A9E6] ${isTablet ? 'text-sm' : 'text-xs'}`}>Add Milestone</Text>
-              <Feather name="plus-circle" size={20} color="#62A9E6" />
-            </TouchableOpacity>
-          </View>
-
-          {studentMilestones.length === 0 ? (
-            <View className="bg-white p-6 rounded-xl border border-[#E5E7EB] items-center justify-center">
-              <Text className="font-quicksand-medium text-sm text-[#9CA3AF]">No milestones set for this learner yet.</Text>
-            </View>
-          ) : (
-            <View className="gap-3">
-              {studentMilestones.map((milestone) => (
-                <View key={milestone.id} className="bg-white border border-[#E5E7EB] rounded-xl p-4 flex-row items-start justify-between shadow-sm">
-                  <View className="flex-row items-start gap-3 flex-1 mr-2">
-                    <View className={`w-6 h-6 rounded-full items-center justify-center mt-0.5 ${milestone.status === 'Achieved' ? 'bg-[#DCFCE7]' : milestone.status === 'In Progress' ? 'bg-[#FEF9C3]' : 'bg-[#F3F4F6]'
-                      }`}>
-                      <Ionicons
-                        name={milestone.status === 'Achieved' ? 'checkmark' : milestone.status === 'In Progress' ? 'refresh' : 'flag-outline'}
-                        size={isTablet ? 16 : 14}
-                        color={milestone.status === 'Achieved' ? '#16A34A' : milestone.status === 'In Progress' ? '#CA8A04' : '#6B7280'}
-                      />
-                    </View>
-                    <View className="flex-1">
-                      <Text className={`font-quicksand-bold text-[#4B5563] ${isTablet ? 'text-base' : 'text-sm'}`}>{milestone.title}</Text>
-                      <Text className={`font-quicksand-medium text-[#9CA3AF] mt-0.5 ${isTablet ? 'text-sm' : 'text-xs'}`}>{milestone.date}</Text>
-                    </View>
-                  </View>
-
-                  {/* [ADDED] Interactive Status Button & Delete Button */}
-                  <View className="flex-row items-center gap-2">
-                    <TouchableOpacity
-                      activeOpacity={0.7}
-                      onPress={() => handleToggleMilestone(milestone.id, milestone.status)}
-                      className={`px-3 py-1.5 rounded-full ${milestone.status === 'Achieved' ? 'bg-[#DCFCE7]' : milestone.status === 'In Progress' ? 'bg-[#FEF9C3]' : 'bg-[#F3F4F6]'
-                        }`}
-                    >
-                      <Text className={`font-quicksand-bold uppercase ${isTablet ? 'text-xs' : 'text-[10px]'} ${milestone.status === 'Achieved' ? 'text-[#16A34A]' : milestone.status === 'In Progress' ? 'text-[#CA8A04]' : 'text-[#6B7280]'
-                        }`}>
-                        {milestone.status}
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      activeOpacity={0.7}
-                      onPress={() => handleDeleteMilestone(milestone.id)}
-                      className="p-1.5 rounded-full bg-[#FEF2F2] border border-[#FEE2E2]"
-                    >
-                      <Feather name="trash-2" size={isTablet ? 16 : 14} color="#EF4444" />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              ))}
-            </View>
-          )}
-        </View>
-
-        {/* SESSION RECORDS (PROGRESS VALIDATION LINKED) */}
-        <View className={isTablet ? 'px-12 mb-4' : 'px-6 mb-4'}>
-          <View className="flex-row justify-between items-center mb-1">
-            <Text className={`font-fredoka-one text-[#4B5563] ${isTablet ? 'text-2xl' : 'text-lg'}`}>
-              Completed Activities & Sessions
-            </Text>
-            <Text className={`font-quicksand-medium text-[#6B7280] ${isTablet ? 'text-base' : 'text-xs'}`}>
-              {studentSessions.length} Total Records
-            </Text>
-          </View>
-          <Text className={`font-quicksand-medium text-[#EA580C] mb-3 ${isTablet ? 'text-base' : 'text-sm'}`}>
-            Validate pending sessions below to publish updates directly to the Parent Portal.
-          </Text>
-
-          <View className="gap-3">
-            {studentSessions.map((session) => (
-              <View
-                key={session.id}
-                className={`bg-white rounded-2xl border-[1.5px] p-4 shadow-sm ${session.status === 'pending' ? 'border-[#FDBA74] bg-[#FFFBF5]' : 'border-[#E5E7EB]'
-                  }`}
-              >
-                <View className="flex-row justify-between items-start mb-2">
-                  <View className="flex-1 mr-2">
-                    <View className="flex-row items-center gap-2">
-                      <Text className={`font-quicksand-bold text-[#4B5563] ${isTablet ? 'text-lg' : 'text-base'}`}>{session.activityName}</Text>
-                    </View>
-                    <Text className={`font-quicksand-semibold text-[#6B7280] mt-0.5 ${isTablet ? 'text-sm' : 'text-xs'}`}>
-                      Category: {session.category} • Duration: {session.duration}
-                    </Text>
-                    <Text className={`font-quicksand-medium text-[#9CA3AF] mt-0.5 ${isTablet ? 'text-sm' : 'text-xs'}`}>{session.date}</Text>
-                  </View>
-
-                  <View className="items-end">
-                    <Text className={`font-quicksand-bold text-[#62A9E6] ${isTablet ? 'text-xl' : 'text-lg'}`}>{session.score}</Text>
-                    <Text className={`font-quicksand-medium text-[#9CA3AF] uppercase ${isTablet ? 'text-xs' : 'text-[10px]'}`}>Activity Score</Text>
-                  </View>
-                </View>
-
-                {/* Validation Status / Action Bar */}
-                <View className="border-t border-[#F3F4F6] pt-3 mt-1 flex-row items-center justify-between">
-                  <View className="flex-row items-center gap-1.5">
-                    <View className={`w-2 h-2 rounded-full ${session.status === 'validated' ? 'bg-[#10B981]' : 'bg-[#EA580C]'}`} />
-                    <Text className={`font-quicksand-bold uppercase ${session.status === 'validated' ? 'text-[#10B981]' : 'text-[#EA580C]'} ${isTablet ? 'text-sm' : 'text-xs'}`}>
-                      {session.status === 'validated' ? 'Validated & Synced' : 'Pending Teacher Review'}
-                    </Text>
-                  </View>
-
-                  {session.status === 'pending' ? (
-                    <TouchableOpacity
-                      activeOpacity={0.8}
-                      onPress={() => handleValidateSession(session, currentClass.id)}
-                      className="bg-[#EA580C] px-3.5 py-1.5 rounded-full flex-row items-center gap-1 shadow-sm"
-                    >
-                      <Feather name="check" size={13} color="white" />
-                      <Text className={`font-quicksand-bold text-white ${isTablet ? 'text-sm' : 'text-xs'}`}>Validate Progress</Text>
-                    </TouchableOpacity>
-                  ) : (
-                    <View className="bg-[#ECFDF5] px-3 py-1 rounded-full border border-[#D1FAE5]">
-                      <Text className={`font-quicksand-semibold text-[#047857] ${isTablet ? 'text-xs' : 'text-[11px]'}`}>Visible to Parent</Text>
-                    </View>
-                  )}
-                </View>
-              </View>
-            ))}
-
-            {studentSessions.length === 0 && (
-              <View className="bg-white p-6 rounded-xl border border-[#E5E7EB] items-center justify-center">
-                <Text className="font-quicksand-medium text-sm text-[#9CA3AF]">No recorded sessions for this learner yet.</Text>
-              </View>
-            )}
-          </View>
-        </View>
-      </View>
-    );
-  };
-
+  // main layout
   return (
     <SafeAreaView className="flex-1 bg-[#F5F8FA]">
       <ScrollView
@@ -926,7 +384,7 @@ export default function AnalyticsScreen() {
         showsVerticalScrollIndicator={false}
         bounces={false}
       >
-        {/* HEADER TITLE */}
+        {/* header */}
         <View className={`w-full flex-row justify-between items-center ${isTablet ? 'px-12 pt-6' : 'px-6 pt-5'}`}>
           <View className="flex-1">
             <View className="flex-row items-center gap-2">
@@ -950,10 +408,40 @@ export default function AnalyticsScreen() {
           </View>
         </View>
 
-        {/* DYNAMIC VIEW SWITCHER */}
-        {currentView === 'overview' && renderOverview()}
-        {currentView === 'class' && renderClassView()}
-        {currentView === 'student' && renderStudentView()}
+        {/* view switcher */}
+        {currentView === 'overview' && (
+          <OverviewView
+            classesData={classesData}
+            totalPendingAllClasses={totalPendingAllClasses}
+            isTablet={isTablet}
+            onSelectClass={handleSelectClass}
+          />
+        )}
+        {currentView === 'class' && (
+          <ClassView
+            currentClass={currentClass}
+            classStudents={classStudents}
+            timeRange={timeRange}
+            setTimeRange={setTimeRange}
+            isTablet={isTablet}
+            onBack={() => setCurrentView('overview')}
+            onSelectStudent={handleSelectStudent}
+          />
+        )}
+        {currentView === 'student' && (
+          <StudentView
+            currentStudent={currentStudent}
+            studentSessions={studentSessions}
+            studentMilestones={studentMilestones}
+            currentClass={currentClass}
+            isTablet={isTablet}
+            onBack={() => setCurrentView('class')}
+            onAddMilestone={() => setMilestoneModalVisible(true)}
+            onToggleMilestone={handleToggleMilestone}
+            onDeleteMilestone={handleDeleteMilestone}
+            onValidateSession={handleValidateSession}
+          />
+        )}
 
         <Modal visible={isMilestoneModalVisible} transparent animationType="fade">
           <View className="flex-1 justify-center bg-black/50 p-6">

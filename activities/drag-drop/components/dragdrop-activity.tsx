@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { DraxProvider, DraxView } from 'react-native-drax';
+import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 import { dragDropAssets } from '../utils/assetDictionary';
 import { generateDynamicActivityData } from '../utils/shuffler';
 
@@ -10,14 +11,18 @@ interface DynamicActivityProps {
         instruction?: string;
         pool: Array<{ id: string; type: string; asset_key: string; color: string }>;
     };
-    onComplete?: (durationSeconds: number) => void;
+    onComplete?: (score: number, timeSpent: number, mistakes: number) => void;
     onFeedback?: (message: string) => void;
+    onIncorrectAttempt?: () => void;
 }
 
-export default function DragDropActivity({ contentData, onComplete, onFeedback }: DynamicActivityProps) {
+export default function DragDropActivity({ contentData, onComplete, onFeedback, onIncorrectAttempt }: DynamicActivityProps) {
     // Store the active runtime layout pairs
     const [activityLayout, setActivityLayout] = useState<{ items: any[]; targets: any[] } | null>(null);
     const [placedItems, setPlacedItems] = useState<Record<string, boolean>>({});
+    const [incorrectTrigger, setIncorrectTrigger] = useState<{ type: string; timestamp: number } | null>(null);
+
+    const mistakesRef = useRef(0);
 
     const startTimeRef = useRef<number>(Date.now());
     const feedbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -34,6 +39,7 @@ export default function DragDropActivity({ contentData, onComplete, onFeedback }
 
         setActivityLayout(layoutMix);
         setPlacedItems({});
+        mistakesRef.current = 0;
         startTimeRef.current = Date.now();
     };
 
@@ -57,10 +63,16 @@ export default function DragDropActivity({ contentData, onComplete, onFeedback }
             if (Object.keys(newPlacedItems).length === activityLayout.targets.length) {
                 if (onComplete) {
                     const durationSeconds = Math.round((Date.now() - startTimeRef.current) / 1000);
-                    onComplete(durationSeconds);
+                    const score = 15; // Each completed drag-drop activity awards 15 stars
+                    onComplete(score, durationSeconds, mistakesRef.current);
                 }
             }
         } else {
+            setIncorrectTrigger({ type: draggedType, timestamp: Date.now() });
+            mistakesRef.current += 1;
+
+            onIncorrectAttempt?.();
+
             // Cancel any pending revert timeout
             if (feedbackTimeoutRef.current) {
                 clearTimeout(feedbackTimeoutRef.current);
@@ -93,16 +105,11 @@ export default function DragDropActivity({ contentData, onComplete, onFeedback }
                         }
 
                         return (
-                            <DraxView
+                            <DraggableItem
                                 key={`drag-${item.id}`}
-                                style={[styles.draggableCard, { borderColor: item.color }]}
-                                draggingStyle={styles.dragging}
-                                dragReleasedStyle={styles.dragging}
-                                dragPayload={item.type}
-                                longPressDelay={0}
-                            >
-                                <Image source={item.imageSource} style={styles.fruitImage} />
-                            </DraxView>
+                                item={item}
+                                incorrectTrigger={incorrectTrigger}
+                            />
                         );
                     })}
                 </View>
@@ -144,6 +151,44 @@ export default function DragDropActivity({ contentData, onComplete, onFeedback }
                 </View>
             </View>
         </DraxProvider>
+    );
+}
+
+function DraggableItem({ item, incorrectTrigger }: { item: any, incorrectTrigger: { type: string, timestamp: number } | null }) {
+    const shakeOffset = useSharedValue(0);
+
+    useEffect(() => {
+        if (incorrectTrigger && incorrectTrigger.type === item.type) {
+            shakeOffset.value = withSequence(
+                withTiming(-10, { duration: 60 }),
+                withTiming(10, { duration: 60 }),
+                withTiming(-10, { duration: 60 }),
+                withTiming(10, { duration: 60 }),
+                withTiming(-5, { duration: 60 }),
+                withTiming(5, { duration: 60 }),
+                withTiming(0, { duration: 60 })
+            );
+        }
+    }, [incorrectTrigger, item.type, shakeOffset]);
+
+    const animatedStyle = useAnimatedStyle(() => {
+        return {
+            transform: [{ translateX: shakeOffset.value }],
+        };
+    });
+
+    return (
+        <Animated.View style={animatedStyle}>
+            <DraxView
+                style={[styles.draggableCard, { borderColor: item.color }]}
+                draggingStyle={styles.dragging}
+                dragReleasedStyle={styles.dragging}
+                dragPayload={item.type}
+                longPressDelay={0}
+            >
+                <Image source={item.imageSource} style={styles.fruitImage} />
+            </DraxView>
+        </Animated.View>
     );
 }
 

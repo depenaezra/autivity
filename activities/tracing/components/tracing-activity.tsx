@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Image, useWindowDimensions, View } from "react-native";
 import { GestureDetector } from "react-native-gesture-handler";
 import Animated, {
@@ -8,13 +8,14 @@ import Animated, {
     useAnimatedStyle
 } from "react-native-reanimated";
 import Svg, { Circle, Path } from "react-native-svg";
-import { useTracing } from "../hooks/useTracing";
+import { BOUNDARY_RADIUS, useTracing } from "../hooks/useTracing";
 import type { TracingActivityData } from "../types";
 import { buildTracingData } from "../utils/buildTracingData";
 
 type TracingActivityProps = {
     activity: TracingActivityData;
-    onComplete?: () => void;
+    onComplete?: (score: number, timeSpent: number, mistakes: number) => void;
+    onIncorrectAttempt?: () => void;
 };
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
@@ -23,11 +24,13 @@ const SHOW_DEBUG_CHECKPOINTS = false;
 type TracingActivityContentProps = {
     path: string;
     onComplete?: () => void;
+    onIncorrectAttempt?: () => void;
 };
 
 function TracingActivityContent({
     path,
     onComplete,
+    onIncorrectAttempt,
 }: TracingActivityContentProps) {
     const {
         checkpoints,
@@ -36,7 +39,7 @@ function TracingActivityContent({
         totalLength,
     } = buildTracingData(path);
 
-    const tracing = useTracing(start, end, checkpoints);
+    const tracing = useTracing(start, end, checkpoints, onIncorrectAttempt, onIncorrectAttempt);
 
     const animatedPathProps = useAnimatedProps(() => {
         return {
@@ -79,11 +82,14 @@ function TracingActivityContent({
                         height: "100%",
                     }}
                 >
+
+
+
                     {/* gray tracing path */}
                     <Path
                         d={path}
                         stroke="#A0A0A0"
-                        strokeWidth={10}
+                        strokeWidth={14}
                         strokeLinecap="round"
                         fill="none"
                     />
@@ -102,14 +108,12 @@ function TracingActivityContent({
                     <AnimatedPath
                         d={path}
                         stroke="#62A9E6"
-                        strokeWidth={10}
+                        strokeWidth={14}
                         strokeLinecap="round"
                         fill="none"
                         strokeDasharray={totalLength}
                         animatedProps={animatedPathProps}
                     />
-
-
 
                     {/* start circle */}
                     <Circle cx={start.x} cy={start.y} r={14} fill="#22C55E" />
@@ -150,8 +154,11 @@ function TracingActivityContent({
 export default function TracingActivity({
     activity,
     onComplete,
+    onIncorrectAttempt,
 }: TracingActivityProps) {
     const [currentStrokeIndex, setCurrentStrokeIndex] = useState(0);
+    const mistakesRef = useRef(0);
+    const startTimeRef = useRef(Date.now());
 
     // 2. Grab the device screen size
     const { width, height } = useWindowDimensions();
@@ -162,12 +169,21 @@ export default function TracingActivity({
 
     const currentPath = activity.paths[currentStrokeIndex];
 
+    const handleIncorrectAttempt = () => {
+        mistakesRef.current += 1;
+        if (onIncorrectAttempt) {
+            onIncorrectAttempt();
+        }
+    };
+
     const handleStrokeComplete = () => {
         if (currentStrokeIndex < activity.paths.length - 1) {
             setCurrentStrokeIndex((prev) => prev + 1);
         } else {
             if (onComplete) {
-                onComplete();
+                const duration = Math.round((Date.now() - startTimeRef.current) / 1000);
+                const score = 15; // Each completed tracing activity awards 15 stars
+                onComplete(score, duration, mistakesRef.current);
             }
         }
     };
@@ -197,7 +213,7 @@ export default function TracingActivity({
                                 key={index}
                                 d={path}
                                 stroke={isCompleted ? "#62A9E6" : "#A0A0A0"}
-                                strokeWidth={10}
+                                strokeWidth={14}
                                 strokeLinecap="round"
                                 fill="none"
                             />
@@ -210,6 +226,7 @@ export default function TracingActivity({
                     key={currentStrokeIndex}
                     path={currentPath}
                     onComplete={handleStrokeComplete}
+                    onIncorrectAttempt={handleIncorrectAttempt}
                 />
 
             </View>

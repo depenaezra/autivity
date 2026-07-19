@@ -8,9 +8,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+
+  // get device's notch / island spacing so navigation doesn't go under it
   const insets = useSafeAreaInsets();
 
   return (
+    // primary navigation configuration
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: '#62A9E6',
@@ -18,7 +21,7 @@ export default function TabLayout() {
         tabBarLabelPosition: 'below-icon',
 
         headerShown: false,
-        tabBarButton: HapticTab,
+        tabBarButton: HapticTab, // haptics when tab is tapped
 
         tabBarStyle: {
           backgroundColor: '#FFFFFF',
@@ -38,6 +41,7 @@ export default function TabLayout() {
         }
       }}
     >
+      {/* home screen */}
       <Tabs.Screen
         name="index"
         options={{
@@ -45,6 +49,8 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <FontAwesome6 size={28} name="house-chimney" color={color} />,
         }}
       />
+
+      {/* analytics screen */}
       <Tabs.Screen
         name="analytics"
         options={{
@@ -52,6 +58,8 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <FontAwesome6 size={28} name="chart-line" color={color} />,
         }}
       />
+
+      {/* profile screen */}
       <Tabs.Screen
         name="profile"
         options={{

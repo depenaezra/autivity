@@ -9,6 +9,7 @@ interface SessionPayload {
     skill_domain: string | string[];
     score: number;
     duration_seconds: number;
+    mistakes?: number;
 }
 
 export const saveStudentSession = async (sessionData: SessionPayload) => {
