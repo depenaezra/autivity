@@ -5,6 +5,7 @@ import { ActivityIndicator, Image, Pressable, ScrollView, Text, View, useWindowD
 
 // Import your student services
 import { getStudentActivities, getStudentById } from '../../../../src/services/students';
+import { getLatestStudentSession } from '../../../../src/services/sessions';
 
 export default function StudentHome() {
     const router = useRouter();
@@ -18,6 +19,7 @@ export default function StudentHome() {
 
     // State for dynamic activities
     const [assignedPaths, setAssignedPaths] = useState<string[]>([]);
+    const [latestSession, setLatestSession] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [classId, setClassId] = useState<string | null>((initialClassId as string) || null);
     const [teacherId, setTeacherId] = useState<string | null>((initialTeacherId as string) || null);
@@ -29,41 +31,41 @@ useEffect(() => {
     const loadActivities = async () => {
         if (!studentId) return;
 
-        setIsLoading(true);
-        try {
-            const paths = await getStudentActivities(studentId as string);
-            setAssignedPaths(paths);
+            setIsLoading(true);
+            try {
+                const paths = await getStudentActivities(studentId as string);
+                setAssignedPaths(paths);
 
-            
-            const student = await getStudentById(studentId as string);
+                let currentClassId = (initialClassId as string) || classId;
+                let currentTeacherId = (initialTeacherId as string) || teacherId;
+                let currentName = (initialStudentName as string) || studentName;
 
-            console.log("Student ID:", studentId);
-            console.log("Student:", student);
+                if (!currentClassId || !currentTeacherId || !currentName) {
+                    const student = await getStudentById(studentId as string);
+                    if (student) {
+                        currentClassId = student.class_id;
+                        currentTeacherId = student.teacher_id;
+                        currentName = student.name;
+                    }
+                }
 
-            if (student) {
-                setClassId((initialClassId as string) || student.class_id);
-                setTeacherId((initialTeacherId as string) || student.teacher_id);
-                setStudentName((initialStudentName as string) || student.name);
-
-                console.log("Avatar:", student.avatar);
-                setAvatar(student.avatar);
+                setClassId(currentClassId);
+                setTeacherId(currentTeacherId);
+                setStudentName(currentName);
+            } catch (e) {
+                console.error("Error loading student data:", e);
+            } finally {
+                setIsLoading(false);
             }
-        } catch (e) {
-            console.error("Error loading student data:", e);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-    loadActivities();
-}, [studentId, initialClassId, initialTeacherId, initialStudentName]);
+        };
+        loadActivities();
+    }, [studentId, initialClassId, initialTeacherId, initialStudentName]);
 
     // Logic: Check if any tracing activity is assigned
-    const hasTracingAssignment = assignedPaths.some(path =>
-        path.startsWith('lines/') ||
-        path.startsWith('shapes/') ||
-        path.startsWith('letters/') ||
-        path.startsWith('numbers/')
-    );
+    const hasTracingAssignment = assignedPaths.some(isTracingPath);
+
+    const hasMatchingAssignment = assignedPaths.some(isMatchingPath);
+
 
     // Derive recent activity subtitle from assigned paths
     const tracingCategories = [
@@ -72,7 +74,12 @@ useEffect(() => {
         { key: 'letters', label: 'Letters' },
         { key: 'numbers', label: 'Numbers' },
     ]
-        .filter(cat => assignedPaths.some(p => p.startsWith(`${cat.key}/`)))
+        .filter(cat => assignedPaths.some(p => {
+            const cleanPath = p.startsWith('activity/tracing/')
+                ? p.replace('activity/tracing/', '')
+                : p.toLowerCase();
+            return cleanPath === cat.key || cleanPath.startsWith(`${cat.key}/`);
+        }))
         .map(cat => cat.label);
 
     const recentActivitySubtitle = tracingCategories.length > 0
@@ -80,14 +87,25 @@ useEffect(() => {
         : null;
 
     // 2. PASS THE IDs TO THE LESSON ROUTE
-    const navigateToLesson = () => {
+    const navigateToLesson = (activityType: 'tracing' | 'matching') => {
         const targetStudentId = (studentId as string) || '1';
+        
+        // Filter to only match the activityType
+        const filteredPaths = assignedPaths.filter(path => {
+            if (activityType === 'tracing') {
+                return isTracingPath(path);
+            } else {
+                return isMatchingPath(path);
+            }
+        });
+
         router.push({
             pathname: `/student/${targetStudentId}/lesson` as any,
             params: {
                 studentId: targetStudentId,
                 studentName: studentName,
-                assignedActivities: JSON.stringify(assignedPaths),
+                assignedActivities: JSON.stringify(filteredPaths),
+                activityType: activityType,
                 classId: classId as string,
                 teacherId: teacherId as string
             }
@@ -155,7 +173,7 @@ useEffect(() => {
                             <View className={`bg-white rounded-[18px] border border-[#E5E7EB] border-b-[3px] border-b-[#D1D5DB] items-center justify-center ${isTablet ? 'h-[100px]' : 'h-[80px]'}`}>
                                 <ActivityIndicator size="small" color="#62A9E6" />
                             </View>
-                        ) : hasTracingAssignment ? (
+                        ) : latestSession ? (
                             <View
                                 className={`bg-white flex-row items-center ${isTablet ? 'rounded-[24px] px-6 py-5 gap-5 border-[3px] border-b-[6px]' : 'rounded-[18px] px-4 py-4 gap-4 border-[2px] border-b-[5px]'}`}
                                 style={{ borderColor: '#BFDBFE', borderBottomColor: '#62A9E6' }}
@@ -164,16 +182,20 @@ useEffect(() => {
                                 <View
                                     className={`items-center justify-center rounded-2xl bg-[#EFF6FF] ${isTablet ? 'w-[72px] h-[72px]' : 'w-[56px] h-[56px]'}`}
                                 >
-                                    <Ionicons name="pencil" size={isTablet ? 36 : 28} color="#62A9E6" />
+                                    <Ionicons 
+                                        name={latestSession.category && (latestSession.category.toLowerCase().includes('matching') || latestSession.category.toLowerCase().includes('fruit')) ? "grid" : "pencil"} 
+                                        size={isTablet ? 36 : 28} 
+                                        color="#62A9E6" 
+                                    />
                                 </View>
 
                                 {/* Text */}
                                 <View className="flex-1">
                                     <Text className={`font-quicksand-bold text-[#374151] ${isTablet ? 'text-2xl' : 'text-lg'}`}>
-                                        Tracing
+                                        {latestSession.category || 'Activity'}
                                     </Text>
                                     <Text className={`font-quicksand-medium text-[#9CA3AF] ${isTablet ? 'text-lg mt-1' : 'text-sm mt-0.5'}`} numberOfLines={1}>
-                                        {recentActivitySubtitle}
+                                        Completed on {new Date(latestSession.created_at).toLocaleDateString()}
                                     </Text>
                                 </View>
                             </View>
@@ -220,7 +242,7 @@ useEffect(() => {
                                 {/* Tracing Activity Card - Only shown if assigned */}
                                 {hasTracingAssignment && (
                                     <Pressable
-                                        onPress={navigateToLesson}
+                                        onPress={() => navigateToLesson('tracing')}
                                         className={`bg-white overflow-hidden ${isTablet
                                             ? 'w-[440px] h-[320px] rounded-[24px] border-[3px] border-b-[6px]'
                                             : 'w-[280px] h-[240px] rounded-[18px] border-[2px] border-b-[5px]'
@@ -248,6 +270,39 @@ useEffect(() => {
                                         </View>
                                     </Pressable>
                                 )}
+
+                                {/* Matching Activity Card - Only shown if assigned */}
+                                {hasMatchingAssignment && (
+                                    <Pressable
+                                        onPress={() => navigateToLesson('matching')}
+                                        className={`bg-white overflow-hidden ${isTablet
+                                            ? 'w-[440px] h-[320px] rounded-[24px] border-[3px] border-b-[6px]'
+                                            : 'w-[280px] h-[240px] rounded-[18px] border-[2px] border-b-[5px]'
+                                            }`}
+                                        style={{ borderColor: '#F7890F', borderBottomColor: '#D66F00' }}
+                                    >
+                                        <View className="w-full h-[60%] bg-[#FFF7ED]">
+                                            <Image
+                                                source={require('../../../../assets/images/activities/matching-header.png')}
+                                                className="w-full h-full"
+                                                resizeMode="cover"
+                                            />
+                                        </View>
+                                        <View className={`flex-1 justify-center bg-white ${isTablet ? 'px-6 py-4' : 'px-4 py-3'}`}>
+                                            <View className="flex-row items-center justify-between w-full">
+                                                <Text className={`font-quicksand-bold text-[#4B5563] ${isTablet ? 'text-4xl' : 'text-3xl'}`}>Matching</Text>
+                                                <View
+                                                    className={`flex-row items-center justify-center border-[2px] rounded-full ${isTablet ? 'px-6 py-2 gap-2' : 'px-4 py-1.5 gap-1'}`}
+                                                    style={{ borderColor: '#F7890F', backgroundColor: '#FFF3E0' }}
+                                                >
+                                                    <Ionicons name="play" size={isTablet ? 18 : 14} color="#F7890F" />
+                                                    <Text className={`font-quicksand-bold ${isTablet ? 'text-xl' : 'text-sm'}`} style={{ color: '#F7890F' }}>Start</Text>
+                                                </View>
+                                            </View>
+                                        </View>
+                                    </Pressable>
+                                )}
+
                             </ScrollView>
                         )}
                     </View>

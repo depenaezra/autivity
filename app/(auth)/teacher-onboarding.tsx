@@ -15,8 +15,10 @@ export default function TeacherOnboarding() {
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
 
+  // keeps track of selected goals
   const [selectedGoals, setSelectedGoals] = useState<string[]>([]);
 
+  // list of goals
   const goals = [
     'Classroom-ready activities',
     'Monitor student progress',
@@ -36,21 +38,24 @@ export default function TeacherOnboarding() {
     }
   };
 
+  // UI
   return (
     <SafeAreaView className="flex-1 bg-[#F5F8FA]">
-      {/* Top Navigation / Back Button */}
+
+      {/* back btn */}
       <View className={`w-full pt-4 pb-2 ${isTablet ? 'px-8' : 'px-6'}`}>
         <Pressable onPress={() => router.back()} className="w-10 h-10 justify-center">
           <Feather name="arrow-left" size={isTablet ? 32 : 24} color="#4B5563" />
         </Pressable>
       </View>
 
-      {/* Main Container */}
+      {/* main container */}
       <View
         className={`flex-1 flex-col items-center w-full ${isTablet ? 'px-[94px] pb-[78px]' : 'px-6 pb-8'
           }`}
       >
-        {/* Title Container */}
+
+        {/* title */}
         <View className="items-center mb-10 w-full">
           <Text
             className={`font-fredoka-one text-[#4B5563] text-center ${isTablet ? 'text-5xl mb-4' : 'text-3xl mb-2'
@@ -58,17 +63,19 @@ export default function TeacherOnboarding() {
           >
             What would you like to focus on?
           </Text>
-          {/* Added Subtitle */}
+
+          {/* subtitle */}
           <Text className={`font-quicksand-medium text-[#6B7280] text-center ${isTablet ? 'text-2xl' : 'text-lg'}`}>
             Choose one or more goals
           </Text>
         </View>
 
-        {/* Goals List */}
+        {/* goals list */}
         <View className={`w-full flex-col flex-1 ${isTablet ? 'gap-4' : 'gap-3'}`}>
           {goals.map((goal) => {
             const isActive = selectedGoals.includes(goal);
 
+            // returns a pressable button for each goal
             return (
               <Pressable
                 key={goal}
@@ -85,6 +92,7 @@ export default function TeacherOnboarding() {
                   className={`font-quicksand-medium ${isTablet ? 'text-2xl' : 'text-lg'} ${isActive ? 'text-[#62A9E6]' : 'text-[#6B7280]'
                     }`}
                 >
+                  {/* display the goal from goals array */}
                   {goal}
                 </Text>
               </Pressable>
@@ -92,11 +100,10 @@ export default function TeacherOnboarding() {
           })}
         </View>
 
-        {/* CONTINUE BUTTON */}
+        {/* continue btn */}
         <View className="w-full mt-auto">
           <Pressable
             disabled={selectedGoals.length === 0}
-            // [MODIFIED] Pass the goals array as a stringified parameter to the signup screen
             onPress={() => {
               router.push({
                 pathname: '/(auth)/signup',

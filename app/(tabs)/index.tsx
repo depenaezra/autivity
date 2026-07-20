@@ -1,6 +1,5 @@
 import { Feather, Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 // [MODIFIED] Added ActivityIndicator and Alert
 import { ActivityIndicator, Alert, Animated, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, View, useWindowDimensions } from "react-native";
@@ -9,7 +8,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 // [ADDED] Import your new services
 import { createClass, getClassCount, getTeacherClasses } from '../../src/services/classes';
 import { getMaterialCount } from '../../src/services/materials'; // [ADDED]
+import { getUserProfile } from '../../src/services/profile';
 import { getStudentCount } from '../../src/services/students';
+
 import { Picker } from "@react-native-picker/picker";
 
 const DAYS = [
@@ -37,7 +38,7 @@ const classCards: Record<string, any> = {
   green: require('../../assets/images/class-cards/class-frog.png'),
   orange: require('../../assets/images/class-cards/class-hamster.png'),
   yellow: require('../../assets/images/class-cards/class-penguin.png'),
-  blue: require('../../assets/images/polar-bear.png'),
+  blue: require('../../assets/images/class-cards/class-whale.png'),
 };
 
 // [ADDED] Helper to map database theme names to UI colors
@@ -49,8 +50,26 @@ const themeColors = [
 ];
 
 export default function TeacherHome() {
-  const { firstName } = useLocalSearchParams();
+  const { firstName: paramFirstName } = useLocalSearchParams();
+  const [firstName, setFirstName] = useState<string>((paramFirstName as string) || '');
   const router = useRouter();
+
+  useEffect(() => {
+    if (paramFirstName) {
+      setFirstName(paramFirstName as string);
+    }
+  }, [paramFirstName]);
+
+  const fetchProfile = async () => {
+    try {
+      const profileData = await getUserProfile();
+      if (profileData && profileData.first_name) {
+        setFirstName(profileData.first_name);
+      }
+    } catch (error) {
+      console.log('Error fetching profile in home screen:', error);
+    }
+  };
 
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
@@ -83,10 +102,11 @@ export default function TeacherHome() {
 
   // [MODIFIED] Use useFocusEffect so classes refresh every time the screen is focused (e.g. after deleting a class)
   useFocusEffect(
-  useCallback(() => {
-    fetchClasses();
-  }, [])
-);
+    useCallback(() => {
+      fetchClasses();
+      fetchProfile();
+    }, [])
+  );
 
   // [ADDED] Function to fetch and format classes from Supabase
   const fetchClasses = async () => {
@@ -102,8 +122,8 @@ export default function TeacherHome() {
           title: dbClass.title,
           level: dbClass.grade || 'Grade 1',
           people: Array.isArray(dbClass.students)
-  ? dbClass.students.length
-  : 0,
+            ? dbClass.students.length
+            : 0,
           schedule: dbClass.schedule,
           image: classCards[theme.name] || require('../../assets/images/polar-bear.png'),
           themeColor: theme.value,
@@ -148,11 +168,11 @@ export default function TeacherHome() {
     try {
       // Send data to Supabase
       await createClass(
-  newClassName.trim(),
-  newClassGrade.trim() || 'Grade 1',
-  `${startDay} - ${endDay} ${newClassSchedule.trim()}`,
-  selectedTheme.name
-);
+        newClassName.trim(),
+        newClassGrade.trim() || 'Grade 1',
+        `${startDay} - ${endDay} ${newClassSchedule.trim()}`,
+        selectedTheme.name
+      );
 
       // Refresh the list from the database
       await fetchClasses();
@@ -453,65 +473,65 @@ export default function TeacherHome() {
 
               <View className="mb-4">
 
-  <Text className="font-quicksand-bold text-[#4B5563] text-base mb-2">
-    Start Day
-  </Text>
+                <Text className="font-quicksand-bold text-[#4B5563] text-base mb-2">
+                  Start Day
+                </Text>
 
-  <View className="bg-[#F5F8FA] rounded-xl">
-    <Picker
-      selectedValue={startDay}
-      onValueChange={setStartDay}
-    >
-      <Picker.Item label="Select Start Day" value="" />
+                <View className="bg-[#F5F8FA] rounded-xl">
+                  <Picker
+                    selectedValue={startDay}
+                    onValueChange={setStartDay}
+                  >
+                    <Picker.Item label="Select Start Day" value="" />
 
-      {DAYS.map((day) => (
-        <Picker.Item
-          key={day}
-          label={day}
-          value={day}
-        />
-      ))}
+                    {DAYS.map((day) => (
+                      <Picker.Item
+                        key={day}
+                        label={day}
+                        value={day}
+                      />
+                    ))}
 
-    </Picker>
-  </View>
-
-
-  <Text className="font-quicksand-bold text-[#4B5563] text-base mt-4 mb-2">
-    End Day
-  </Text>
-
-  <View className="bg-[#F5F8FA] rounded-xl">
-    <Picker
-      selectedValue={endDay}
-      onValueChange={setEndDay}
-    >
-      <Picker.Item label="Select End Day" value="" />
-
-      {DAYS.map((day) => (
-        <Picker.Item
-          key={day}
-          label={day}
-          value={day}
-        />
-      ))}
-
-    </Picker>
-  </View>
+                  </Picker>
+                </View>
 
 
-  <Text className="font-quicksand-bold text-[#4B5563] text-base mt-4 mb-2">
-    Time Schedule
-  </Text>
+                <Text className="font-quicksand-bold text-[#4B5563] text-base mt-4 mb-2">
+                  End Day
+                </Text>
 
-  <TextInput
-    value={newClassSchedule}
-    onChangeText={setNewClassSchedule}
-    placeholder="e.g. 10:00 AM"
-    placeholderTextColor="#9CA3AF"
-    className="bg-[#F5F8FA] rounded-xl px-4 py-3 font-quicksand-medium text-[#4B5563]"
-  />
+                <View className="bg-[#F5F8FA] rounded-xl">
+                  <Picker
+                    selectedValue={endDay}
+                    onValueChange={setEndDay}
+                  >
+                    <Picker.Item label="Select End Day" value="" />
 
-</View>
+                    {DAYS.map((day) => (
+                      <Picker.Item
+                        key={day}
+                        label={day}
+                        value={day}
+                      />
+                    ))}
+
+                  </Picker>
+                </View>
+
+
+                <Text className="font-quicksand-bold text-[#4B5563] text-base mt-4 mb-2">
+                  Time Schedule
+                </Text>
+
+                <TextInput
+                  value={newClassSchedule}
+                  onChangeText={setNewClassSchedule}
+                  placeholder="e.g. 10:00 AM"
+                  placeholderTextColor="#9CA3AF"
+                  className="bg-[#F5F8FA] rounded-xl px-4 py-3 font-quicksand-medium text-[#4B5563]"
+                />
+
+              </View>
 
               <View className="mb-6">
                 <Text className="font-quicksand-bold text-[#4B5563] text-base mb-2">Color Theme</Text>

@@ -16,28 +16,22 @@ export const getClassStudents = async (classId: string) => {
   }));
 };
 
-// Add student
+// Add a new student to a class
 export const addStudent = async (classId: string, name: string) => {
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) throw new Error('User not logged in');
 
-  if (authError || !user) {
-    throw new Error("User not logged in");
-  }
-
-  const { data, error } = await supabase
-    .from("students")
-    .insert([
-      {
-        class_id: classId,
-        teacher_id: user.id,
-        name,
-      },
-    ])
-    .select()
-    .single();
+    const { data, error } = await supabase
+        .from('students')
+        .insert([
+            {
+                class_id: classId,
+                teacher_id: user.id,
+                name: name,
+            }
+        ])
+        .select()
+        .single();
 
   if (error) throw new Error(error.message);
 

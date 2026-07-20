@@ -24,23 +24,43 @@ export const getTeacherAnalyticsOverview = async () => {
     };
 };
 
-export const validateSession = async (sessionId: string, feedback?: string) => {
-    const updates: any = {
-        status: 'validated',
-        validated_at: new Date().toISOString()
-    };
-    if (feedback) updates.teacher_feedback = feedback;
+import { RubricEvaluation, validateSession as validateSessionService } from './sessions';
 
-    const { data, error } = await supabase
-        .from('student_sessions')
-        .update(updates)
-        .eq('id', sessionId)
-        .select()
-        .single();
+export { RubricEvaluation };
 
-    if (error) throw new Error(error.message);
-    return data;
+export const validateSession = async (
+    sessionId: string,
+    rubricEvaluation?: RubricEvaluation | string,
+    teacherFeedback?: string
+) => {
+    let rubric: RubricEvaluation;
+    let feedbackStr = teacherFeedback || '';
+
+    if (typeof rubricEvaluation === 'string') {
+        // Backwards compatibility if called with (sessionId, feedbackString)
+        feedbackStr = rubricEvaluation;
+        rubric = {
+            looking_at_objects: 4,
+            concentrating: 4,
+            performing_task: 4,
+            following_instructions: 4,
+            completed_work: 4
+        };
+    } else if (rubricEvaluation && typeof rubricEvaluation === 'object') {
+        rubric = rubricEvaluation;
+    } else {
+        rubric = {
+            looking_at_objects: 4,
+            concentrating: 4,
+            performing_task: 4,
+            following_instructions: 4,
+            completed_work: 4
+        };
+    }
+
+    return validateSessionService(sessionId, rubric, feedbackStr);
 };
+
 
 export const createMilestone = async (studentId: string, title: string, targetDate: string) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser();

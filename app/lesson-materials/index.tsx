@@ -1,10 +1,12 @@
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import React, { useEffect, useState } from 'react';
 
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Linking, Modal, Platform, Pressable, ScrollView, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import LessonMaterialsHeaderSvg from '../../assets/images/headers/lesson-materials-header.svg';
@@ -193,15 +195,70 @@ export default function LessonMaterialsScreen() {
         // Dismiss the modal first to avoid concurrent transition deadlock on iOS/Android
         setPreviewMaterial(null);
         await new Promise((resolve) => setTimeout(resolve, 400));
-        await WebBrowser.openBrowserAsync(item.url);
+        
+        // Try opening with Linking first (default system browser / handler)
+        await Linking.openURL(item.url);
       } catch (err) {
-        console.error('Failed to open document:', err);
-        Alert.alert('Error', 'Failed to open the file link.');
+        console.error('Failed to open document with Linking, trying WebBrowser:', err);
+        try {
+          await WebBrowser.openBrowserAsync(item.url);
+        } catch (webErr) {
+          console.error('Failed to open with WebBrowser:', webErr);
+          Alert.alert('Error', 'Failed to open the file link.');
+        }
       }
     } else {
       Alert.alert('Error', 'No document file source available.');
     }
   };
+  const handleDownloadFile = async (item: LessonMaterial) => {
+  if (!item.url) {
+    Alert.alert("Error", "No file source available.");
+    return;
+  }
+
+  try {
+    const fileName = item.title.replace(/[^a-zA-Z0-9.-]/g, "_");
+
+    const fileUri = `${FileSystem.documentDirectory}${fileName}`;
+
+    const download = await FileSystem.downloadAsync(
+      item.url,
+      fileUri
+    );
+
+    if (download.status === 200) {
+      Alert.alert(
+        "Download Complete",
+        `${item.title} has been saved.`,
+        [
+          {
+            text: "Open File",
+            onPress: async () => {
+              if (await Sharing.isAvailableAsync()) {
+                await Sharing.shareAsync(download.uri);
+              } else {
+                await Linking.openURL(download.uri);
+              }
+            }
+          },
+          {
+            text: "OK"
+          }
+        ]
+      );
+    } else {
+      throw new Error("Download failed");
+    }
+
+  } catch (error: any) {
+    console.error("Download error:", error);
+    Alert.alert(
+      "Download Failed",
+      error.message || "Unable to download file."
+    );
+  }
+};
 
   // [MODIFIED] Connected to DB deletion service
   const handleDeleteMaterial = (item: LessonMaterial) => {
@@ -564,21 +621,55 @@ export default function LessonMaterialsScreen() {
 
                 {/* MODAL ACTIONS */}
                 <View className="flex-row gap-3 mt-4">
-                  <Pressable onPress={() => setPreviewMaterial(null)} className={`flex-1 rounded-xl bg-[#F3F4F6] border-b-[3px] border-[#D1D5DB] justify-center items-center ${isTablet ? 'h-16' : 'h-14'}`}>
-                    <Text className="font-quicksand-bold text-[#6B7280] text-base">Close</Text>
-                  </Pressable>
-                  <Pressable
-                    onPress={() => {
-                      handleViewActualFile(previewMaterial);
-                    }}
-                    className={`flex-2 rounded-xl bg-[#62A9E6] border-b-[3px] border-[#5298D4] justify-center items-center px-4 ${isTablet ? 'h-16' : 'h-14'}`}
-                  >
-                    <View className="flex-row items-center justify-center">
-                      <Feather name="external-link" size={18} color="white" style={{ marginRight: 6 }} />
-                      <Text className="font-quicksand-bold text-white text-base">View the File</Text>
-                    </View>
-                  </Pressable>
-                </View>
+
+  <Pressable
+    onPress={() => setPreviewMaterial(null)}
+    className={`flex-1 rounded-xl bg-[#F3F4F6] border-b-[3px] border-[#D1D5DB] justify-center items-center ${isTablet ? 'h-16' : 'h-14'}`}
+  >
+    <Text className="font-quicksand-bold text-[#6B7280] text-base">
+      Close
+    </Text>
+  </Pressable>
+
+
+  <Pressable
+    onPress={() => handleDownloadFile(previewMaterial)}
+    className={`flex-1 rounded-xl bg-[#10B981] border-b-[3px] border-[#059669] justify-center items-center ${isTablet ? 'h-16' : 'h-14'}`}
+  >
+    <View className="flex-row items-center">
+      <Feather 
+        name="download" 
+        size={18} 
+        color="white"
+        style={{marginRight:6}}
+      />
+
+      <Text className="font-quicksand-bold text-white text-base">
+        Download
+      </Text>
+    </View>
+  </Pressable>
+
+
+  <Pressable
+    onPress={() => handleViewActualFile(previewMaterial)}
+    className={`flex-1 rounded-xl bg-[#62A9E6] border-b-[3px] border-[#5298D4] justify-center items-center ${isTablet ? 'h-16' : 'h-14'}`}
+  >
+    <View className="flex-row items-center">
+      <Feather 
+        name="external-link" 
+        size={18} 
+        color="white"
+        style={{marginRight:6}}
+      />
+
+      <Text className="font-quicksand-bold text-white text-base">
+        View
+      </Text>
+    </View>
+  </Pressable>
+
+</View>
               </>
             )}
           </View>
