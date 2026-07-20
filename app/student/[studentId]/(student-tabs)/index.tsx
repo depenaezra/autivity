@@ -22,41 +22,40 @@ export default function StudentHome() {
     const [classId, setClassId] = useState<string | null>((initialClassId as string) || null);
     const [teacherId, setTeacherId] = useState<string | null>((initialTeacherId as string) || null);
     const [studentName, setStudentName] = useState<string>((initialStudentName as string) || '');
-
+    const [avatar, setAvatar] = useState("");
+    
     // Fetch the paths when screen loads
-    useEffect(() => {
-        const loadActivities = async () => {
-            if (!studentId) return;
+useEffect(() => {
+    const loadActivities = async () => {
+        if (!studentId) return;
 
-            setIsLoading(true);
-            try {
-                const paths = await getStudentActivities(studentId as string);
-                setAssignedPaths(paths);
+        setIsLoading(true);
+        try {
+            const paths = await getStudentActivities(studentId as string);
+            setAssignedPaths(paths);
 
-                let currentClassId = (initialClassId as string) || classId;
-                let currentTeacherId = (initialTeacherId as string) || teacherId;
-                let currentName = (initialStudentName as string) || studentName;
+            
+            const student = await getStudentById(studentId as string);
 
-                if (!currentClassId || !currentTeacherId || !currentName) {
-                    const student = await getStudentById(studentId as string);
-                    if (student) {
-                        currentClassId = student.class_id;
-                        currentTeacherId = student.teacher_id;
-                        currentName = student.name;
-                    }
-                }
+            console.log("Student ID:", studentId);
+            console.log("Student:", student);
 
-                setClassId(currentClassId);
-                setTeacherId(currentTeacherId);
-                setStudentName(currentName);
-            } catch (e) {
-                console.error("Error loading student data:", e);
-            } finally {
-                setIsLoading(false);
+            if (student) {
+                setClassId((initialClassId as string) || student.class_id);
+                setTeacherId((initialTeacherId as string) || student.teacher_id);
+                setStudentName((initialStudentName as string) || student.name);
+
+                console.log("Avatar:", student.avatar);
+                setAvatar(student.avatar);
             }
-        };
-        loadActivities();
-    }, [studentId, initialClassId, initialTeacherId, initialStudentName]);
+        } catch (e) {
+            console.error("Error loading student data:", e);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+    loadActivities();
+}, [studentId, initialClassId, initialTeacherId, initialStudentName]);
 
     // Logic: Check if any tracing activity is assigned
     const hasTracingAssignment = assignedPaths.some(path =>
@@ -122,9 +121,19 @@ export default function StudentHome() {
 
                 {/* AVATAR & NAME SECTION */}
                 <View className={`items-center px-6 ${isTablet ? '-mt-[100px]' : '-mt-[70px]'}`}>
-                    <View className={`rounded-full bg-[#E5E7EB] border-white shadow-sm items-center justify-center ${isTablet ? 'w-[180px] h-[180px] border-[8px]' : 'w-[120px] h-[120px] border-[6px]'}`}>
-                        <Ionicons name="person" size={isTablet ? 90 : 60} color="#9CA3AF" />
-                    </View>
+                    <View
+  className={`rounded-full bg-[#E5E7EB] border-white shadow-sm items-center justify-center ${
+    isTablet
+      ? "w-[180px] h-[180px] border-[8px]"
+      : "w-[120px] h-[120px] border-[6px]"
+  }`}
+>
+  <Text
+    className={isTablet ? "text-7xl" : "text-5xl"}
+  >
+    {avatar}
+  </Text>
+</View>
                     <Text className={`font-fredoka-one text-[#374151] ${isTablet ? 'text-6xl mt-4' : 'text-4xl mt-3'}`}>
                         {studentName || 'Monna'}
                     </Text>

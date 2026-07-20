@@ -7,7 +7,6 @@ import React, { useEffect, useState } from "react";
 import { supabase } from "../../src/lib/supabase";
 // login service
 import { login } from '../../src/services/auth';
-
 export default function Login() {
   const router = useRouter();
 
@@ -44,26 +43,28 @@ const loadRememberedUser = async () => {
 };
 const handleForgotPassword = async () => {
   if (!email) {
-    Alert.alert(
-      "Email Required",
-      "Please enter your email address first."
-    );
+    Alert.alert("Email Required", "Please enter your email address first.");
     return;
   }
 
   try {
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: "autivity://reset-password",
-    });
+    setIsLoading(true);
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email);
 
     if (error) throw error;
 
-    Alert.alert(
-      "Success",
-      "Password reset link has been sent to your email."
-    );
+    Alert.alert("Check your email", "We sent a 6-digit code to your email address.");
+
+    // Pumunta sa screen kung saan ilalagay ang code + bagong password
+    router.push({
+      pathname: '/(auth)/reset-password' as any,
+      params: { email },
+    });
   } catch (error: any) {
     Alert.alert("Error", error.message);
+  } finally {
+    setIsLoading(false);
   }
 };
   // Database Connection
