@@ -200,7 +200,7 @@ export default function SetManager({
         // Immediately add activity finished score and mistakes to accumulators
         setTotalScoreAccumulator(prev => prev + score);
         setTotalMistakesAccumulator(prev => prev + mistakes);
-        
+
         // Choose a random praise message and update confirmation button UI state
         setBearMessage(SUCCESS_MESSAGES[Math.floor(Math.random() * SUCCESS_MESSAGES.length)]);
         setIsActivityDone(true);
@@ -331,7 +331,7 @@ export default function SetManager({
                             .from('student_sessions')
                             .insert([fallbackPayload])
                             .select();
-                        
+
                         if (fbErr) {
                             console.error("[DATABASE] Fallback student_sessions insertion failed:", fbErr.message);
                         } else if (fbData && fbData.length > 0) {
@@ -382,7 +382,11 @@ export default function SetManager({
 
     const currentTask = {
         id: currentActivity.id || `set-activity-${completedCount}`,
-        type: parsedContentData.type || (currentActivity.category?.toLowerCase().includes('drag') ? 'drag-and-drop' : 'tracing'),
+        type: parsedContentData.type || (
+            currentActivity.category?.toLowerCase().includes('drag') ? 'drag-and-drop' :
+            (currentActivity.category?.toLowerCase().includes('bubble') || currentActivity.path?.toLowerCase().includes('bubble')) ? 'bubble-pop' :
+            'tracing'
+        ),
         title: currentActivity.title || formatActivityTitle(currentActivity.path || ''),
         path: currentActivity.path || '',
         data: parsedContentData,
@@ -420,12 +424,11 @@ export default function SetManager({
 
                     {/* Speech Bubble */}
                     <View className="flex-1 ml-5 justify-center relative">
-                        <View className={`rounded-3xl p-6 justify-center z-10 border-[1.5px] ${
-                            successMode
+                        <View className={`rounded-3xl p-6 justify-center z-10 border-[1.5px] ${successMode
                                 ? 'bg-[#F0FDF4] border-[#86EFAC]'
                                 : errorMode
-                                ? 'bg-[#FEF2F2] border-[#FCA5A5]'
-                                : 'bg-[#FCF5F5] border-[#EAD5D5]'
+                                    ? 'bg-[#FEF2F2] border-[#FCA5A5]'
+                                    : 'bg-[#FCF5F5] border-[#EAD5D5]'
                             }`}>
                             <Text className="text-[#6D7179] text-2xl leading-9 font-quicksand-medium">
                                 {bearMessage}

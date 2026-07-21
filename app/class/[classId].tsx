@@ -90,6 +90,11 @@ const ALL_MATCHING_CATEGORIES = [
   { id: 'Matching Fruits', title: 'Fruits Matching', icon: 'nutrition-outline' },
 ];
 
+const ALL_BUBBLE_POP_CATEGORIES = [
+  { id: 'Free Pop', title: 'Free Pop', icon: 'disc-outline' },
+  { id: 'Color Pop', title: 'Color Pop', icon: 'color-palette-outline' },
+];
+
 export default function ClassScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
@@ -1056,22 +1061,33 @@ const handleSaveClassEdit = async () => {
             </View>
 
             {/* Top-Level Activity Types */}
-            <View className="flex-row gap-2 my-3 bg-[#F3F4F6] p-1.5 rounded-2xl">
-              {['tracing', 'matching', 'sound'].map((type) => {
+            <View className="flex-row gap-1.5 my-3 bg-[#F3F4F6] p-1.5 rounded-2xl">
+              {['tracing', 'matching', 'bubble-pop', 'sound'].map((type) => {
                 const isSelected = activeActivityType === type;
-                const label = type === 'tracing' ? 'Tracing' : type === 'matching' ? 'Matching' : 'Sound';
+                const label =
+                  type === 'tracing'
+                    ? 'Tracing'
+                    : type === 'matching'
+                    ? 'Matching'
+                    : type === 'bubble-pop'
+                    ? 'Bubble Pop'
+                    : 'Sound';
                 return (
                   <Pressable
                     key={type}
                     onPress={() => {
                       setActiveActivityType(type);
                     }}
-                    className={`flex-1 py-2.5 px-2 rounded-xl items-center justify-center border-b-[3px] ${isSelected
+                    className={`flex-1 py-2.5 px-1 rounded-xl items-center justify-center border-b-[3px] ${isSelected
                       ? 'bg-white border-[#62A9E6]'
                       : 'bg-transparent border-transparent'
                       }`}
                   >
-                    <Text className={`font-fredoka-regular text-sm ${isSelected ? 'text-[#62A9E6]' : 'text-[#6B7280]'}`}>
+                    <Text
+                      className={`font-fredoka-regular text-xs text-center ${isSelected ? 'text-[#62A9E6]' : 'text-[#6B7280]'}`}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                    >
                       {label}
                       {type === 'sound' && ' (Soon)'}
                     </Text>
@@ -1080,13 +1096,18 @@ const handleSaveClassEdit = async () => {
               })}
             </View>
 
-            {activeActivityType === 'tracing' || activeActivityType === 'matching' ? (
+            {activeActivityType === 'tracing' || activeActivityType === 'matching' || activeActivityType === 'bubble-pop' ? (
               <ScrollView className="flex-1 mb-4" showsVerticalScrollIndicator={false}>
                 <Text className="font-quicksand-bold text-[#4B5563] text-sm mb-3 px-1">
                   Tap a category to assign the full set to this student
                 </Text>
                 <View className="flex-row flex-wrap justify-between gap-y-3">
-                  {(activeActivityType === 'tracing' ? ALL_TRACING_CATEGORIES : ALL_MATCHING_CATEGORIES).map((cat) => {
+                  {(activeActivityType === 'tracing'
+                    ? ALL_TRACING_CATEGORIES
+                    : activeActivityType === 'matching'
+                    ? ALL_MATCHING_CATEGORIES
+                    : ALL_BUBBLE_POP_CATEGORIES
+                  ).map((cat) => {
                     const isSelected = selectedActivityPaths.includes(cat.id);
                     return (
                       <Pressable

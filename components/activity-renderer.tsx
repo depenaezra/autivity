@@ -1,6 +1,7 @@
 import { TracingActivity } from '@/activities/tracing';
 import React from 'react';
 import DragDropActivity from '@/activities/drag-drop/components/dragdrop-activity';
+import BubbleActivity from '@/activities/bubble-pop/components/bubble-activity';
 
 type ActivityRendererProps = {
     activity: any;
@@ -10,8 +11,20 @@ type ActivityRendererProps = {
 };
 
 export default function ActivityRenderer({ activity, onComplete, onFeedback, onIncorrectAttempt }: ActivityRendererProps) {
-    // Read the 'type' string from the database/data
-    switch (activity.type) {
+    const activityType = (activity.type || activity.content_data?.type || '').toLowerCase();
+
+    if (activityType.includes('bubble')) {
+        return (
+            <BubbleActivity
+                contentData={activity.content_data}
+                onComplete={onComplete}
+                onFeedback={onFeedback}
+                onIncorrectAttempt={onIncorrectAttempt}
+            />
+        );
+    }
+
+    switch (activityType) {
         case 'tracing':
             // Pass the specific data into your reusable engine
             return (
@@ -23,6 +36,7 @@ export default function ActivityRenderer({ activity, onComplete, onFeedback, onI
             );
 
         case 'drag-and-drop':
+        case 'dragdrop':
             return (
                 <DragDropActivity
                     contentData={activity.content_data}

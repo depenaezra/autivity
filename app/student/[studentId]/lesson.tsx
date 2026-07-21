@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import SetManager from '@/components/set-manager';
 import { getActivitiesBySubcategories, getDefaultActivities } from '@/src/services/materials';
 import { getStudentById } from '@/src/services/students';
+import { supabase } from '@/src/lib/supabase';
 
 export default function LessonScreen() {
     const params = useLocalSearchParams();
@@ -46,20 +47,38 @@ export default function LessonScreen() {
                     pool = await getActivitiesBySubcategories(subcategories);
                 }
                 if (!pool || pool.length === 0) {
-                    pool = await getDefaultActivities(20);
+                    if (activityType === 'bubble' || activityType === 'bubble-pop') {
+                        const { data } = await supabase
+                            .from('activities')
+                            .select('*')
+                            .ilike('category', '%bubble%');
+                        pool = data || [];
+                    }
+                    if (!pool || pool.length === 0) {
+                        pool = await getDefaultActivities(50);
+                    }
                 }
 
-                // Filter pool by activityType if specified to prevent leakage of unassigned matching/tracing tasks
+                // Filter pool by activityType if specified to prevent leakage of unassigned tasks
                 if (activityType === 'tracing') {
                     pool = pool.filter(a => {
                         const path = a.path || '';
                         const isDragDrop = path.includes('drag-drop') || a.category?.toLowerCase().includes('drag');
-                        return !isDragDrop;
+                        const isBubble = path.includes('bubble') || a.category?.toLowerCase().includes('bubble') || a.sub_category?.toLowerCase().includes('pop');
+                        return !isDragDrop && !isBubble;
                     });
                 } else if (activityType === 'matching') {
                     pool = pool.filter(a => {
                         const path = a.path || '';
                         return path.includes('drag-drop') || a.category?.toLowerCase().includes('drag');
+                    });
+                } else if (activityType === 'bubble' || activityType === 'bubble-pop') {
+                    pool = pool.filter(a => {
+                        const path = (a.path || '').toLowerCase();
+                        const cat = (a.category || '').toLowerCase();
+                        const sub = (a.sub_category || '').toLowerCase();
+                        const type = (a.type || a.content_data?.type || '').toLowerCase();
+                        return path.includes('bubble') || cat.includes('bubble') || sub.includes('pop') || type.includes('bubble');
                     });
                 }
 
@@ -85,12 +104,20 @@ export default function LessonScreen() {
                         fallback = fallback.filter(a => {
                             const path = a.path || '';
                             const isDragDrop = path.includes('drag-drop') || a.category?.toLowerCase().includes('drag');
-                            return !isDragDrop;
+                            const isBubble = path.includes('bubble') || a.category?.toLowerCase().includes('bubble') || a.sub_category?.toLowerCase().includes('pop');
+                            return !isDragDrop && !isBubble;
                         });
                     } else if (activityType === 'matching') {
                         fallback = fallback.filter(a => {
                             const path = a.path || '';
                             return path.includes('drag-drop') || a.category?.toLowerCase().includes('drag');
+                        });
+                    } else if (activityType === 'bubble' || activityType === 'bubble-pop') {
+                        fallback = fallback.filter(a => {
+                            const path = a.path || '';
+                            const cat = a.category?.toLowerCase() || '';
+                            const sub = a.sub_category?.toLowerCase() || '';
+                            return path.includes('bubble') || cat.includes('bubble') || sub.includes('pop') || a.type === 'bubble-pop';
                         });
                     }
                     setActivityPool(fallback);

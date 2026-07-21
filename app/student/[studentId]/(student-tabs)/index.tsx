@@ -82,10 +82,22 @@ export default function StudentHome() {
         return path.toLowerCase() === 'matching fruits' || path.includes('drag-drop');
     };
 
+    const isBubblePath = (path: string) => {
+        const lower = path.toLowerCase();
+        return (
+            lower === 'free pop' ||
+            lower === 'color pop' ||
+            lower.includes('bubble') ||
+            lower.includes('pop')
+        );
+    };
+
     // Logic: Check if any tracing activity is assigned
     const hasTracingAssignment = assignedPaths.some(isTracingPath);
 
     const hasMatchingAssignment = assignedPaths.some(isMatchingPath);
+
+    const hasBubbleAssignment = assignedPaths.some(isBubblePath);
 
 
     // Derive recent activity subtitle from assigned paths
@@ -108,15 +120,17 @@ export default function StudentHome() {
         : null;
 
     // 2. PASS THE IDs TO THE LESSON ROUTE
-    const navigateToLesson = (activityType: 'tracing' | 'matching') => {
+    const navigateToLesson = (activityType: 'tracing' | 'matching' | 'bubble') => {
         const targetStudentId = (studentId as string) || '1';
         
         // Filter to only match the activityType
         const filteredPaths = assignedPaths.filter(path => {
             if (activityType === 'tracing') {
                 return isTracingPath(path);
-            } else {
+            } else if (activityType === 'matching') {
                 return isMatchingPath(path);
+            } else {
+                return isBubblePath(path);
             }
         });
 
@@ -308,6 +322,34 @@ export default function StudentHome() {
                                                 >
                                                     <Ionicons name="play" size={isTablet ? 18 : 14} color="#F7890F" />
                                                     <Text className={`font-quicksand-bold ${isTablet ? 'text-xl' : 'text-sm'}`} style={{ color: '#F7890F' }}>Start</Text>
+                                                </View>
+                                            </View>
+                                        </View>
+                                    </Pressable>
+                                )}
+
+                                {/* Bubble Pop Activity Card - Only shown if assigned */}
+                                {hasBubbleAssignment && (
+                                    <Pressable
+                                        onPress={() => navigateToLesson('bubble')}
+                                        className={`bg-white overflow-hidden ${isTablet
+                                            ? 'w-[440px] h-[320px] rounded-[24px] border-[3px] border-b-[6px]'
+                                            : 'w-[280px] h-[240px] rounded-[18px] border-[2px] border-b-[5px]'
+                                            }`}
+                                        style={{ borderColor: '#62A9E6', borderBottomColor: '#4A90D9' }}
+                                    >
+                                        <View className="w-full h-[60%] bg-[#F0F9FF] items-center justify-center">
+                                            <Ionicons name="disc-outline" size={isTablet ? 64 : 48} color="#62A9E6" />
+                                        </View>
+                                        <View className={`flex-1 justify-center bg-white ${isTablet ? 'px-6 py-4' : 'px-4 py-3'}`}>
+                                            <View className="flex-row items-center justify-between w-full">
+                                                <Text className={`font-quicksand-bold text-[#4B5563] ${isTablet ? 'text-4xl' : 'text-3xl'}`}>Bubble Pop</Text>
+                                                <View
+                                                    className={`flex-row items-center justify-center border-[2px] rounded-full ${isTablet ? 'px-6 py-2 gap-2' : 'px-4 py-1.5 gap-1'}`}
+                                                    style={{ borderColor: '#62A9E6', backgroundColor: '#F0F9FF' }}
+                                                >
+                                                    <Ionicons name="play" size={isTablet ? 18 : 14} color="#62A9E6" />
+                                                    <Text className={`font-quicksand-bold ${isTablet ? 'text-xl' : 'text-sm'}`} style={{ color: '#62A9E6' }}>Start</Text>
                                                 </View>
                                             </View>
                                         </View>

@@ -39,10 +39,15 @@ export const getActivitiesByPaths = async (paths: string[]) => {
 export const getActivitiesBySubcategories = async (subcategories: string[]) => {
     if (!subcategories || subcategories.length === 0) return [];
 
+    // Search across sub_category, path, and category columns
+    const orFilter = subcategories
+        .map((s) => `sub_category.eq."${s}",path.eq."${s}",category.eq."${s}"`)
+        .join(",");
+
     const { data, error } = await supabase
         .from('activities')
         .select('*')
-        .in('sub_category', subcategories);
+        .or(orFilter);
 
     if (error) {
         console.error('Error fetching activities by subcategory:', error);
