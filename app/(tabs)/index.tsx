@@ -2,7 +2,8 @@ import { Feather, Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 // [MODIFIED] Added ActivityIndicator and Alert
-import { ActivityIndicator, Alert, Animated, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, View, useWindowDimensions } from "react-native";
+import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, View, useWindowDimensions } from "react-native";
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 // [ADDED] Import your new services
@@ -88,7 +89,11 @@ export default function TeacherHome() {
   // Stats
   const [stats, setStats] = useState({ students: 0, classes: 0, lessons: 0 });
   const [isAddClassModalVisible, setAddClassModalVisible] = useState(false);
-  const slideAnim = useRef(new Animated.Value(600)).current;
+  const slideAnim = useSharedValue(600);
+
+  const modalAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: slideAnim.value }],
+  }));
 
   useEffect(() => {
     const loadStats = async () => {
@@ -142,13 +147,11 @@ export default function TeacherHome() {
 
   useEffect(() => {
     if (isAddClassModalVisible) {
-      slideAnim.setValue(600);
-      Animated.spring(slideAnim, {
-        toValue: 0,
-        useNativeDriver: true,
-        damping: 20,
-        stiffness: 150,
-      }).start();
+      slideAnim.value = 600;
+      slideAnim.value = withTiming(0, {
+        duration: 250,
+        easing: Easing.out(Easing.quad),
+      });
     }
   }, [isAddClassModalVisible]);
 
@@ -419,7 +422,7 @@ export default function TeacherHome() {
         >
           <Pressable className="flex-1" onPress={() => setAddClassModalVisible(false)} />
           <Animated.View
-            style={{ transform: [{ translateY: slideAnim }] }}
+            style={modalAnimatedStyle}
             className={`bg-white rounded-t-3xl p-6 ${isTablet ? 'h-[60%]' : 'h-[70%]'}`}
           >
             <View className="flex-row justify-between items-center mb-6">

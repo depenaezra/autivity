@@ -70,21 +70,17 @@ export const spawnInitialBubbles = ({
     const usableWidth = Math.max(80, screenWidth - margin);
     const laneWidth = usableWidth / Math.max(1, bubbleCount);
 
-    // Generate N distinct Y height tiers across visible screen (15% to 75% height)
-    const yTiers = Array.from({ length: bubbleCount }, (_, i) => {
-        const base = screenHeight * 0.15 + (i * (screenHeight * 0.6)) / Math.max(1, bubbleCount - 1);
-        return base + (Math.random() * 30 - 15);
-    });
-
-    // Fisher-Yates shuffle Y tiers to pair randomly with X lanes
-    for (let i = yTiers.length - 1; i > 0; i--) {
+    const lanes = Array.from({ length: bubbleCount }, (_, i) => i);
+    for (let i = lanes.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
-        [yTiers[i], yTiers[j]] = [yTiers[j], yTiers[i]];
+        [lanes[i], lanes[j]] = [lanes[j], lanes[i]];
     }
 
     return Array.from({ length: bubbleCount }, (_, i) => {
-        const x = i * laneWidth + Math.random() * (laneWidth * 0.5) + 10;
-        const y = yTiers[i];
+        const lane = lanes[i];
+        const x = lane * laneWidth + Math.random() * (laneWidth * 0.5) + 10;
+        // Start all initial bubbles below screenHeight, staggered so they float up from outside view
+        const y = screenHeight + 15 + (i * 75) + (Math.random() * 20);
 
         return {
             id: Date.now().toString() + Math.random() + i,
@@ -118,7 +114,7 @@ export const spawnBubble = ({
     // Pick best x coordinate that maximizes distance from existing bubbles near bottom
     let bestX = Math.random() * usableWidth + 10;
     let maxMinDist = -1;
-    const candY = screenHeight + 35;
+    const candY = screenHeight + 15;
 
     for (let attempt = 0; attempt < 8; attempt++) {
         const candX = Math.random() * usableWidth + 10;
@@ -140,7 +136,7 @@ export const spawnBubble = ({
     return {
         id: Date.now().toString() + Math.random(),
         x: bestX,
-        y: candY + Math.random() * 25,
+        y: candY + Math.random() * 20,
         speed,
         content: createContent({
             availableColors,

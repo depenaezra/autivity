@@ -45,18 +45,33 @@ export default function BubbleActivity({
     const distractorColors = contentData?.distractor_colors || ["white"];
 
     const [poppedCount, setPoppedCount] = useState(0);
-    const [mistakes, setMistakes] = useState(0);
     const [isCompleted, setIsCompleted] = useState(false);
+    const mistakesRef = useRef(0);
     const startTimeRef = useRef<number>(Date.now());
+    const completionDetailsRef = useRef<{ score: number; timeSpent: number; mistakes: number } | null>(null);
+    const feedbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
         startTimeRef.current = Date.now();
+        mistakesRef.current = 0;
         setPoppedCount(0);
-        setMistakes(0);
         setIsCompleted(false);
+        completionDetailsRef.current = null;
+
+        if (feedbackTimeoutRef.current) {
+            clearTimeout(feedbackTimeoutRef.current);
+        }
     }, [contentData]);
 
-    const { bubbles, popBubble, recycleBubble } = useBubbleField({
+    useEffect(() => {
+        return () => {
+            if (feedbackTimeoutRef.current) {
+                clearTimeout(feedbackTimeoutRef.current);
+            }
+        };
+    }, []);
+
+    const { bubbles, popBubble, removeBubble, recycleBubble } = useBubbleField({
         bubbleCount,
         speed,
         availableColors,
@@ -65,10 +80,11 @@ export default function BubbleActivity({
     });
 
     const handleUserPop = (id: string) => {
+        if (isCompleted || poppedCount >= targetCount) return;
         const poppedBubble = bubbles.find((b) => b.id === id);
-        popBubble(id);
 
-        if (isCompleted) return;
+        // Immediately spawn replacement bubble so there is zero delay / white screen
+        popBubble(id);
 
         if (mode === "color" && targetColor) {
             if (poppedBubble?.content.color === targetColor) {
@@ -76,15 +92,24 @@ export default function BubbleActivity({
                 setPoppedCount(nextCount);
 
                 if (nextCount >= targetCount) {
-                    setIsCompleted(true);
                     const timeSpent = Math.max(1, Math.round((Date.now() - startTimeRef.current) / 1000));
-                    const score = Math.max(10, (targetCount * 10) - (mistakes * 5));
-                    onComplete?.(score, timeSpent, mistakes);
+                    const finalMistakes = mistakesRef.current;
+                    const score = Math.max(10, (targetCount * 10) - (finalMistakes * 5));
+                    completionDetailsRef.current = { score, timeSpent, mistakes: finalMistakes };
                 }
             } else {
-                setMistakes((prev) => prev + 1);
+                mistakesRef.current += 1;
                 onIncorrectAttempt?.();
+
+                if (feedbackTimeoutRef.current) {
+                    clearTimeout(feedbackTimeoutRef.current);
+                }
+
                 onFeedback?.(`Not quite! Pop the ${targetColor} bubbles!`);
+
+                feedbackTimeoutRef.current = setTimeout(() => {
+                    onFeedback?.(contentData?.instruction || (targetColor ? `Pop the ${targetColor} bubbles!` : "Let's play!"));
+                }, 3500);
             }
         } else {
             // Free Pop mode
@@ -92,11 +117,20 @@ export default function BubbleActivity({
             setPoppedCount(nextCount);
 
             if (nextCount >= targetCount) {
-                setIsCompleted(true);
                 const timeSpent = Math.max(1, Math.round((Date.now() - startTimeRef.current) / 1000));
                 const score = targetCount * 10;
-                onComplete?.(score, timeSpent, 0);
+                completionDetailsRef.current = { score, timeSpent, mistakes: 0 };
             }
+        }
+    };
+
+    const handlePopFinished = (id: string) => {
+        removeBubble(id);
+
+        if (completionDetailsRef.current && !isCompleted) {
+            setIsCompleted(true);
+            const { score, timeSpent, mistakes: finalMistakes } = completionDetailsRef.current;
+            onComplete?.(score, timeSpent, finalMistakes);
         }
     };
 
@@ -120,6 +154,7 @@ export default function BubbleActivity({
                     bubbles={bubbles}
                     scale={bubbleScale}
                     onPop={handleUserPop}
+                    onPopFinished={handlePopFinished}
                     onRecycle={handleRecycle}
                 />
             )}

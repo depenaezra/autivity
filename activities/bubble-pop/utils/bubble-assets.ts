@@ -8,4 +8,8 @@ export const bubbleAssets = {
     green: require("../../../assets/images/activities/bubble-pop/bubble-green.png"),
 } as const;
 
-export type BubbleColor = keyof typeof bubbleAssets;
+export const bubbleSounds = {
+    pop: require("../../../assets/sounds/bubble-pop-sound.mp3"),
+} as const;
+
+export type BubbleColor = keyof typeof bubbleAssets;

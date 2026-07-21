@@ -1,7 +1,8 @@
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Animated, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DateTimePicker from "@react-native-community/datetimepicker";
 import BlueHeaderSvg from '../../assets/images/class-headers/blue-header.svg';
@@ -9,6 +10,7 @@ import GreenHeaderSvg from '../../assets/images/class-headers/green-header.svg';
 import OrangeHeaderSvg from '../../assets/images/class-headers/orange-header.svg';
 import YellowHeaderSvg from '../../assets/images/class-headers/yellow-header.svg';
 import { Picker } from "@react-native-picker/picker";
+import { AssignActivitiesModal } from '../../components/assign-activities-modal';
 import {
   getClassById,
   getTeacherClasses,
@@ -76,24 +78,7 @@ const themeColors = [
   { name: 'green', value: '#86EFAC', shadow: '#4ADE80' },
 ];
 
-// Each category maps to a sub_category value in the DB activities table.
-// Teachers assign whole subcategories — not individual activity paths.
-const ALL_TRACING_CATEGORIES = [
-  { id: 'Lines',   title: 'Lines Tracing',   icon: 'create-outline' },
-  { id: 'Shapes',  title: 'Shapes Tracing',  icon: 'shapes-outline' },
-  { id: 'Letters', title: 'Letters Tracing', icon: 'text-outline' },
-  { id: 'Numbers', title: 'Numbers Tracing', icon: 'calculator-outline' },
-];
 
-const ALL_MATCHING_CATEGORIES = [
-  // id must match the sub_category value stored in the DB
-  { id: 'Matching Fruits', title: 'Fruits Matching', icon: 'nutrition-outline' },
-];
-
-const ALL_BUBBLE_POP_CATEGORIES = [
-  { id: 'Free Pop', title: 'Free Pop', icon: 'disc-outline' },
-  { id: 'Color Pop', title: 'Color Pop', icon: 'color-palette-outline' },
-];
 
 export default function ClassScreen() {
   const router = useRouter();
@@ -187,11 +172,12 @@ const [newStudentName, setNewStudentName] = useState("");
 
   // State for Assign Activities Modal
   const [isAssignModalVisible, setAssignModalVisible] = useState(false);
-  const [activeActivityType, setActiveActivityType] = useState('tracing');
-  const [selectedActivityPaths, setSelectedActivityPaths] = useState<string[]>([]);
-  const [isSavingActivities, setIsSavingActivities] = useState(false);
 
-  const slideAnim = useRef(new Animated.Value(600)).current;
+  const slideAnim = useSharedValue(600);
+
+  const modalAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: slideAnim.value }],
+  }));
 
   const fetchStudents = async () => {
     try {
@@ -208,13 +194,11 @@ const [newStudentName, setNewStudentName] = useState("");
   // Modal animation logic
   useEffect(() => {
     if (isAddStudentModalVisible || isEditClassModalVisible || isMoveModalVisible || isAssignModalVisible) {
-      slideAnim.setValue(600);
-      Animated.spring(slideAnim, {
-        toValue: 0,
-        useNativeDriver: true,
-        damping: 20,
-        stiffness: 150,
-      }).start();
+      slideAnim.value = 600;
+      slideAnim.value = withTiming(0, {
+        duration: 250,
+        easing: Easing.out(Easing.quad),
+      });
     }
   }, [isAddStudentModalVisible, isEditClassModalVisible, isMoveModalVisible, isAssignModalVisible]);
 
@@ -377,33 +361,20 @@ const handleSaveClassEdit = async () => {
   const handleOpenAssignActivities = () => {
     const studentObj = students.find(s => s.id === selectedStudent);
     if (!studentObj) return;
-    const currentAssigned = studentObj.assigned_activities || [];
-    setSelectedActivityPaths([...currentAssigned]);
-    setActiveActivityType('tracing');
     setAssignModalVisible(true);
   };
 
-  // Handle saving assigned activities — unchanged, saves array of subcategory IDs
-  const handleSaveAssignedActivities = async () => {
+  // Handle saving assigned activities
+  const handleSaveAssignedActivities = async (newPaths: string[]) => {
     if (!selectedStudent) return;
-    setIsSavingActivities(true);
     try {
-      await updateStudentActivities(selectedStudent, selectedActivityPaths);
+      await updateStudentActivities(selectedStudent, newPaths);
       await fetchStudents();
       setAssignModalVisible(false);
       Alert.alert("Success", "Assigned activities updated!");
     } catch (error: any) {
       Alert.alert("Error saving activities", error.message);
-    } finally {
-      setIsSavingActivities(false);
     }
-  };
-
-  // Toggle a whole subcategory on/off (replaces per-activity toggles)
-  const toggleSubcategory = (id: string) => {
-    setSelectedActivityPaths(prev =>
-      prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]
-    );
   };
 
   // Open Move Student Modal
@@ -614,41 +585,41 @@ const handleSaveClassEdit = async () => {
       >
         {selectedStudent && selectedStudentObj ? (
           <View className="bg-white border border-[#E5E7EB] rounded-3xl p-4 shadow-md">
-            <View className="flex-row items-center justify-between mb-3 px-2">
-              <Text className="font-quicksand-bold text-[#4B5563] text-base">
+            <View className="flex-row items-center justify-between mb-4 px-2">
+              <Text className={`font-quicksand-bold text-[#4B5563] ${isTablet ? 'text-2xl' : 'text-xl'}`}>
                 Selected: <Text style={{ color: themeConfig.darkThemeColor }}>{selectedStudentObj.name}</Text>
               </Text>
-              <Pressable onPress={() => setSelectedStudent(null)} className="p-1">
-                <Text className="font-quicksand-medium text-[#9CA3AF] text-xs">Deselect</Text>
+              <Pressable onPress={() => setSelectedStudent(null)} className="px-3.5 py-1.5 bg-[#F3F4F6] rounded-full active:opacity-70">
+                <Text className={`font-quicksand-bold text-[#6B7280] ${isTablet ? 'text-base' : 'text-sm'}`}>Deselect</Text>
               </Pressable>
             </View>
 
             {/* Action Buttons Row */}
-            <View className="flex-row gap-2 mb-3">
+            <View className="flex-row gap-2.5 mb-3.5">
               <Pressable
                 onPress={handleOpenAssignActivities}
-                className="flex-1 bg-[#EFF6FF] border border-[#BFDBFE] py-2.5 rounded-2xl items-center justify-center flex-row gap-1.5"
+                className={`flex-1 bg-[#EFF6FF] border border-[#BFDBFE] ${isTablet ? 'py-4 rounded-2xl gap-2' : 'py-3.5 rounded-xl gap-1.5'} items-center justify-center flex-row`}
               >
-                <Ionicons name="list" size={16} color="#2563EB" />
-                <Text className="font-quicksand-bold text-[#2563EB] text-xs">
+                <Ionicons name="list" size={isTablet ? 22 : 18} color="#2563EB" />
+                <Text className={`font-quicksand-bold text-[#2563EB] ${isTablet ? 'text-lg' : 'text-sm'}`}>
                   Assign ({selectedStudentObj.assigned_activities?.length || 0})
                 </Text>
               </Pressable>
 
               <Pressable
                 onPress={handleOpenMoveStudent}
-                className="flex-1 bg-[#FDF4FF] border border-[#F5D0FE] py-2.5 rounded-2xl items-center justify-center flex-row gap-1.5"
+                className={`flex-1 bg-[#FDF4FF] border border-[#F5D0FE] ${isTablet ? 'py-4 rounded-2xl gap-2' : 'py-3.5 rounded-xl gap-1.5'} items-center justify-center flex-row`}
               >
-                <Ionicons name="swap-horizontal" size={16} color="#C084FC" />
-                <Text className="font-quicksand-bold text-[#C084FC] text-xs">Move Class</Text>
+                <Ionicons name="swap-horizontal" size={isTablet ? 22 : 18} color="#C084FC" />
+                <Text className={`font-quicksand-bold text-[#C084FC] ${isTablet ? 'text-lg' : 'text-sm'}`}>Move Class</Text>
               </Pressable>
 
               <Pressable
                 onPress={handleDeleteStudent}
-                className="bg-[#FEF2F2] border border-[#FECACA] px-3.5 py-2.5 rounded-2xl items-center justify-center flex-row gap-1"
+                className={`bg-[#FEF2F2] border border-[#FECACA] ${isTablet ? 'py-4 px-5 rounded-2xl gap-2' : 'py-3.5 px-3.5 rounded-xl gap-1.5'} items-center justify-center flex-row`}
               >
-                <Ionicons name="trash-outline" size={16} color="#EF4444" />
-                <Text className="font-quicksand-bold text-[#EF4444] text-xs">Delete</Text>
+                <Ionicons name="trash-outline" size={isTablet ? 22 : 18} color="#EF4444" />
+                <Text className={`font-quicksand-bold text-[#EF4444] ${isTablet ? 'text-lg' : 'text-sm'}`}>Delete</Text>
               </Pressable>
             </View>
 
@@ -701,7 +672,7 @@ const handleSaveClassEdit = async () => {
         >
           <Pressable className="flex-1" onPress={() => setAddStudentModalVisible(false)} />
           <Animated.View
-            style={{ transform: [{ translateY: slideAnim }] }}
+            style={modalAnimatedStyle}
             className={`bg-white rounded-t-3xl p-6 ${isTablet ? 'h-[60%]' : 'h-[75%]'}`}
           >
             <View className="flex-row justify-between items-center mb-6">
@@ -780,7 +751,7 @@ const handleSaveClassEdit = async () => {
         >
           <Pressable className="flex-1" onPress={() => setEditClassModalVisible(false)} />
           <Animated.View
-            style={{ transform: [{ translateY: slideAnim }] }}
+            style={modalAnimatedStyle}
             className={`bg-white rounded-t-3xl p-6 ${isTablet ? 'h-[60%]' : 'h-[75%]'}`}
           >
             <View className="flex-row justify-between items-center mb-6">
@@ -965,27 +936,27 @@ const handleSaveClassEdit = async () => {
         <View className="flex-1 justify-end bg-black/50">
           <Pressable className="flex-1" onPress={() => setMoveModalVisible(false)} />
           <Animated.View
-            style={{ transform: [{ translateY: slideAnim }] }}
+            style={modalAnimatedStyle}
             className={`bg-white rounded-t-3xl p-6 ${isTablet ? 'h-[50%]' : 'h-[60%]'}`}
           >
             <View className="flex-row justify-between items-center mb-4">
-              <Text className="font-fredoka-one text-2xl text-[#4B5563]">
+              <Text className={`font-fredoka-one text-[#4B5563] ${isTablet ? 'text-4xl' : 'text-2xl'}`}>
                 Move {selectedStudentObj?.name}
               </Text>
               <Pressable onPress={() => setMoveModalVisible(false)} className="p-2">
-                <Feather name="x" size={24} color="#9CA3AF" />
+                <Feather name="x" size={isTablet ? 32 : 24} color="#9CA3AF" />
               </Pressable>
             </View>
 
-            <Text className="font-quicksand-medium text-sm text-[#6B7280] mb-4">
+            <Text className={`font-quicksand-medium text-[#6B7280] mb-4 ${isTablet ? 'text-xl' : 'text-sm'}`}>
               Select another class below to move this student:
             </Text>
 
             <ScrollView className="flex-1 mb-4" showsVerticalScrollIndicator={false}>
               {availableClasses.length === 0 ? (
                 <View className="py-8 items-center justify-center">
-                  <Ionicons name="folder-open-outline" size={40} color="#9CA3AF" />
-                  <Text className="font-quicksand-medium text-[#9CA3AF] text-center mt-2">
+                  <Ionicons name="folder-open-outline" size={isTablet ? 56 : 40} color="#9CA3AF" />
+                  <Text className={`font-quicksand-medium text-[#9CA3AF] text-center mt-2 ${isTablet ? 'text-xl' : 'text-base'}`}>
                     No other classes available. Create another class first!
                   </Text>
                 </View>
@@ -996,23 +967,23 @@ const handleSaveClassEdit = async () => {
                     <Pressable
                       key={item.id}
                       onPress={() => setSelectedTargetClassId(item.id)}
-                      className={`flex-row items-center justify-between p-4 rounded-2xl border-2 mb-3 ${isChosen ? 'bg-[#EFF6FF] border-[#3B82F6]' : 'bg-[#F9FAFB] border-[#E5E7EB]'}`}
+                      className={`flex-row items-center justify-between ${isTablet ? 'p-6 rounded-3xl border-2 mb-4' : 'p-4 rounded-2xl border-2 mb-3'} ${isChosen ? 'bg-[#EFF6FF] border-[#3B82F6]' : 'bg-[#F9FAFB] border-[#E5E7EB]'}`}
                     >
                       <View className="flex-row items-center gap-3">
-                        <View className="w-10 h-10 rounded-full bg-[#E5E7EB] items-center justify-center">
-                          <Ionicons name="school" size={20} color="#6B7280" />
+                        <View className={`rounded-full bg-[#E5E7EB] items-center justify-center ${isTablet ? 'w-14 h-14' : 'w-10 h-10'}`}>
+                          <Ionicons name="school" size={isTablet ? 28 : 20} color="#6B7280" />
                         </View>
                         <View>
-                          <Text className={`font-quicksand-bold text-base ${isChosen ? 'text-[#1D4ED8]' : 'text-[#4B5563]'}`}>
+                          <Text className={`font-quicksand-bold ${isChosen ? 'text-[#1D4ED8]' : 'text-[#4B5563]'} ${isTablet ? 'text-xl' : 'text-base'}`}>
                             {item.title}
                           </Text>
-                          <Text className="font-quicksand-medium text-xs text-[#6B7280]">
+                          <Text className={`font-quicksand-medium text-[#6B7280] ${isTablet ? 'text-base mt-0.5' : 'text-xs'}`}>
                             {item.grade || 'Grade 1'} {item.schedule ? `• ${item.schedule}` : ''}
                           </Text>
                         </View>
                       </View>
-                      <View className={`w-6 h-6 rounded-full border-2 items-center justify-center ${isChosen ? 'border-[#3B82F6] bg-[#3B82F6]' : 'border-[#D1D5DB]'}`}>
-                        {isChosen && <Ionicons name="checkmark" size={14} color="white" />}
+                      <View className={`rounded-full border-2 items-center justify-center ${isTablet ? 'w-8 h-8' : 'w-6 h-6'} ${isChosen ? 'border-[#3B82F6] bg-[#3B82F6]' : 'border-[#D1D5DB]'}`}>
+                        {isChosen && <Ionicons name="checkmark" size={isTablet ? 18 : 14} color="white" />}
                       </View>
                     </Pressable>
                   );
@@ -1023,12 +994,12 @@ const handleSaveClassEdit = async () => {
             <Pressable
               onPress={handleConfirmMoveStudent}
               disabled={!selectedTargetClassId || isMovingStudent}
-              className={`py-4 rounded-xl items-center ${selectedTargetClassId && !isMovingStudent ? 'bg-[#3B82F6]' : 'bg-[#E5E7EB]'}`}
+              className={`w-full flex items-center justify-center border-b-[4px] ${isTablet ? 'h-[64px] rounded-2xl' : 'h-[52px] rounded-xl'} ${selectedTargetClassId && !isMovingStudent ? 'bg-[#3B82F6] border-[#2563EB]' : 'bg-[#E5E7EB] border-[#D1D5DB]'}`}
             >
               {isMovingStudent ? (
                 <ActivityIndicator color="white" />
               ) : (
-                <Text className="font-quicksand-bold text-white text-lg">Move to Selected Class</Text>
+                <Text className={`font-fredoka-regular text-white ${isTablet ? 'text-2xl' : 'text-lg'}`}>Move to Selected Class</Text>
               )}
             </Pressable>
           </Animated.View>
@@ -1036,145 +1007,15 @@ const handleSaveClassEdit = async () => {
       </Modal>
 
       {/* ASSIGN ACTIVITIES MODAL */}
-      <Modal
+      <AssignActivitiesModal
         visible={isAssignModalVisible}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setAssignModalVisible(false)}
-      >
-        <View className="flex-1 justify-end bg-black/50">
-          <Pressable className="flex-1" onPress={() => setAssignModalVisible(false)} />
-          <Animated.View
-            style={{ transform: [{ translateY: slideAnim }] }}
-            className={`bg-white rounded-t-3xl p-6 ${isTablet ? 'h-[80%]' : 'h-[88%]'}`}
-          >
-            <View className="flex-row justify-between items-center mb-2">
-              <View>
-                <Text className="font-fredoka-one text-2xl text-[#4B5563]">Assign Activities</Text>
-                <Text className="font-quicksand-medium text-sm text-[#6B7280]">
-                  Student: <Text className="font-quicksand-bold text-[#62A9E6]">{selectedStudentObj?.name}</Text> ({selectedActivityPaths.length} selected)
-                </Text>
-              </View>
-              <Pressable onPress={() => setAssignModalVisible(false)} className="p-2">
-                <Feather name="x" size={24} color="#9CA3AF" />
-              </Pressable>
-            </View>
-
-            {/* Top-Level Activity Types */}
-            <View className="flex-row gap-1.5 my-3 bg-[#F3F4F6] p-1.5 rounded-2xl">
-              {['tracing', 'matching', 'bubble-pop', 'sound'].map((type) => {
-                const isSelected = activeActivityType === type;
-                const label =
-                  type === 'tracing'
-                    ? 'Tracing'
-                    : type === 'matching'
-                    ? 'Matching'
-                    : type === 'bubble-pop'
-                    ? 'Bubble Pop'
-                    : 'Sound';
-                return (
-                  <Pressable
-                    key={type}
-                    onPress={() => {
-                      setActiveActivityType(type);
-                    }}
-                    className={`flex-1 py-2.5 px-1 rounded-xl items-center justify-center border-b-[3px] ${isSelected
-                      ? 'bg-white border-[#62A9E6]'
-                      : 'bg-transparent border-transparent'
-                      }`}
-                  >
-                    <Text
-                      className={`font-fredoka-regular text-xs text-center ${isSelected ? 'text-[#62A9E6]' : 'text-[#6B7280]'}`}
-                      numberOfLines={1}
-                      adjustsFontSizeToFit
-                    >
-                      {label}
-                      {type === 'sound' && ' (Soon)'}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-
-            {activeActivityType === 'tracing' || activeActivityType === 'matching' || activeActivityType === 'bubble-pop' ? (
-              <ScrollView className="flex-1 mb-4" showsVerticalScrollIndicator={false}>
-                <Text className="font-quicksand-bold text-[#4B5563] text-sm mb-3 px-1">
-                  Tap a category to assign the full set to this student
-                </Text>
-                <View className="flex-row flex-wrap justify-between gap-y-3">
-                  {(activeActivityType === 'tracing'
-                    ? ALL_TRACING_CATEGORIES
-                    : activeActivityType === 'matching'
-                    ? ALL_MATCHING_CATEGORIES
-                    : ALL_BUBBLE_POP_CATEGORIES
-                  ).map((cat) => {
-                    const isSelected = selectedActivityPaths.includes(cat.id);
-                    return (
-                      <Pressable
-                        key={cat.id}
-                        onPress={() => toggleSubcategory(cat.id)}
-                        className={`w-[48%] p-4 rounded-2xl border-2 border-b-[4px] items-center justify-center gap-2 active:border-b-[2px] active:mt-[2px] ${
-                          isSelected
-                            ? 'bg-[#F0F9FF] border-[#62A9E6] border-b-[#4A90D9]'
-                            : 'bg-[#F9FAFB] border-[#E5E7EB] border-b-[#D1D5DB]'
-                        }`}
-                      >
-                        <View className={`w-12 h-12 rounded-full items-center justify-center ${
-                          isSelected ? 'bg-[#DBEAFE]' : 'bg-[#F3F4F6]'
-                        }`}>
-                          <Ionicons name={cat.icon as any} size={26} color={isSelected ? '#62A9E6' : '#9CA3AF'} />
-                        </View>
-                        <Text className={`font-quicksand-bold text-sm text-center ${
-                          isSelected ? 'text-[#62A9E6]' : 'text-[#4B5563]'
-                        }`}>
-                          {cat.title}
-                        </Text>
-                        {isSelected ? (
-                          <View className="bg-[#62A9E6] rounded-full px-2.5 py-0.5 flex-row items-center gap-1">
-                            <Ionicons name="checkmark" size={11} color="white" />
-                            <Text className="text-white text-[10px] font-quicksand-bold">Assigned</Text>
-                          </View>
-                        ) : (
-                          <View className="bg-[#F3F4F6] rounded-full px-2.5 py-0.5">
-                            <Text className="text-[#9CA3AF] text-[10px] font-quicksand-bold">Tap to assign</Text>
-                          </View>
-                        )}
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              </ScrollView>
-            ) : (
-              <View className="flex-1 items-center justify-center py-10 px-4">
-                <View className="w-16 h-16 bg-[#F0F9FF] rounded-full items-center justify-center mb-4 border-2 border-b-[4px] border-[#62A9E6]">
-                  <Ionicons name="lock-closed" size={28} color="#62A9E6" />
-                </View>
-                <Text className="font-fredoka-regular text-lg text-[#4B5563] text-center mb-1">
-                  {activeActivityType.charAt(0).toUpperCase() + activeActivityType.slice(1)} Activities
-                </Text>
-                <Text className="font-quicksand-medium text-sm text-[#6B7280] text-center">
-                  We are currently developing these games. Stay tuned for updates!
-                </Text>
-              </View>
-            )}
-
-            {/* Save Button */}
-            <Pressable
-              onPress={handleSaveAssignedActivities}
-              disabled={isSavingActivities}
-              className={`w-full flex items-center justify-center border-b-[4px] bg-[#62A9E6] border-[#5298D4] active:mt-[2px] active:border-b-[2px] ${isTablet ? 'h-[64px] rounded-2xl' : 'h-[52px] rounded-xl'}`}
-            >
-              {isSavingActivities ? (
-                <ActivityIndicator color="white" />
-              ) : (
-                <Text className="font-fredoka-regular text-white text-lg">
-                  Save Assigned Activities ({selectedActivityPaths.length})
-                </Text>
-              )}
-            </Pressable>
-          </Animated.View>
-        </View>
-      </Modal>
+        onClose={() => setAssignModalVisible(false)}
+        studentName={selectedStudentObj?.name}
+        initialAssignedActivities={selectedStudentObj?.assigned_activities || []}
+        onSave={handleSaveAssignedActivities}
+        slideAnim={slideAnim}
+        isTablet={isTablet}
+      />
 
     </View>
   );

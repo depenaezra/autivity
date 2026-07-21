@@ -47,6 +47,7 @@ export type BubbleProps = {
     scale?: number;
     content: BubbleContent;
     onPop: () => void;
+    onPopFinished?: () => void;
     onRecycle: () => void;
 };
 

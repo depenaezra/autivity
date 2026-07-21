@@ -12,11 +12,30 @@ import Animated, {
     withTiming,
 } from "react-native-reanimated";
 
+import { Audio } from "expo-av";
+
 import BubbleContent from "./bubble-content";
 
+import { bubbleSounds } from "../utils/bubble-assets";
 import { BubbleProps } from "../utils/types";
 
 const bubblePopAnimation = require("../../../assets/animations/bubble-pop.json");
+
+const playPopSound = async () => {
+    try {
+        const { sound } = await Audio.Sound.createAsync(
+            bubbleSounds.pop,
+            { shouldPlay: true }
+        );
+        sound.setOnPlaybackStatusUpdate((status) => {
+            if (status.isLoaded && status.didJustFinish) {
+                sound.unloadAsync();
+            }
+        });
+    } catch (error) {
+        // Ignore playback errors
+    }
+};
 
 export default function Bubble({
     x,
@@ -25,12 +44,15 @@ export default function Bubble({
     scale,
     content,
     onPop,
+    onPopFinished,
     onRecycle,
 }: BubbleProps) {
 
     const [isPopped, setIsPopped] = useState(false);
     const lottieRef = useRef<LottieView>(null);
-    const hasHandledRef = useRef(false);
+    const hasHandledRecycleRef = useRef(false);
+    const hasHandledPopRef = useRef(false);
+    const hasHandledFinishRef = useRef(false);
 
     // Deep clone Lottie JSON source so lottie-web mutations don't corrupt subsequent bubbles
     const lottieSource = useMemo(
@@ -41,15 +63,21 @@ export default function Bubble({
     const translateY = useSharedValue(y);
 
     const triggerRecycle = () => {
-        if (hasHandledRef.current) return;
-        hasHandledRef.current = true;
+        if (hasHandledRecycleRef.current || hasHandledPopRef.current) return;
+        hasHandledRecycleRef.current = true;
         onRecycle();
     };
 
     const triggerUserPop = () => {
-        if (hasHandledRef.current) return;
-        hasHandledRef.current = true;
+        if (hasHandledPopRef.current) return;
+        hasHandledPopRef.current = true;
         onPop();
+    };
+
+    const triggerPopFinished = () => {
+        if (hasHandledFinishRef.current) return;
+        hasHandledFinishRef.current = true;
+        onPopFinished?.();
     };
 
     useEffect(() => {
@@ -65,7 +93,7 @@ export default function Bubble({
                 easing: Easing.linear,
             },
             (finished) => {
-                if (finished && !hasHandledRef.current) {
+                if (finished && !hasHandledRecycleRef.current && !hasHandledPopRef.current) {
                     runOnJS(triggerRecycle)();
                 }
             }
@@ -77,9 +105,11 @@ export default function Bubble({
     }));
 
     const handleTap = () => {
-        if (isPopped || hasHandledRef.current) return;
+        if (isPopped || hasHandledPopRef.current || hasHandledRecycleRef.current) return;
         cancelAnimation(translateY);
         setIsPopped(true);
+        playPopSound();
+        triggerUserPop();
     };
 
     useEffect(() => {
@@ -88,7 +118,7 @@ export default function Bubble({
 
             // Safety fallback timer matching full 40 frame (~1333ms) animation duration + buffer
             const timer = setTimeout(() => {
-                triggerUserPop();
+                triggerPopFinished();
             }, 1400);
 
             return () => clearTimeout(timer);
@@ -127,7 +157,7 @@ export default function Bubble({
                         style={styles.lottie}
                         onAnimationFinish={(isCancelled) => {
                             if (!isCancelled) {
-                                triggerUserPop();
+                                triggerPopFinished();
                             }
                         }}
                     />

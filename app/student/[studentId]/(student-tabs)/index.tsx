@@ -336,20 +336,24 @@ export default function StudentHome() {
                                             ? 'w-[440px] h-[320px] rounded-[24px] border-[3px] border-b-[6px]'
                                             : 'w-[280px] h-[240px] rounded-[18px] border-[2px] border-b-[5px]'
                                             }`}
-                                        style={{ borderColor: '#62A9E6', borderBottomColor: '#4A90D9' }}
+                                        style={{ borderColor: '#B893DA', borderBottomColor: '#9B68C8' }}
                                     >
-                                        <View className="w-full h-[60%] bg-[#F0F9FF] items-center justify-center">
-                                            <Ionicons name="disc-outline" size={isTablet ? 64 : 48} color="#62A9E6" />
+                                        <View className="w-full h-[60%] bg-[#E6D8F2]">
+                                            <Image
+                                                source={require('../../../../assets/images/activities/drag-drop/bubble-pop-header.png')}
+                                                className="w-full h-full"
+                                                resizeMode="cover"
+                                            />
                                         </View>
                                         <View className={`flex-1 justify-center bg-white ${isTablet ? 'px-6 py-4' : 'px-4 py-3'}`}>
                                             <View className="flex-row items-center justify-between w-full">
                                                 <Text className={`font-quicksand-bold text-[#4B5563] ${isTablet ? 'text-4xl' : 'text-3xl'}`}>Bubble Pop</Text>
                                                 <View
                                                     className={`flex-row items-center justify-center border-[2px] rounded-full ${isTablet ? 'px-6 py-2 gap-2' : 'px-4 py-1.5 gap-1'}`}
-                                                    style={{ borderColor: '#62A9E6', backgroundColor: '#F0F9FF' }}
+                                                    style={{ borderColor: '#B893DA', backgroundColor: '#E6D8F2' }}
                                                 >
-                                                    <Ionicons name="play" size={isTablet ? 18 : 14} color="#62A9E6" />
-                                                    <Text className={`font-quicksand-bold ${isTablet ? 'text-xl' : 'text-sm'}`} style={{ color: '#62A9E6' }}>Start</Text>
+                                                    <Ionicons name="play" size={isTablet ? 18 : 14} color="#8A57BE" />
+                                                    <Text className={`font-quicksand-bold ${isTablet ? 'text-xl' : 'text-sm'}`} style={{ color: '#8A57BE' }}>Start</Text>
                                                 </View>
                                             </View>
                                         </View>

@@ -24,32 +24,40 @@ export default function useBubbleField({
 }: Props) {
     const { width, height } = Dimensions.get("window");
 
-    const [bubbles, setBubbles] = useState<BubbleData[]>([]);
-
-    useEffect(() => {
-        const initialBubbles = spawnInitialBubbles({
+    const [bubbles, setBubbles] = useState<BubbleData[]>(() => {
+        return spawnInitialBubbles({
             bubbleCount,
-            screenWidth: width,
-            screenHeight: height,
+            screenWidth: width || 800,
+            screenHeight: height || 600,
             speed,
             availableColors,
             targetColor,
             distractorColors,
         });
+    });
 
-        setBubbles(initialBubbles);
-    }, [bubbleCount, speed, width, height]);
+    useEffect(() => {
+        if (width > 0 && height > 0) {
+            setBubbles(
+                spawnInitialBubbles({
+                    bubbleCount,
+                    screenWidth: width,
+                    screenHeight: height,
+                    speed,
+                    availableColors,
+                    targetColor,
+                    distractorColors,
+                })
+            );
+        }
+    }, [bubbleCount, speed, width, height, targetColor]);
 
     const recycleBubble = (id: string) => {
         setBubbles((current) => {
-            const remaining = current.filter(
-                (bubble) =>
-                    bubble.id !== id
-            );
+            const remaining = current.filter((bubble) => bubble.id !== id);
 
             return [
                 ...remaining,
-
                 spawnBubble({
                     screenWidth: width,
                     screenHeight: height,
@@ -65,30 +73,30 @@ export default function useBubbleField({
 
     const popBubble = (id: string) => {
         setBubbles((current) => {
-            const remaining = current.filter(
-                (bubble) =>
-                    bubble.id !== id
-            );
+            const active = current.filter((b) => b.id !== id);
 
-            return [
-                ...remaining,
+            const newBubble = spawnBubble({
+                screenWidth: width,
+                screenHeight: height,
+                speed,
+                availableColors,
+                targetColor,
+                distractorColors,
+                existingBubbles: active,
+            });
 
-                spawnBubble({
-                    screenWidth: width,
-                    screenHeight: height,
-                    speed,
-                    availableColors,
-                    targetColor,
-                    distractorColors,
-                    existingBubbles: remaining,
-                }),
-            ];
+            return [...current, newBubble];
         });
+    };
+
+    const removeBubble = (id: string) => {
+        setBubbles((current) => current.filter((bubble) => bubble.id !== id));
     };
 
     return {
         bubbles,
         popBubble,
+        removeBubble,
         recycleBubble,
     };
 }

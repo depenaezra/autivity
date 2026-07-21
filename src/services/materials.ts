@@ -39,8 +39,26 @@ export const getActivitiesByPaths = async (paths: string[]) => {
 export const getActivitiesBySubcategories = async (subcategories: string[]) => {
     if (!subcategories || subcategories.length === 0) return [];
 
-    // Search across sub_category, path, and category columns
-    const orFilter = subcategories
+    const expandedSubcategories = new Set<string>();
+    subcategories.forEach((s) => {
+        const lower = s.toLowerCase();
+        if (lower.includes('color') || lower.includes('red') || lower.includes('blue') || lower.includes('green')) {
+            expandedSubcategories.add('Color Pop');
+            return;
+        }
+        if (lower.includes('free')) {
+            expandedSubcategories.add('Free Pop');
+            return;
+        }
+        if (lower.includes('fruit') || lower.includes('matching') || lower.includes('drag')) {
+            expandedSubcategories.add('Matching Fruits');
+            expandedSubcategories.add('Drag-Drop');
+            return;
+        }
+        expandedSubcategories.add(s);
+    });
+
+    const orFilter = Array.from(expandedSubcategories)
         .map((s) => `sub_category.eq."${s}",path.eq."${s}",category.eq."${s}"`)
         .join(",");
 

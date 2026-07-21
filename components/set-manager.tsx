@@ -2,7 +2,8 @@ import ActivityBear from '@/assets/images/activity-bear.svg';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Dimensions, Pressable, Text, View } from 'react-native';
+import { Animated as RNAnimated, Dimensions, Pressable, Text, View } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import ActivityRenderer from '@/components/activity-renderer';
@@ -27,10 +28,10 @@ const SUCCESS_MESSAGES = [
 function ConfettiEffect() {
     const particles = useRef(
         Array.from({ length: 25 }).map(() => ({
-            yAnim: new Animated.Value(-50),
+            yAnim: new RNAnimated.Value(-50),
             left: Math.random() * screenWidth,
-            rotateAnim: new Animated.Value(0),
-            scaleAnim: new Animated.Value(Math.random() * 0.6 + 0.4),
+            rotateAnim: new RNAnimated.Value(0),
+            scaleAnim: new RNAnimated.Value(Math.random() * 0.6 + 0.4),
             color: ['#FCA5A5', '#FCD34D', '#86EFAC', '#93C5FD', '#C084FC', '#F472B6'][Math.floor(Math.random() * 6)],
             delay: Math.random() * 800,
             shape: Math.random() > 0.5 ? 'circle' : 'square',
@@ -39,16 +40,16 @@ function ConfettiEffect() {
 
     useEffect(() => {
         particles.forEach((p) => {
-            Animated.loop(
-                Animated.sequence([
-                    Animated.delay(p.delay),
-                    Animated.parallel([
-                        Animated.timing(p.yAnim, {
+            RNAnimated.loop(
+                RNAnimated.sequence([
+                    RNAnimated.delay(p.delay),
+                    RNAnimated.parallel([
+                        RNAnimated.timing(p.yAnim, {
                             toValue: screenHeight + 50,
                             duration: Math.random() * 2000 + 2000,
                             useNativeDriver: true,
                         }),
-                        Animated.timing(p.rotateAnim, {
+                        RNAnimated.timing(p.rotateAnim, {
                             toValue: 360,
                             duration: Math.random() * 2000 + 2000,
                             useNativeDriver: true,
@@ -62,7 +63,7 @@ function ConfettiEffect() {
     return (
         <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none', zIndex: 9999 }}>
             {particles.map((p, idx) => (
-                <Animated.View
+                <RNAnimated.View
                     key={idx}
                     style={{
                         position: 'absolute',
@@ -286,6 +287,11 @@ export default function SetManager({
                 }
 
                 if (nextActivity) {
+                    const parsedContent = typeof nextActivity.content_data === 'string'
+                        ? (() => { try { return JSON.parse(nextActivity.content_data); } catch { return {}; } })()
+                        : (nextActivity.content_data || {});
+
+                    setBearMessage(parsedContent.instruction || "Let's play!");
                     setCurrentActivity(nextActivity);
                     setPlayedActivityIds((prev) => [...prev, nextActivity.id]);
                     setPlayedActivityPaths((prev) => [...prev, nextActivity.path || '']);
@@ -355,17 +361,20 @@ export default function SetManager({
     };
 
     // Fade/Slide entrance animation
-    const fadeAnim = useRef(new Animated.Value(1)).current;
-    const slideAnim = useRef(new Animated.Value(0)).current;
+    const fadeAnim = useSharedValue(1);
+    const slideAnim = useSharedValue(0);
+
+    const animatedContentStyle = useAnimatedStyle(() => ({
+        opacity: fadeAnim.value,
+        transform: [{ translateY: slideAnim.value }],
+    }));
 
     useEffect(() => {
         // Trigger a subtle entrance reset on activity change
-        fadeAnim.setValue(0);
-        slideAnim.setValue(15);
-        Animated.parallel([
-            Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
-            Animated.timing(slideAnim, { toValue: 0, duration: 300, useNativeDriver: true })
-        ]).start();
+        fadeAnim.value = 0;
+        slideAnim.value = 15;
+        fadeAnim.value = withTiming(1, { duration: 300 });
+        slideAnim.value = withTiming(0, { duration: 300 });
     }, [currentActivity]);
 
     // Format timer
@@ -396,7 +405,7 @@ export default function SetManager({
     const progressPercent = `${Math.round(((completedCount + 1) / 3) * 100)}%`;
 
     return (
-        <Animated.View style={{ flex: 1, opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
+        <Animated.View style={[{ flex: 1 }, animatedContentStyle]}>
             <SafeAreaView style={{ flex: 1, backgroundColor: '#F5F7FA' }} edges={['top', 'bottom']}>
 
                 {/* Header: X and Title */}

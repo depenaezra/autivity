@@ -73,12 +73,26 @@ export default function LessonScreen() {
                         return path.includes('drag-drop') || a.category?.toLowerCase().includes('drag');
                     });
                 } else if (activityType === 'bubble' || activityType === 'bubble-pop') {
+                    const hasColorSub = subcategories.some(s => s.toLowerCase().includes('color') || s.toLowerCase().includes('red') || s.toLowerCase().includes('blue') || s.toLowerCase().includes('green'));
+                    const hasFreeSub = subcategories.some(s => s.toLowerCase().includes('free'));
+
                     pool = pool.filter(a => {
                         const path = (a.path || '').toLowerCase();
                         const cat = (a.category || '').toLowerCase();
                         const sub = (a.sub_category || '').toLowerCase();
                         const type = (a.type || a.content_data?.type || '').toLowerCase();
-                        return path.includes('bubble') || cat.includes('bubble') || sub.includes('pop') || type.includes('bubble');
+                        const mode = (a.content_data?.mode || '').toLowerCase();
+
+                        const isBubble = path.includes('bubble') || cat.includes('bubble') || sub.includes('pop') || type.includes('bubble');
+                        if (!isBubble) return false;
+
+                        if (hasColorSub && !hasFreeSub) {
+                            return sub.includes('color') || mode === 'color' || path.includes('color');
+                        }
+                        if (hasFreeSub && !hasColorSub) {
+                            return sub.includes('free') || mode === 'free' || path.includes('free');
+                        }
+                        return true;
                     });
                 }
 

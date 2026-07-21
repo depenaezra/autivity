@@ -6,6 +6,7 @@ type Props = {
     bubbles: BubbleData[];
     scale?: number;
     onPop: (id: string) => void;
+    onPopFinished?: (id: string) => void;
     onRecycle: (id: string) => void;
 };
 
@@ -13,6 +14,7 @@ export default function BubbleList({
     bubbles,
     scale,
     onPop,
+    onPopFinished,
     onRecycle,
 }: Props) {
     return (
@@ -26,6 +28,7 @@ export default function BubbleList({
                     scale={scale}
                     content={bubble.content}
                     onPop={() => onPop(bubble.id)}
+                    onPopFinished={() => onPopFinished?.(bubble.id)}
                     onRecycle={() => onRecycle(bubble.id)}
                 />
             ))}
