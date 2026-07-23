@@ -1,7 +1,7 @@
 import { Feather, Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
-import { ClassInfo, MASTER_DOMAINS, Milestone, SessionRecord, StudentInfo } from '../../app/(tabs)/analytics';
+import { ClassInfo, MasterDomain, Milestone, SessionRecord, StudentInfo } from '../../app/(tabs)/analytics';
 
 interface StudentViewProps {
   currentStudent: StudentInfo | null | undefined;
@@ -9,6 +9,7 @@ interface StudentViewProps {
   studentMilestones: Milestone[];
   currentClass: ClassInfo;
   isTablet: boolean;
+  masterDomains: MasterDomain[];
   onBack: () => void;
   onAddMilestone: () => void;
   onToggleMilestone: (milestoneId: string, currentStatus: string) => Promise<void> | void;
@@ -22,6 +23,7 @@ export default function StudentView({
   studentMilestones,
   currentClass,
   isTablet,
+  masterDomains,
   onBack,
   onAddMilestone,
   onToggleMilestone,
@@ -40,7 +42,7 @@ export default function StudentView({
   });
 
   // calculates progress for each main domain based on completed sessions
-  const dynamicSkillsProgress = MASTER_DOMAINS.map((domain) => {
+  const dynamicSkillsProgress = masterDomains.map((domain) => {
     // find completed sessions with matching subskill in the main domain
     const relevantSessions = studentSessions.filter(
       (s) =>

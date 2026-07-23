@@ -1,6 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import ClassView from '../../components/analytics/ClassView';
@@ -11,6 +11,7 @@ import StudentView from '../../components/analytics/StudentView';
 import FeedbackModal from '../../components/feedback-modal';
 import { createMilestone, deleteMilestone, getTeacherAnalyticsOverview, updateMilestoneStatus } from '../../src/services/analytics';
 import { formatActivityTitle } from '../../src/utils/format';
+import { supabase } from '../../src/lib/supabase';
 
 // color themes
 const THEME_MAP: Record<string, { themeColor: string; shadowColor: string; lightBg: string }> = {
@@ -20,38 +21,12 @@ const THEME_MAP: Record<string, { themeColor: string; shadowColor: string; light
   blue: { themeColor: '#93C5FD', shadowColor: '#60A5FA', lightBg: '#EFF6FF' },
 };
 
-export const MASTER_DOMAINS = [
-  {
-    name: 'Sensory Regulation',
-    color: '#A7F3D0',
-    description: 'Auditory tolerance & calm task transitions',
-    subSkills: ['Sensory']
-  },
-  {
-    name: 'Cognitive & Sorting',
-    color: '#93C5FD',
-    description: 'Pattern recognition, shape/color matching',
-    subSkills: ['Object Recognition', 'Matching', 'Categorization', 'Letter Recognition', 'Shape Recognition', 'Number Recognition']
-  },
-  {
-    name: 'Motor Skills',
-    color: '#FDE047',
-    description: 'Pencil grip, tracing precision & posture',
-    subSkills: ['Fine Motor Skills', 'Visual-Motor Integration', 'Hand-Eye Coordination', 'Pre-Writing Skills']
-  },
-  {
-    name: 'Communication & AAC',
-    color: '#FCA5A5',
-    description: 'PECS card exchange & spontaneous requests',
-    subSkills: ['Communication', 'AAC']
-  },
-  {
-    name: 'Social & Turn-Taking',
-    color: '#C084FC',
-    description: 'Joint attention & shared play activities',
-    subSkills: ['Social']
-  }
-];
+export interface MasterDomain {
+  name: string;
+  color: string;
+  description: string;
+  subSkills: string[];
+}
 
 export interface ClassInfo {
   id: string;
@@ -111,6 +86,35 @@ export default function AnalyticsScreen() {
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
+
+  const [masterDomains, setMasterDomains] = useState<MasterDomain[]>([]);
+
+  useEffect(() => {
+    async function fetchMasterDomains() {
+      const { data, error } = await supabase
+        .from('master_domains')
+        .select(`
+          name,
+          color,
+          description,
+          sub_skills ( name )
+        `);
+
+      if (data && !error) {
+        // Transform Supabase response to match your existing array format
+        const formattedDomains = data.map((domain: any) => ({
+          name: domain.name,
+          color: domain.color,
+          description: domain.description,
+          subSkills: domain.sub_skills.map((s: any) => s.name),
+        }));
+
+        setMasterDomains(formattedDomains);
+      }
+    }
+
+    fetchMasterDomains();
+  }, []);
 
   // dynamic data states
   const [isLoading, setIsLoading] = useState(true);
@@ -450,6 +454,7 @@ export default function AnalyticsScreen() {
             studentMilestones={studentMilestones}
             currentClass={currentClass}
             isTablet={isTablet}
+            masterDomains={masterDomains}
             onBack={() => setCurrentView('class')}
             onAddMilestone={() => setMilestoneModalVisible(true)}
             onToggleMilestone={handleToggleMilestone}
