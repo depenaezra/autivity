@@ -40,28 +40,60 @@ export interface RubricEvaluation {
 }
 
 export const validateSession = async (
-    sessionId: string,
-    rubricEvaluation: RubricEvaluation,
-    teacherFeedback: string
+  sessionId: string,
+  rubricEvaluation: RubricEvaluation,
+  teacherFeedback: string
 ) => {
-    const { data, error } = await supabase
-        .from('student_sessions')
-        .update({
-            rubric_evaluation: rubricEvaluation,
-            teacher_feedback: teacherFeedback,
-            status: 'validated',
-            validated_at: new Date().toISOString(),
-        })
-        .eq('id', sessionId)
-        .select()
-        .single();
+  // validate session
+  const { data: session, error } = await supabase
+    .from('student_sessions')
+    .update({
+      rubric_evaluation: rubricEvaluation,
+      teacher_feedback: teacherFeedback,
+      status: 'validated',
+      validated_at: new Date().toISOString(),
+    })
+    .eq('id', sessionId)
+    .select()
+    .single();
 
-    if (error) {
-        console.error("Error validating student session:", error);
-        throw new Error(error.message || "Failed to validate session");
-    }
+  if (error) {
+    console.error(error);
+    throw new Error(error.message);
+  }
 
-    return data;
+  // -----------------------------
+  // recompute learner averages
+  // -----------------------------
+
+  const { data: sessions } = await supabase
+    .from('student_sessions')
+    .select('score,status')
+    .eq('student_id', session.student_id)
+    .eq('status', 'validated');
+
+  const validatedSessions = sessions ?? [];
+
+  const average =
+    validatedSessions.length === 0
+      ? 0
+      : Math.round(
+          validatedSessions.reduce(
+            (sum: number, s: any) => sum + (s.score || 0),
+            0
+          ) / validatedSessions.length
+        );
+
+  await supabase
+    .from('student_dashboard_summary')
+    .upsert({
+      student_id: session.student_id,
+      overall_progress: average,
+      completed_sessions: validatedSessions.length,
+      updated_at: new Date().toISOString(),
+    });
+
+  return session;
 };
 
 // Fetch the very latest session for a specific student
@@ -79,4 +111,4 @@ export const getLatestStudentSession = async (studentId: string) => {
     }
 
     return data && data.length > 0 ? data[0] : null;
-};
+};

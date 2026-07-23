@@ -1,15 +1,30 @@
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  Modal,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import ClassView from '../../components/analytics/ClassView';
-import OverviewView from '../../components/analytics/OverviewView';
-import StudentView from '../../components/analytics/StudentView';
 
-// import services
+import OverviewView from '../../components/analytics/OverviewView';
+import ClassView from '../../components/analytics/ClassView';
+import StudentView from '../../components/analytics/StudentView';
+import EditStudentModal from '../../components/analytics/EditStudentModal';
+
 import FeedbackModal from '../../components/feedback-modal';
-import { createMilestone, deleteMilestone, getTeacherAnalyticsOverview, updateMilestoneStatus } from '../../src/services/analytics';
+
+import {
+  getTeacherAnalyticsOverview,
+} from '../../src/services/analytics';
+
 import { formatActivityTitle } from '../../src/utils/format';
 
 // color themes
@@ -484,7 +499,7 @@ export default function AnalyticsScreen() {
                       return;
                     }
                     try {
-                      await createMilestone(currentStudent.id, newMilestoneTitle, newMilestoneDate);
+                      await setMilestones(currentStudent.id, newMilestoneTitle, newMilestoneDate);
                       setMilestoneModalVisible(false);
                       setNewMilestoneTitle('');
                       setNewMilestoneDate('');

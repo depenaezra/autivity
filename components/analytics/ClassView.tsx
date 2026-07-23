@@ -87,33 +87,91 @@ export default function ClassView({
         </View>
       </View>
 
-      {/* trends summary */}
-      <View className={isTablet ? 'px-12 mt-3' : 'px-6 mt-3'}>
-        <View className="bg-white p-4 rounded-xl border border-[#E5E7EB] flex-row items-center justify-between mb-6">
-          <View className="flex-row items-center gap-3 flex-1">
-            <View className="w-10 h-10 rounded-full bg-[#ECFDF5] items-center justify-center">
-              <Ionicons name="trending-up" size={isTablet ? 24 : 20} color="#10B981" />
-            </View>
-            <View className="flex-1 mr-2">
-              <Text className={`font-quicksand-bold text-[#4B5563] ${isTablet ? 'text-lg' : 'text-sm'}`}>
-                {timeRange === 'daily'
-                  ? '+0.0% Daily Growth'
-                  : timeRange === 'weekly'
-                  ? '+0.0% Weekly Growth'
-                  : '+0.0% Monthly Gain'}
-              </Text>
-              <Text className={`font-quicksand-medium text-[#6B7280] ${isTablet ? 'text-base' : 'text-xs'}`}>
-                Data will populate as students complete activities.
-              </Text>
-            </View>
-          </View>
-          <View className="bg-[#F3F4F6] px-3 py-1.5 rounded-lg">
-            <Text className={`font-quicksand-bold text-[#4B5563] ${isTablet ? 'text-base' : 'text-xs'}`}>
-              {currentClass.completedActivities} Activities
-            </Text>
-          </View>
-        </View>
-      </View>
+{/* Quick Class Insights */}
+
+<View className={isTablet ? 'px-12 mt-4' : 'px-6 mt-4'}>
+
+<View className="flex-row gap-3">
+
+<View className="flex-1 bg-white rounded-3xl border border-[#E5E7EB] p-5">
+
+<Ionicons
+name="people"
+size={26}
+color="#62A9E6"
+/>
+
+<Text className="font-quicksand-medium text-[#94A3B8] mt-2">
+Learners
+</Text>
+
+<Text className="font-fredoka-one text-3xl text-[#4B5563] mt-1">
+{classStudents.length}
+</Text>
+
+</View>
+
+<View className="flex-1 bg-white rounded-3xl border border-[#E5E7EB] p-5">
+
+<Ionicons
+name="checkmark-circle"
+size={26}
+color="#10B981"
+/>
+
+<Text className="font-quicksand-medium text-[#94A3B8] mt-2">
+Completed
+</Text>
+
+<Text className="font-fredoka-one text-3xl text-[#4B5563] mt-1">
+{currentClass.completedActivities}
+</Text>
+
+</View>
+
+<View className="flex-1 bg-white rounded-3xl border border-[#E5E7EB] p-5">
+
+<Ionicons
+name="time"
+size={26}
+color="#F97316"
+/>
+
+<Text className="font-quicksand-medium text-[#94A3B8] mt-2">
+Pending
+</Text>
+
+<Text className="font-fredoka-one text-3xl text-[#4B5563] mt-1">
+{currentClass.pendingFeedback}
+</Text>
+
+</View>
+
+</View>
+
+<View className="bg-white mt-4 rounded-3xl border border-[#E5E7EB] p-5">
+
+<Text className="font-fredoka-one text-xl text-[#4B5563]">
+Teacher Insight
+</Text>
+
+<Text className="font-quicksand-medium text-[#6B7280] leading-6 mt-2">
+
+This class currently has{" "}
+<Text className="font-quicksand-bold">
+{currentClass.pendingFeedback}
+</Text>{" "}
+activity submissions awaiting teacher validation.
+Select a learner below to inspect progress,
+leave feedback,
+review milestones,
+and validate completed activities.
+
+</Text>
+
+</View>
+
+</View>
 
       {/* students list */}
       <View className={isTablet ? 'px-12' : 'px-6'}>
