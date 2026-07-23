@@ -24,6 +24,7 @@ export default function StudentHome() {
     const [classId, setClassId] = useState<string | null>((initialClassId as string) || null);
     const [teacherId, setTeacherId] = useState<string | null>((initialTeacherId as string) || null);
     const [studentName, setStudentName] = useState<string>((initialStudentName as string) || '');
+    const [avatar, setAvatar] = useState<string>('');
 
     // Fetch the paths when screen loads
     useEffect(() => {
@@ -42,13 +43,12 @@ export default function StudentHome() {
                 let currentTeacherId = (initialTeacherId as string) || teacherId;
                 let currentName = (initialStudentName as string) || studentName;
 
-                if (!currentClassId || !currentTeacherId || !currentName) {
-                    const student = await getStudentById(studentId as string);
-                    if (student) {
-                        currentClassId = student.class_id;
-                        currentTeacherId = student.teacher_id;
-                        currentName = student.name;
-                    }
+                const student = await getStudentById(studentId as string);
+                if (student) {
+                    currentClassId = student.class_id;
+                    currentTeacherId = student.teacher_id;
+                    currentName = student.name;
+                    setAvatar(student.avatar || '');
                 }
 
                 setClassId(currentClassId);
@@ -175,7 +175,13 @@ export default function StudentHome() {
                 {/* AVATAR & NAME SECTION */}
                 <View className={`items-center px-6 ${isTablet ? '-mt-[100px]' : '-mt-[70px]'}`}>
                     <View className={`rounded-full bg-[#E5E7EB] border-white shadow-sm items-center justify-center ${isTablet ? 'w-[180px] h-[180px] border-[8px]' : 'w-[120px] h-[120px] border-[6px]'}`}>
-                        <Ionicons name="person" size={isTablet ? 90 : 60} color="#9CA3AF" />
+                        {avatar ? (
+                            <Text style={{ fontSize: isTablet ? 84 : 56 }}>
+                                {avatar}
+                            </Text>
+                        ) : (
+                            <Ionicons name="person" size={isTablet ? 90 : 60} color="#9CA3AF" />
+                        )}
                     </View>
                     <Text className={`font-fredoka-one text-[#374151] ${isTablet ? 'text-6xl mt-4' : 'text-4xl mt-3'}`}>
                         {studentName || 'Monna'}
