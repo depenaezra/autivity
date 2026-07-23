@@ -97,6 +97,9 @@ export interface SessionRecord {
   duration: string;
   score: string;
   status: 'pending' | 'validated';
+  rubric_evaluation?: any;
+  teacher_feedback?: string;
+  validated_at?: string;
 }
 
 export default function AnalyticsScreen() {
@@ -124,6 +127,10 @@ export default function AnalyticsScreen() {
     studentId: string;
     classId: string;
     activityName: string;
+    status?: 'pending' | 'validated';
+    rubric_evaluation?: any;
+    teacher_feedback?: string;
+    validated_at?: string;
   } | null>(null);
 
   // fetch and process data
@@ -145,13 +152,13 @@ export default function AnalyticsScreen() {
         activityName: (() => {
           if (Array.isArray(s.activity_path)) {
             return s.activity_path.length > 0
-              ? formatActivityTitle(s.activity_path[0])
-              : 'Unknown Activity';
+              ? s.activity_path.map((path: string) => formatActivityTitle(path)).join(', ')
+              : 'Unknown Session';
           }
           if (typeof s.activity_path === 'string') {
             return formatActivityTitle(s.activity_path);
           }
-          return 'Unknown Activity';
+          return 'Unknown Session';
         })(),
         category: s.category || 'General',
         skill_domain: (() => {
@@ -190,6 +197,9 @@ export default function AnalyticsScreen() {
           : '5 mins',
         score: s.score != null ? `${s.score}%` : 'N/A',
         status: s.status as 'pending' | 'validated',
+        rubric_evaluation: s.rubric_evaluation || null,
+        teacher_feedback: s.teacher_feedback || '',
+        validated_at: s.validated_at || null,
       }));
 
       setSessions(processedSessions);
@@ -290,6 +300,10 @@ export default function AnalyticsScreen() {
       studentId: session.studentId,
       classId: classId,
       activityName: session.activityName,
+      status: session.status,
+      rubric_evaluation: session.rubric_evaluation,
+      teacher_feedback: session.teacher_feedback,
+      validated_at: session.validated_at,
     });
   };
 
@@ -313,6 +327,7 @@ export default function AnalyticsScreen() {
 
     setActiveModalSession(null);
     Alert.alert("Validated", "Session synced and feedback published successfully!");
+    fetchDashboardData();
   };
 
   // toggle milestone logic
@@ -509,6 +524,10 @@ export default function AnalyticsScreen() {
           studentName={currentStudent?.name}
           onClose={() => setActiveModalSession(null)}
           onSuccess={handleValidationSuccess}
+          isReadOnly={activeModalSession?.status === 'validated'}
+          initialScores={activeModalSession?.rubric_evaluation}
+          initialFeedback={activeModalSession?.teacher_feedback}
+          validatedAt={activeModalSession?.validated_at}
         />
       </ScrollView>
     </SafeAreaView>

@@ -21,6 +21,10 @@ interface FeedbackModalProps {
   studentName?: string;
   onClose: () => void;
   onSuccess?: () => void;
+  isReadOnly?: boolean;
+  initialScores?: RubricEvaluation;
+  initialFeedback?: string;
+  validatedAt?: string;
 }
 
 export const RUBRIC_CRITERIA = [
@@ -81,6 +85,10 @@ export default function FeedbackModal({
   studentName,
   onClose,
   onSuccess,
+  isReadOnly = false,
+  initialScores,
+  initialFeedback,
+  validatedAt,
 }: FeedbackModalProps) {
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
@@ -98,18 +106,28 @@ export default function FeedbackModal({
 
   useEffect(() => {
     if (visible) {
-      setStep('draft');
-      setScores({
-        looking_at_objects: 4,
-        concentrating: 4,
-        performing_task: 4,
-        following_instructions: 4,
-        completed_work: 4,
-      });
-      setTeacherFeedback('');
+      if (isReadOnly) {
+        setStep('review');
+        if (initialScores) {
+          setScores(initialScores);
+        }
+        if (initialFeedback !== undefined && initialFeedback !== null) {
+          setTeacherFeedback(initialFeedback);
+        }
+      } else {
+        setStep('draft');
+        setScores({
+          looking_at_objects: 4,
+          concentrating: 4,
+          performing_task: 4,
+          following_instructions: 4,
+          completed_work: 4,
+        });
+        setTeacherFeedback('');
+      }
       setIsSubmitting(false);
     }
-  }, [visible, sessionId]);
+  }, [visible, sessionId, isReadOnly, initialScores, initialFeedback]);
 
   const handleScoreSelect = (key: keyof RubricEvaluation, score: number) => {
     setScores((prev) => ({
@@ -156,17 +174,19 @@ export default function FeedbackModal({
             <View className="flex-1 mr-4">
               <View className="flex-row items-center gap-2">
                 <Text className="font-fredoka-one text-2xl text-[#4B5563]">
-                  {step === 'draft' ? 'Teacher Evaluation Rubric' : 'Review & Confirm Evaluation'}
+                  {isReadOnly ? 'Teacher Evaluation Review' : step === 'draft' ? 'Teacher Evaluation Rubric' : 'Review & Confirm Evaluation'}
                 </Text>
-                <View className="bg-[#EBF5FF] border border-[#A3CFF1] px-2.5 py-0.5 rounded-full">
-                  <Text className="font-quicksand-bold text-[#62A9E6] text-xs uppercase tracking-wider">
-                    {step === 'draft' ? 'Step 1 of 2' : 'Step 2 of 2'}
-                  </Text>
-                </View>
+                {!isReadOnly && (
+                  <View className="bg-[#EBF5FF] border border-[#A3CFF1] px-2.5 py-0.5 rounded-full">
+                    <Text className="font-quicksand-bold text-[#62A9E6] text-xs uppercase tracking-wider">
+                      {step === 'draft' ? 'Step 1 of 2' : 'Step 2 of 2'}
+                    </Text>
+                  </View>
+                )}
               </View>
               <Text className="font-quicksand-medium text-[#6B7280] text-sm mt-1" numberOfLines={1}>
                 {studentName ? `Learner: ${studentName}` : 'Student Evaluation'}
-                {activityTitle ? ` • Activity: ${activityTitle}` : ''}
+                {activityTitle ? ` • Session: ${activityTitle}` : ''}
               </Text>
             </View>
 
@@ -321,10 +341,15 @@ export default function FeedbackModal({
                     <Ionicons name="shield-checkmark" size={32} color="#10B981" />
                     <View className="flex-1">
                       <Text className="font-fredoka-one text-lg text-[#065F46]">
-                        Ready to Validate Session
+                        {isReadOnly ? 'Session Validated' : 'Ready to Validate Session'}
                       </Text>
                       <Text className="font-quicksand-medium text-xs text-[#047857]">
-                        Please double check the 0-4 score evaluations and notes below before finalizing.
+                        {isReadOnly
+                          ? `Validated on ${validatedAt ? (() => {
+                              const date = new Date(validatedAt);
+                              return `${date.toLocaleDateString()} at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+                            })() : 'N/A'}`
+                          : 'Please double check the 0-4 score evaluations and notes below before finalizing.'}
                       </Text>
                     </View>
                   </View>
@@ -347,7 +372,7 @@ export default function FeedbackModal({
                     return (
                       <View
                         key={item.key}
-                        className="flex-row items-start justify-between py-2 border-b border-[#F9FAFB] last:border-b-0"
+                        className="flex-row items-start justify-between py-2 border-b border-[#F9FAFB]"
                       >
                         <View className="flex-1 mr-3">
                           <View className="flex-row items-center gap-1.5">
@@ -394,7 +419,16 @@ export default function FeedbackModal({
 
           {/* Modal Footer Actions */}
           <View className="bg-[#F5F8FA] px-6 py-4 border-t border-[#E5E7EB] flex-row gap-3 items-center">
-            {step === 'draft' ? (
+            {isReadOnly ? (
+              <Pressable
+                onPress={onClose}
+                className="flex-1 h-13 py-3.5 bg-[#62A9E6] border border-[#4895D6] border-b-[4px] rounded-full items-center justify-center active:bg-[#5298D4]"
+              >
+                <Text className="font-fredoka-regular text-white text-lg">
+                  Close
+                </Text>
+              </Pressable>
+            ) : step === 'draft' ? (
               <>
                 {/* Do Later / Cancel Button */}
                 <Pressable

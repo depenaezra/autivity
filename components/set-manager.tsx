@@ -2,13 +2,14 @@ import ActivityBear from '@/assets/images/activity-bear.svg';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated as RNAnimated, Dimensions, Pressable, Text, View } from 'react-native';
+import { Animated as RNAnimated, Dimensions, Pressable, Text, View, ActivityIndicator } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import ActivityRenderer from '@/components/activity-renderer';
 import FeedbackModal from '@/components/feedback-modal';
 import { supabase } from '@/src/lib/supabase';
+import { getStudentHistoricalBaseline } from '@/src/services/sessions';
 import { formatActivityTitle } from '@/src/utils/format';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -106,6 +107,7 @@ export default function SetManager({
     activityType,
 }: SetManagerProps) {
     // State Requirements
+    const [isInitializing, setIsInitializing] = useState(true);
     const [activityPool, setActivityPool] = useState<any[]>([]);
     const [playedActivityIds, setPlayedActivityIds] = useState<string[]>([]);
     const [completedCount, setCompletedCount] = useState(0);
@@ -128,33 +130,96 @@ export default function SetManager({
 
     // Initialization Logic
     useEffect(() => {
-        if (!initialPool || initialPool.length === 0) return;
+        let isMounted = true;
 
-        setActivityPool(initialPool);
+        const initializeSet = async () => {
+            if (!initialPool || initialPool.length === 0) return;
 
-        // Dynamically identify absolute lowest difficulty_level present among fetched items
-        const levels = initialPool
-            .map(a => a.difficulty_level)
-            .filter(d => typeof d === 'number');
-        const lowestDiff = levels.length > 0 ? Math.min(...levels) : 21;
+            setIsInitializing(true);
+            setActivityPool(initialPool);
 
-        // Set a matching item from the pool as currentActivity
-        const matchingItems = initialPool.filter(a => a.difficulty_level === lowestDiff);
-        const startingActivity = matchingItems[Math.floor(Math.random() * matchingItems.length)] || initialPool[0];
+            const category = initialPool[0]?.category || 'Activity';
+            let startingActivity: any = null;
 
-        setCurrentActivity(startingActivity);
-        setPlayedActivityIds([startingActivity.id]);
-        setPlayedActivityPaths([startingActivity.path || '']);
-        setCompletedCount(0);
-        setGlobalTimer(900);
-        setIsSetComplete(false);
-        setSuccessMode(false);
-        setIsActivityDone(false);
-        setCompletedMetrics(null);
-        setSavedSetSessionId(null);
-        setTotalMistakesAccumulator(0);
-        setTotalScoreAccumulator(0);
-    }, [initialPool]);
+            // Step 2: Fetch student's historical baseline
+            const baseline = studentId ? await getStudentHistoricalBaseline(studentId, category) : null;
+
+            if (baseline && baseline.lastPath) {
+                // SCENARIO B (History Exists):
+                // 1. Find historical activity matching lastPath string
+                const historicalActivity = initialPool.find(
+                    (a) => a.path === baseline.lastPath || a.path?.toLowerCase() === baseline.lastPath.toLowerCase()
+                );
+
+                // SAFETY FALLBACK CHECK: If historicalActivity exists in today's activityPool
+                if (historicalActivity && typeof historicalActivity.difficulty_level === 'number') {
+                    const histDiff = historicalActivity.difficulty_level;
+
+                    // 2. Extract unique difficulty levels and sort in ascending order
+                    const uniqueDiffs = Array.from(
+                        new Set(initialPool.map((a) => a.difficulty_level).filter((d) => typeof d === 'number'))
+                    ).sort((a: number, b: number) => a - b);
+
+                    // 3. Find index of historical difficulty
+                    const histIndex = uniqueDiffs.indexOf(histDiff);
+
+                    if (histIndex !== -1) {
+                        // 4. Calculate today's starting index based on historical mistakes
+                        let targetIndex = histIndex;
+                        if (baseline.previousMistakes === 0) {
+                            targetIndex = histIndex + 1; // Mastery: start harder (+1)
+                        } else if (baseline.previousMistakes === 1) {
+                            targetIndex = histIndex; // Acceptable: maintain tier (0)
+                        } else if (baseline.previousMistakes >= 2) {
+                            targetIndex = histIndex - 1; // Struggle: start easier (-1)
+                        }
+
+                        // 5. Securely clamp target index between 0 and (uniqueDiffs.length - 1)
+                        const clampedIndex = Math.max(0, Math.min(uniqueDiffs.length - 1, targetIndex));
+                        const targetDifficulty = uniqueDiffs[clampedIndex];
+
+                        // 6. Find an unplayed activity matching targetDifficulty
+                        startingActivity = initialPool.find((a) => a.difficulty_level === targetDifficulty);
+                    }
+                }
+                // SAFETY FALLBACK: If historicalActivity is not found in initialPool, startingActivity remains null
+                // and gracefully falls through to Scenario A below!
+            }
+
+            // SCENARIO A (No History OR Safety Fallback triggered):
+            if (!startingActivity) {
+                const levels = initialPool
+                    .map((a) => a.difficulty_level)
+                    .filter((d) => typeof d === 'number');
+                const lowestDiff = levels.length > 0 ? Math.min(...levels) : 21;
+
+                const matchingItems = initialPool.filter((a) => a.difficulty_level === lowestDiff);
+                startingActivity = matchingItems[Math.floor(Math.random() * matchingItems.length)] || initialPool[0];
+            }
+
+            if (isMounted && startingActivity) {
+                setCurrentActivity(startingActivity);
+                setPlayedActivityIds([startingActivity.id]);
+                setPlayedActivityPaths([startingActivity.path || '']);
+                setCompletedCount(0);
+                setGlobalTimer(900);
+                setIsSetComplete(false);
+                setSuccessMode(false);
+                setIsActivityDone(false);
+                setCompletedMetrics(null);
+                setSavedSetSessionId(null);
+                setTotalMistakesAccumulator(0);
+                setTotalScoreAccumulator(0);
+                setIsInitializing(false);
+            }
+        };
+
+        initializeSet();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [initialPool, studentId]);
 
     // Countdown Timer - runs smoothly and freezes when completedCount is 3 or set is complete
     useEffect(() => {
@@ -388,9 +453,16 @@ export default function SetManager({
     // Format timer
     const minutes = Math.floor(globalTimer / 60);
     const seconds = globalTimer % 60;
-    const formattedTime = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    if (isInitializing || !currentActivity) {
+        return (
+            <SafeAreaView style={{ flex: 1, backgroundColor: '#F5F7FA', justifyContent: 'center', alignItems: 'center' }}>
+                <ActivityIndicator size="large" color="#62A9E6" />
+                <Text className="mt-4 font-quicksand-bold text-[#6B7280] text-lg">Initializing Adaptive Activity...</Text>
+            </SafeAreaView>
+        );
+    }
 
-    if (!currentActivity) return null;
+    const formattedTime = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 
     // Build the format currentTask expects
     const parsedContentData = typeof currentActivity.content_data === 'string'

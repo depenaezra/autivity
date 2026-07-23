@@ -103,13 +103,13 @@ export default function ClassView({
                   : '+0.0% Monthly Gain'}
               </Text>
               <Text className={`font-quicksand-medium text-[#6B7280] ${isTablet ? 'text-base' : 'text-xs'}`}>
-                Data will populate as students complete activities.
+                Data will populate as students complete sessions.
               </Text>
             </View>
           </View>
           <View className="bg-[#F3F4F6] px-3 py-1.5 rounded-lg">
             <Text className={`font-quicksand-bold text-[#4B5563] ${isTablet ? 'text-base' : 'text-xs'}`}>
-              {currentClass.completedActivities} Activities
+              {currentClass.completedActivities} Sessions
             </Text>
           </View>
         </View>

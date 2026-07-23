@@ -14,6 +14,7 @@ export default function Signup() {
   // goals from onboarding
   const params = useLocalSearchParams();
   const userGoals: string[] = params.goals ? JSON.parse(params.goals as string) : [];
+  const role = (params.role as string) || 'teacher';
 
   // form states
   const [firstName, setFirstName] = useState('');
@@ -51,7 +52,7 @@ export default function Signup() {
     setIsLoading(true);
 
     try {
-      await register(email, password, firstName, lastName, userGoals);
+      await register(email, password, firstName, lastName, userGoals, role);
 
       // .replace used so they can't swipe back to signup
       router.replace({

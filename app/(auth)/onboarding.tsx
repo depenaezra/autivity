@@ -1,5 +1,5 @@
 import { Feather } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
   Pressable,
@@ -9,8 +9,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from "react-native-safe-area-context";
 
-export default function TeacherOnboarding() {
+export default function Onboarding() {
   const router = useRouter();
+  const params = useLocalSearchParams();
+  const role = (params.role as string) || 'teacher';
 
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
@@ -18,14 +20,22 @@ export default function TeacherOnboarding() {
   // keeps track of selected goals
   const [selectedGoals, setSelectedGoals] = useState<string[]>([]);
 
-  // list of goals
-  const goals = [
-    'Classroom-ready activities',
-    'Monitor student progress',
-    'Create personalized lessons',
-    'Manage classes',
-    'Reports and assessments'
-  ];
+  // list of goals customized based on role (parent or teacher)
+  const goals = role === 'parent'
+    ? [
+      "Monitor child's progress",
+      'Personalized learning games',
+      'Track milestones & achievements',
+      'Receive performance feedbacks',
+      'Understand areas for improvement'
+    ]
+    : [
+      'Classroom-ready activities',
+      'Monitor student progress',
+      'Create personalized lessons',
+      'Manage classes',
+      'Reports and assessments'
+    ];
 
   // multiselect toggle for goals
   const toggleGoal = (goal: string) => {
@@ -107,7 +117,10 @@ export default function TeacherOnboarding() {
             onPress={() => {
               router.push({
                 pathname: '/(auth)/signup',
-                params: { goals: JSON.stringify(selectedGoals) }
+                params: {
+                  goals: JSON.stringify(selectedGoals),
+                  role: role
+                }
               });
             }}
             className={`w-full flex items-center justify-center border-b-[4px] p-[10px] ${isTablet ? 'h-[84px] rounded-[55px]' : 'h-[60px] rounded-full'

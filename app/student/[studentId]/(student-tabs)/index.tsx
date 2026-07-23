@@ -4,8 +4,8 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 
 // Import your student services
-import { getStudentActivities, getStudentById } from '../../../../src/services/students';
 import { getLatestStudentSession } from '../../../../src/services/sessions';
+import { getStudentActivities, getStudentById } from '../../../../src/services/students';
 
 export default function StudentHome() {
     const router = useRouter();
@@ -122,7 +122,7 @@ export default function StudentHome() {
     // 2. PASS THE IDs TO THE LESSON ROUTE
     const navigateToLesson = (activityType: 'tracing' | 'matching' | 'bubble') => {
         const targetStudentId = (studentId as string) || '1';
-        
+
         // Filter to only match the activityType
         const filteredPaths = assignedPaths.filter(path => {
             if (activityType === 'tracing') {
@@ -213,10 +213,10 @@ export default function StudentHome() {
                                 <View
                                     className={`items-center justify-center rounded-2xl bg-[#EFF6FF] ${isTablet ? 'w-[72px] h-[72px]' : 'w-[56px] h-[56px]'}`}
                                 >
-                                    <Ionicons 
-                                        name={latestSession.category && (latestSession.category.toLowerCase().includes('matching') || latestSession.category.toLowerCase().includes('fruit')) ? "grid" : "pencil"} 
-                                        size={isTablet ? 36 : 28} 
-                                        color="#62A9E6" 
+                                    <Ionicons
+                                        name={latestSession.category && (latestSession.category.toLowerCase().includes('matching') || latestSession.category.toLowerCase().includes('fruit')) ? "grid" : "pencil"}
+                                        size={isTablet ? 36 : 28}
+                                        color="#62A9E6"
                                     />
                                 </View>
 
@@ -248,7 +248,7 @@ export default function StudentHome() {
                                         No activity yet
                                     </Text>
                                     <Text className={`font-quicksand-medium text-[#94A3B8] ${isTablet ? 'text-lg mt-1' : 'text-sm mt-0.5'}`}>
-                                        Wait for your teacher to assign an activity to start playing!
+                                        Once you start playing, your recent activities will be shown here!
                                     </Text>
                                 </View>
                             </View>

@@ -1,9 +1,9 @@
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 // [MODIFIED] Added ActivityIndicator and Alert
 import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, View, useWindowDimensions } from "react-native";
-import Animated, { useSharedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
+import Animated, { Easing, useSharedValue, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 // [ADDED] Import your new services
@@ -23,6 +23,7 @@ const DAYS = [
   "Saturday",
   "Sunday",
 ];
+
 interface ClassItem {
   id: string;
   title: string;
@@ -215,13 +216,16 @@ export default function TeacherHome() {
           </Text>
         </View>
 
-        <View className={`rounded-full bg-[#9ACBF9] overflow-hidden items-center justify-end ${isTablet ? 'w-24 h-24' : 'w-16 h-16'}`}>
+        <Pressable
+          onPress={() => router.push('/profile')}
+          className={`rounded-full bg-[#9ACBF9] overflow-hidden items-center justify-end ${isTablet ? 'w-24 h-24' : 'w-16 h-16'}`}
+        >
           <Image
             source={require('../../assets/images/bear.png')}
             className="w-full h-full"
             resizeMode="cover"
           />
-        </View>
+        </Pressable>
       </View>
 
       {/* STATS CARDS ROW */}
@@ -254,7 +258,10 @@ export default function TeacherHome() {
         </View>
 
         {/* CARD 3: LESSONS (Yellow) */}
-        <View className={`flex-1 border-[2px] border-[#FDE047] bg-white overflow-hidden ${isTablet ? 'rounded-[16px]' : 'rounded-xl'}`}>
+        <Pressable
+          onPress={() => router.push('/lesson-materials' as any)}
+          className={`flex-1 border-[2px] border-[#FDE047] bg-white overflow-hidden ${isTablet ? 'rounded-[16px]' : 'rounded-xl'}`}
+        >
           <View className={`bg-[#FEF9C3] flex-row items-center justify-center border-b-[2px] border-b-[#FDE047] ${isTablet ? 'py-5 gap-3' : 'py-3 gap-1'}`}>
             <Ionicons name="book" size={isTablet ? 32 : 20} color="#EAB308" />
             <Text className={`font-quicksand-semibold text-[#EAB308] ${isTablet ? 'text-4xl' : 'text-2xl'}`}>
@@ -264,7 +271,7 @@ export default function TeacherHome() {
           <View className={`bg-white items-center justify-center ${isTablet ? 'py-3' : 'py-2'}`}>
             <Text className={`text-[#4B5563] font-quicksand-semibold tracking-widest ${isTablet ? 'text-sm' : 'text-[10px]'}`}>LESSONS</Text>
           </View>
-        </View>
+        </Pressable>
 
       </View>
 

@@ -114,7 +114,7 @@ export default function OverviewView({
                 <View className="p-5">
                   <View className="flex-row items-center justify-between mb-2">
                     <Text className={`font-quicksand-medium text-[#6B7280] ${isTablet ? 'text-lg' : 'text-sm'}`}>
-                      Learners: <Text className="font-quicksand-bold text-[#4B5563]">{cls.totalStudents}</Text> • Completed Activities: <Text className="font-quicksand-bold text-[#4B5563]">{cls.completedActivities}</Text>
+                      Learners: <Text className="font-quicksand-bold text-[#4B5563]">{cls.totalStudents}</Text> • Completed Sessions: <Text className="font-quicksand-bold text-[#4B5563]">{cls.completedActivities}</Text>
                     </Text>
                     <Text className={`font-quicksand-bold text-[#4B5563] ${isTablet ? 'text-lg' : 'text-sm'}`}>
                       {cls.avgProgress}% Avg

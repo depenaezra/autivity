@@ -29,8 +29,15 @@ export default function StudentView({
   onValidateSession,
 }: StudentViewProps) {
   const [expandedDomain, setExpandedDomain] = useState<string | null>(null);
+  const [sessionFilter, setSessionFilter] = useState<'all' | 'unvalidated' | 'validated'>('all');
 
   if (!currentStudent) return null;
+
+  const filteredSessions = studentSessions.filter((session) => {
+    if (sessionFilter === 'unvalidated') return session.status === 'pending';
+    if (sessionFilter === 'validated') return session.status === 'validated';
+    return true;
+  });
 
   // calculates progress for each main domain based on completed sessions
   const dynamicSkillsProgress = MASTER_DOMAINS.map((domain) => {
@@ -303,20 +310,67 @@ export default function StudentView({
 
       {/* session records linked with progress validation */}
       <View className={isTablet ? 'px-12 mb-4' : 'px-6 mb-4'}>
-        <View className="flex-row justify-between items-center mb-1">
-          <Text className={`font-fredoka-one text-[#4B5563] ${isTablet ? 'text-2xl' : 'text-lg'}`}>
-            Completed Activities & Sessions
-          </Text>
-          <Text className={`font-quicksand-medium text-[#6B7280] ${isTablet ? 'text-base' : 'text-xs'}`}>
-            {studentSessions.length} Total Records
-          </Text>
+        <View className="flex-row justify-between items-center mb-2 flex-wrap gap-2">
+          <View>
+            <Text className={`font-fredoka-one text-[#4B5563] ${isTablet ? 'text-2xl' : 'text-lg'}`}>
+              Completed Sessions
+            </Text>
+            <Text className={`font-quicksand-medium text-[#6B7280] ${isTablet ? 'text-base' : 'text-xs'}`}>
+              {filteredSessions.length} of {studentSessions.length} Records
+            </Text>
+          </View>
+
+          {/* Filter Pills */}
+          <View className="flex-row bg-[#E5E7EB] p-1 rounded-full">
+            {(['all', 'unvalidated', 'validated'] as const).map((filterOption) => {
+              const isActive = sessionFilter === filterOption;
+              const count =
+                filterOption === 'all'
+                  ? studentSessions.length
+                  : filterOption === 'unvalidated'
+                  ? studentSessions.filter((s) => s.status === 'pending').length
+                  : studentSessions.filter((s) => s.status === 'validated').length;
+
+              return (
+                <TouchableOpacity
+                  key={filterOption}
+                  activeOpacity={0.7}
+                  onPress={() => setSessionFilter(filterOption)}
+                  className={`px-3 py-1 rounded-full flex-row items-center gap-1.5 ${
+                    isActive ? 'bg-[#62A9E6]' : 'bg-transparent'
+                  }`}
+                >
+                  <Text
+                    className={`font-quicksand-bold capitalize ${
+                      isActive ? 'text-white' : 'text-[#6B7280]'
+                    } ${isTablet ? 'text-sm' : 'text-xs'}`}
+                  >
+                    {filterOption === 'unvalidated' ? 'Unvalidated' : filterOption === 'validated' ? 'Validated' : 'All'}
+                  </Text>
+                  <View
+                    className={`px-1.5 py-0.5 rounded-full ${
+                      isActive ? 'bg-white/30' : 'bg-[#D1D5DB]'
+                    }`}
+                  >
+                    <Text
+                      className={`font-quicksand-bold text-[10px] ${
+                        isActive ? 'text-white' : 'text-[#4B5563]'
+                      }`}
+                    >
+                      {count}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </View>
         <Text className={`font-quicksand-medium text-[#EA580C] mb-3 ${isTablet ? 'text-base' : 'text-sm'}`}>
           Validate pending sessions below to publish updates directly to the Parent Portal.
         </Text>
 
         <View className="gap-3">
-          {studentSessions.map((session) => (
+          {filteredSessions.map((session) => (
             <View
               key={session.id}
               className={`bg-white rounded-2xl border-[1.5px] p-4 shadow-sm ${
@@ -327,7 +381,7 @@ export default function StudentView({
                 <View className="flex-1 mr-2">
                   <View className="flex-row items-center gap-2">
                     <Text className={`font-quicksand-bold text-[#4B5563] ${isTablet ? 'text-lg' : 'text-base'}`}>
-                      {session.activityName}
+                      Session: {session.activityName}
                     </Text>
                   </View>
                   <Text className={`font-quicksand-semibold text-[#6B7280] mt-0.5 ${isTablet ? 'text-sm' : 'text-xs'}`}>
@@ -343,7 +397,7 @@ export default function StudentView({
                     {session.score}
                   </Text>
                   <Text className={`font-quicksand-medium text-[#9CA3AF] uppercase ${isTablet ? 'text-xs' : 'text-[10px]'}`}>
-                    Activity Score
+                    Session Score
                   </Text>
                 </View>
               </View>
@@ -373,20 +427,36 @@ export default function StudentView({
                     </Text>
                   </TouchableOpacity>
                 ) : (
-                  <View className="bg-[#ECFDF5] px-3 py-1 rounded-full border border-[#D1FAE5]">
-                    <Text className={`font-quicksand-semibold text-[#047857] ${isTablet ? 'text-xs' : 'text-[11px]'}`}>
-                      Visible to Parent
-                    </Text>
+                  <View className="flex-row items-center gap-2">
+                    <View className="bg-[#ECFDF5] px-3 py-1 rounded-full border border-[#D1FAE5]">
+                      <Text className={`font-quicksand-semibold text-[#047857] ${isTablet ? 'text-xs' : 'text-[11px]'}`}>
+                        Visible to Parent
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      onPress={() => onValidateSession(session, currentClass.id)}
+                      className="bg-[#EBF5FF] border border-[#A3CFF1] px-3 py-1 rounded-full flex-row items-center gap-1 shadow-sm"
+                    >
+                      <Feather name="eye" size={13} color="#62A9E6" />
+                      <Text className={`font-quicksand-bold text-[#62A9E6] ${isTablet ? 'text-sm' : 'text-xs'}`}>
+                        View Feedback
+                      </Text>
+                    </TouchableOpacity>
                   </View>
                 )}
               </View>
             </View>
           ))}
 
-          {studentSessions.length === 0 && (
+          {filteredSessions.length === 0 && (
             <View className="bg-white p-6 rounded-xl border border-[#E5E7EB] items-center justify-center">
               <Text className="font-quicksand-medium text-sm text-[#9CA3AF]">
-                No recorded sessions for this learner yet.
+                {sessionFilter === 'unvalidated'
+                  ? 'No unvalidated sessions for this learner.'
+                  : sessionFilter === 'validated'
+                  ? 'No validated sessions for this learner.'
+                  : 'No recorded sessions for this learner yet.'}
               </Text>
             </View>
           )}

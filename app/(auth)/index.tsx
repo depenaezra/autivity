@@ -76,7 +76,7 @@ export default function Welcome() {
 
           {/* get started / sign up btn */}
           <Pressable
-            onPress={() => router.push('/(auth)/teacher-onboarding')}
+            onPress={() => router.push('/(auth)/user')}
             disabled={!isChecked} // disabled if tnc is not checked
             className={`w-full flex items-center justify-center border-b-[4px] p-[10px] ${isChecked
               ? 'bg-[#62A9E6] border-[#5298D4]' // blue - if tnc is checked

@@ -14,8 +14,8 @@ export const login = async (email: string, password: string) => {
     return data;
 };
 
-// Register a new user [MODIFIED: Now accepts 4 arguments]
-export const register = async (email: string, password: string, firstName: string, lastName: string, goals: string[]) => {
+// Register a new user
+export const register = async (email: string, password: string, firstName: string, lastName: string, goals: string[], role: string) => {
     const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -23,7 +23,8 @@ export const register = async (email: string, password: string, firstName: strin
             data: {
                 first_name: firstName,
                 last_name: lastName,
-                goals: goals, // [ADDED] Attach the goals to the secure metadata
+                goals: goals,
+                user_role: role,
             }
         }
     });

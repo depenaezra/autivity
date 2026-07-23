@@ -79,4 +79,48 @@ export const getLatestStudentSession = async (studentId: string) => {
     }
 
     return data && data.length > 0 ? data[0] : null;
+};
+
+export const getStudentHistoricalBaseline = async (
+    studentId: string,
+    category: string
+): Promise<{ lastPath: string; previousMistakes: number } | null> => {
+    try {
+        if (!studentId || !category) return null;
+
+        const { data, error } = await supabase
+            .from('student_sessions')
+            .select('*')
+            .eq('student_id', studentId)
+            .eq('category', category)
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+        if (error || !data || data.length === 0) {
+            return null;
+        }
+
+        const record = data[0];
+        const rawPaths = record.activity_path || record.activity_paths;
+        let lastPath: string | null = null;
+        if (Array.isArray(rawPaths) && rawPaths.length > 0) {
+            lastPath = rawPaths[rawPaths.length - 1];
+        } else if (typeof rawPaths === 'string' && rawPaths.trim()) {
+            lastPath = rawPaths.trim();
+        }
+
+        if (!lastPath) {
+            return null;
+        }
+
+        const previousMistakes = typeof record.mistakes === 'number' ? record.mistakes : 0;
+
+        return {
+            lastPath,
+            previousMistakes,
+        };
+    } catch (err) {
+        console.error("Error in getStudentHistoricalBaseline:", err);
+        return null;
+    }
 };
