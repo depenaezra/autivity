@@ -58,7 +58,7 @@ export default function OverviewView({
             Class Performance Overview
           </Text>
           <Text className={`font-quicksand-medium text-[#9CA3AF] ${isTablet ? 'text-base' : 'text-xs'}`}>
-            Tap to inspect learners
+            Tap class to inspect learners
           </Text>
         </View>
 

@@ -188,7 +188,19 @@ export default function SetManager({
     // Handle feedback from activities
     const handleFeedback = (message: string) => {
         setBearMessage(message);
-        setErrorMode(false);
+        
+        const isInstruction = currentActivity && (
+            (typeof currentActivity.content_data === 'string' && currentActivity.content_data.includes(message)) ||
+            (currentActivity.content_data?.instruction === message)
+        );
+        const isSuccess = SUCCESS_MESSAGES.includes(message);
+        const isLetPlay = message.startsWith("Let's");
+        
+        if (!isInstruction && !isSuccess && !isLetPlay && message !== '') {
+            setErrorMode(true);
+        } else {
+            setErrorMode(false);
+        }
     };
 
     // Callback caught from finished game loop
