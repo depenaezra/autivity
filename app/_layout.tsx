@@ -25,6 +25,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 
+
 SplashScreen.preventAutoHideAsync();
 
 export const unstable_settings = {

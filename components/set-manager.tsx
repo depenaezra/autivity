@@ -185,14 +185,10 @@ export default function SetManager({
         setErrorMode(false);
     }, [currentActivity]);
 
-    // Handle feedback from drag-and-drop mismatch
+    // Handle feedback from activities
     const handleFeedback = (message: string) => {
         setBearMessage(message);
-        if (message.toLowerCase().includes('not the correct') || message.toLowerCase().includes('try again')) {
-            setErrorMode(true);
-        } else {
-            setErrorMode(false);
-        }
+        setErrorMode(false);
     };
 
     // Callback caught from finished game loop
@@ -308,7 +304,7 @@ export default function SetManager({
                 const finalMistakes = totalMistakesAccumulator;
                 const finalScore = totalScoreAccumulator;
                 const totalDuration = 900 - globalTimer; // unified elapsed global session time
-                const allPaths = [...playedActivityPaths, currentActivity.path || ''];
+                const allPaths = playedActivityPaths;
 
                 try {
                     const payload: any = {

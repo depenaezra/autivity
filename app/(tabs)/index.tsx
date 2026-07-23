@@ -91,9 +91,7 @@ export default function TeacherHome() {
   const [isAddClassModalVisible, setAddClassModalVisible] = useState(false);
   const slideAnim = useSharedValue(600);
 
-  const modalAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: slideAnim.value }],
-  }));
+
 
   useEffect(() => {
     const loadStats = async () => {
@@ -422,7 +420,7 @@ export default function TeacherHome() {
         >
           <Pressable className="flex-1" onPress={() => setAddClassModalVisible(false)} />
           <Animated.View
-            style={modalAnimatedStyle}
+            style={{ transform: [{ translateY: slideAnim }] }}
             className={`bg-white rounded-t-3xl p-6 ${isTablet ? 'h-[60%]' : 'h-[70%]'}`}
           >
             <View className="flex-row justify-between items-center mb-6">

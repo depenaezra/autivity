@@ -42,9 +42,7 @@ export function AssignActivitiesModal({
   const [selectedActivityPaths, setSelectedActivityPaths] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
 
-  const modalAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: slideAnim.value }],
-  }));
+
 
   useEffect(() => {
     if (visible) {
@@ -78,7 +76,7 @@ export function AssignActivitiesModal({
       <View className="flex-1 justify-end bg-black/50">
         <Pressable className="flex-1" onPress={onClose} />
         <Animated.View
-          style={modalAnimatedStyle}
+          style={{ transform: [{ translateY: slideAnim }] }}
           className={`bg-white rounded-t-3xl p-6 ${isTablet ? 'h-[80%]' : 'h-[88%]'}`}
         >
           <View className="flex-row justify-between items-center mb-2">

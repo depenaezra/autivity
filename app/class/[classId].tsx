@@ -175,9 +175,7 @@ const [newStudentName, setNewStudentName] = useState("");
 
   const slideAnim = useSharedValue(600);
 
-  const modalAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: slideAnim.value }],
-  }));
+
 
   const fetchStudents = async () => {
     try {
@@ -672,7 +670,7 @@ const handleSaveClassEdit = async () => {
         >
           <Pressable className="flex-1" onPress={() => setAddStudentModalVisible(false)} />
           <Animated.View
-            style={modalAnimatedStyle}
+            style={{ transform: [{ translateY: slideAnim }] }}
             className={`bg-white rounded-t-3xl p-6 ${isTablet ? 'h-[60%]' : 'h-[75%]'}`}
           >
             <View className="flex-row justify-between items-center mb-6">
@@ -751,7 +749,7 @@ const handleSaveClassEdit = async () => {
         >
           <Pressable className="flex-1" onPress={() => setEditClassModalVisible(false)} />
           <Animated.View
-            style={modalAnimatedStyle}
+            style={{ transform: [{ translateY: slideAnim }] }}
             className={`bg-white rounded-t-3xl p-6 ${isTablet ? 'h-[60%]' : 'h-[75%]'}`}
           >
             <View className="flex-row justify-between items-center mb-6">
@@ -936,7 +934,7 @@ const handleSaveClassEdit = async () => {
         <View className="flex-1 justify-end bg-black/50">
           <Pressable className="flex-1" onPress={() => setMoveModalVisible(false)} />
           <Animated.View
-            style={modalAnimatedStyle}
+            style={{ transform: [{ translateY: slideAnim }] }}
             className={`bg-white rounded-t-3xl p-6 ${isTablet ? 'h-[50%]' : 'h-[60%]'}`}
           >
             <View className="flex-row justify-between items-center mb-4">

@@ -12,9 +12,17 @@ import { BOUNDARY_RADIUS, useTracing } from "../hooks/useTracing";
 import type { TracingActivityData } from "../types";
 import { buildTracingData } from "../utils/buildTracingData";
 
+const TRACING_GUIDING_MESSAGES = [
+    "Stay on the line! Keep going smoothly!",
+    "Almost there! Follow the dotted path from start to end!",
+    "Nice try! Try tracing slowly without lifting your finger!",
+    "Keep your finger on the line and follow the path!",
+];
+
 type TracingActivityProps = {
     activity: TracingActivityData;
     onComplete?: (score: number, timeSpent: number, mistakes: number) => void;
+    onFeedback?: (message: string) => void;
     onIncorrectAttempt?: () => void;
 };
 
@@ -82,9 +90,6 @@ function TracingActivityContent({
                         height: "100%",
                     }}
                 >
-
-
-
                     {/* gray tracing path */}
                     <Path
                         d={path}
@@ -154,14 +159,26 @@ function TracingActivityContent({
 export default function TracingActivity({
     activity,
     onComplete,
+    onFeedback,
     onIncorrectAttempt,
 }: TracingActivityProps) {
     const [currentStrokeIndex, setCurrentStrokeIndex] = useState(0);
     const mistakesRef = useRef(0);
     const startTimeRef = useRef(Date.now());
+    const feedbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const lastMessageIndexRef = useRef<number>(-1);
 
     // 2. Grab the device screen size
     const { width, height } = useWindowDimensions();
+
+    const getNextTracingMessage = () => {
+        let nextIdx = Math.floor(Math.random() * TRACING_GUIDING_MESSAGES.length);
+        if (nextIdx === lastMessageIndexRef.current) {
+            nextIdx = (nextIdx + 1) % TRACING_GUIDING_MESSAGES.length;
+        }
+        lastMessageIndexRef.current = nextIdx;
+        return TRACING_GUIDING_MESSAGES[nextIdx];
+    };
 
     if (!activity || !activity.paths || activity.paths.length === 0) {
         return null;
@@ -171,9 +188,17 @@ export default function TracingActivity({
 
     const handleIncorrectAttempt = () => {
         mistakesRef.current += 1;
-        if (onIncorrectAttempt) {
-            onIncorrectAttempt();
+        onIncorrectAttempt?.();
+
+        if (feedbackTimeoutRef.current) {
+            clearTimeout(feedbackTimeoutRef.current);
         }
+
+        onFeedback?.(getNextTracingMessage());
+
+        feedbackTimeoutRef.current = setTimeout(() => {
+            onFeedback?.("Let's trace along the dotted line!");
+        }, 3500);
     };
 
     const handleStrokeComplete = () => {

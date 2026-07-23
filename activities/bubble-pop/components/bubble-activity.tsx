@@ -50,6 +50,7 @@ export default function BubbleActivity({
     const startTimeRef = useRef<number>(Date.now());
     const completionDetailsRef = useRef<{ score: number; timeSpent: number; mistakes: number } | null>(null);
     const feedbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const lastMessageIndexRef = useRef<number>(-1);
 
     useEffect(() => {
         startTimeRef.current = Date.now();
@@ -105,7 +106,20 @@ export default function BubbleActivity({
                     clearTimeout(feedbackTimeoutRef.current);
                 }
 
-                onFeedback?.(`Not quite! Pop the ${targetColor} bubbles!`);
+                const guidingMessages = [
+                    `Not quite! Pop the ${targetColor} bubbles!`,
+                    `Try again! Look for the ${targetColor} bubbles!`,
+                    `Almost! Tap only the ${targetColor} bubbles floating up!`,
+                    `Keep trying! Find and pop the ${targetColor} bubbles!`,
+                ];
+
+                let nextIdx = Math.floor(Math.random() * guidingMessages.length);
+                if (nextIdx === lastMessageIndexRef.current) {
+                    nextIdx = (nextIdx + 1) % guidingMessages.length;
+                }
+                lastMessageIndexRef.current = nextIdx;
+
+                onFeedback?.(guidingMessages[nextIdx]);
 
                 feedbackTimeoutRef.current = setTimeout(() => {
                     onFeedback?.(contentData?.instruction || (targetColor ? `Pop the ${targetColor} bubbles!` : "Let's play!"));

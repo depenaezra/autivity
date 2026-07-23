@@ -31,6 +31,7 @@ export default function ActivityRenderer({ activity, onComplete, onFeedback, onI
                 <TracingActivity
                     activity={activity.data}
                     onComplete={onComplete}
+                    onFeedback={onFeedback}
                     onIncorrectAttempt={onIncorrectAttempt}
                 />
             );

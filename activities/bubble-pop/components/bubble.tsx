@@ -100,9 +100,7 @@ export default function Bubble({
         );
     }, []);
 
-    const animatedStyle = useAnimatedStyle(() => ({
-        top: translateY.value,
-    }));
+
 
     const handleTap = () => {
         if (isPopped || hasHandledPopRef.current || hasHandledRecycleRef.current) return;
@@ -131,9 +129,9 @@ export default function Bubble({
                 styles.container,
                 {
                     left: x,
+                    top: translateY,
                     transform: scale ? [{ scale }] : undefined,
                 },
-                animatedStyle,
             ]}
         >
             <Pressable
