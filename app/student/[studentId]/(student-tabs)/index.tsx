@@ -302,13 +302,13 @@ export default function StudentHome() {
                                     </Pressable>
                                 )}
 
-                                {/* Matching Activity Card - Only shown if assigned */}
+                                {/* Drag and Drop Activity Card - Only shown if assigned */}
                                 {hasMatchingAssignment && (
                                     <Pressable
                                         onPress={() => navigateToLesson('matching')}
                                         className={`bg-white overflow-hidden ${isTablet
                                             ? 'w-[440px] h-[320px] rounded-[24px] border-[3px] border-b-[6px]'
-                                            : 'w-[280px] h-[240px] rounded-[18px] border-[2px] border-b-[5px]'
+                                            : 'w-[290px] h-[240px] rounded-[18px] border-[2px] border-b-[5px]'
                                             }`}
                                         style={{ borderColor: '#F7890F', borderBottomColor: '#D66F00' }}
                                     >
@@ -321,9 +321,14 @@ export default function StudentHome() {
                                         </View>
                                         <View className={`flex-1 justify-center bg-white ${isTablet ? 'px-6 py-4' : 'px-4 py-3'}`}>
                                             <View className="flex-row items-center justify-between w-full">
-                                                <Text className={`font-quicksand-bold text-[#4B5563] ${isTablet ? 'text-4xl' : 'text-3xl'}`}>Matching</Text>
+                                                <Text
+                                                    className={`font-quicksand-bold text-[#4B5563] flex-1 mr-2 ${isTablet ? 'text-3xl' : 'text-[24px]'}`}
+                                                    numberOfLines={2}
+                                                >
+                                                    Drag and Drop
+                                                </Text>
                                                 <View
-                                                    className={`flex-row items-center justify-center border-[2px] rounded-full ${isTablet ? 'px-6 py-2 gap-2' : 'px-4 py-1.5 gap-1'}`}
+                                                    className={`flex-row items-center justify-center border-[2px] rounded-full ${isTablet ? 'px-6 py-2 gap-2' : 'px-3.5 py-1.5 gap-1'}`}
                                                     style={{ borderColor: '#F7890F', backgroundColor: '#FFF3E0' }}
                                                 >
                                                     <Ionicons name="play" size={isTablet ? 18 : 14} color="#F7890F" />

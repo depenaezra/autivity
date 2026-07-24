@@ -6,9 +6,11 @@ import { Animated as RNAnimated, Dimensions, Pressable, Text, View, ActivityIndi
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import AchievementUnlockScreen, { UnlockedBadge } from '@/components/achievement-unlock-screen';
 import ActivityRenderer from '@/components/activity-renderer';
 import FeedbackModal from '@/components/feedback-modal';
 import { supabase } from '@/src/lib/supabase';
+import { processActivityCompletion } from '@/src/services/achivements';
 import { getStudentHistoricalBaseline } from '@/src/services/sessions';
 import { formatActivityTitle } from '@/src/utils/format';
 
@@ -122,6 +124,8 @@ export default function SetManager({
     const [completedMetrics, setCompletedMetrics] = useState<{ score: number; timeSpent: number; mistakes: number } | null>(null);
     const [savedSetSessionId, setSavedSetSessionId] = useState<string | null>(null);
     const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+    const [unlockedBadges, setUnlockedBadges] = useState<UnlockedBadge[]>([]);
+    const [showAchievementScreen, setShowAchievementScreen] = useState(false);
 
     // Accumulator State Trackers
     const [totalMistakesAccumulator, setTotalMistakesAccumulator] = useState(0);
@@ -425,6 +429,92 @@ export default function SetManager({
                     console.error("[DATABASE] Error inserting student session:", e);
                 }
 
+                // Evaluate achievements after session insertion
+                if (studentId) {
+                    try {
+                        const achievementResult = await processActivityCompletion(studentId, finalScore);
+                        if (
+                            achievementResult &&
+                            achievementResult.success &&
+                            achievementResult.newlyUnlocked &&
+                            achievementResult.newlyUnlocked.length > 0
+                        ) {
+                            const unlockedIds = achievementResult.newlyUnlocked;
+                            const { data: dbBadges } = await supabase
+                                .from('achievements')
+                                .select('*')
+                                .in('id', unlockedIds);
+
+                            const fetchedMap = new Map(dbBadges?.map((b) => [b.id, b]) || []);
+
+                            const DEFAULT_BADGES: Record<string, any> = {
+                                first_adventure: {
+                                    id: 'first_adventure',
+                                    title: 'First Adventure',
+                                    description: 'Completed your very first activity!',
+                                    icon: 'compass',
+                                    color: '#3B82F6',
+                                    bg_color: '#EFF6FF',
+                                    border_color: '#93C5FD',
+                                },
+                                triple_threat: {
+                                    id: 'triple_threat',
+                                    title: 'Triple Threat',
+                                    description: 'Completed 3 activities in total!',
+                                    icon: 'trophy',
+                                    color: '#EAB308',
+                                    bg_color: '#FEF9C3',
+                                    border_color: '#FDE047',
+                                },
+                                speedy_explorer: {
+                                    id: 'speedy_explorer',
+                                    title: 'Speedy Explorer',
+                                    description: 'Finished an activity in under 15 seconds!',
+                                    icon: 'flash',
+                                    color: '#EC4899',
+                                    bg_color: '#FCE7F3',
+                                    border_color: '#FBCFE8',
+                                },
+                                daily_hero: {
+                                    id: 'daily_hero',
+                                    title: 'Daily Hero',
+                                    description: 'Completed activities 3 days in a row!',
+                                    icon: 'star',
+                                    color: '#10B981',
+                                    bg_color: '#ECFDF5',
+                                    border_color: '#A7F3D0',
+                                },
+                            };
+
+                            const formattedBadges: UnlockedBadge[] = unlockedIds.map((id) => {
+                                const dbBadge = fetchedMap.get(id);
+                                const fallback = DEFAULT_BADGES[id] || {
+                                    id,
+                                    title: 'New Achievement',
+                                    description: 'Great job completing your activity!',
+                                    icon: 'star',
+                                    color: '#FACC15',
+                                    bg_color: '#FEF9C3',
+                                    border_color: '#FDE047',
+                                };
+                                return {
+                                    id,
+                                    title: dbBadge?.title || fallback.title,
+                                    description: dbBadge?.description || fallback.description,
+                                    icon: dbBadge?.icon || fallback.icon,
+                                    color: dbBadge?.color || fallback.color,
+                                    bgColor: dbBadge?.bg_color || fallback.bg_color,
+                                    borderColor: dbBadge?.border_color || fallback.border_color,
+                                };
+                            });
+
+                            setUnlockedBadges(formattedBadges);
+                        }
+                    } catch (err) {
+                        console.error('[SET_MANAGER] Error processing achievements:', err);
+                    }
+                }
+
                 // Increment to 3, freeze global timer, and display visual confetti praise card
                 setCompletedCount(3);
                 setIsSetComplete(true);
@@ -483,6 +573,14 @@ export default function SetManager({
     };
 
     const progressPercent = `${Math.round(((completedCount + 1) / 3) * 100)}%`;
+
+    const handleExitSession = () => {
+        if (unlockedBadges.length > 0) {
+            setShowAchievementScreen(true);
+        } else {
+            router.back();
+        }
+    };
 
     return (
         <Animated.View style={[{ flex: 1 }, animatedContentStyle]}>
@@ -595,7 +693,7 @@ export default function SetManager({
                             </Pressable>
 
                             <Pressable
-                                onPress={() => router.back()}
+                                onPress={handleExitSession}
                                 className="w-full h-14 bg-[#F3F4F6] border-b-[4px] border-[#D1D5DB] rounded-full items-center justify-center active:bg-[#E5E7EB]"
                             >
                                 <Text className="text-[#4B5563] font-fredoka-regular text-xl">
@@ -611,8 +709,17 @@ export default function SetManager({
                 visible={showFeedbackModal}
                 sessionId={savedSetSessionId}
                 activityTitle={`Set of 3 Activities`}
-                onClose={() => { setShowFeedbackModal(false); router.back(); }}
-                onSuccess={() => { setShowFeedbackModal(false); router.back(); }}
+                onClose={() => { setShowFeedbackModal(false); handleExitSession(); }}
+                onSuccess={() => { setShowFeedbackModal(false); handleExitSession(); }}
+            />
+
+            <AchievementUnlockScreen
+                visible={showAchievementScreen}
+                badges={unlockedBadges}
+                onComplete={() => {
+                    setShowAchievementScreen(false);
+                    router.back();
+                }}
             />
         </Animated.View>
     );
