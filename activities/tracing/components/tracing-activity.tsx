@@ -11,6 +11,7 @@ import Svg, { Circle, Path } from "react-native-svg";
 import { BOUNDARY_RADIUS, useTracing } from "../hooks/useTracing";
 import type { TracingActivityData } from "../types";
 import { buildTracingData } from "../utils/buildTracingData";
+import { playCorrectSound } from "@/src/utils/sound";
 
 const TRACING_GUIDING_MESSAGES = [
     "Stay on the line! Keep going smoothly!",
@@ -202,6 +203,7 @@ export default function TracingActivity({
     };
 
     const handleStrokeComplete = () => {
+        playCorrectSound();
         if (currentStrokeIndex < activity.paths.length - 1) {
             setCurrentStrokeIndex((prev) => prev + 1);
         } else {

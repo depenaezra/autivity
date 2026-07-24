@@ -12,29 +12,15 @@ import Animated, {
     withTiming,
 } from "react-native-reanimated";
 
-import { Audio } from "expo-av";
-
+import { playBubblePopSound } from "@/src/utils/sound";
 import BubbleContent from "./bubble-content";
 
-import { bubbleSounds } from "../utils/bubble-assets";
 import { BubbleProps } from "../utils/types";
 
 const bubblePopAnimation = require("../../../assets/animations/bubble-pop.json");
 
-const playPopSound = async () => {
-    try {
-        const { sound } = await Audio.Sound.createAsync(
-            bubbleSounds.pop,
-            { shouldPlay: true }
-        );
-        sound.setOnPlaybackStatusUpdate((status) => {
-            if (status.isLoaded && status.didJustFinish) {
-                sound.unloadAsync();
-            }
-        });
-    } catch (error) {
-        // Ignore playback errors
-    }
+const playPopSound = () => {
+    playBubblePopSound();
 };
 
 export default function Bubble({

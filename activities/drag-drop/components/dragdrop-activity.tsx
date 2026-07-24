@@ -4,6 +4,7 @@ import { DraxProvider, DraxView } from 'react-native-drax';
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 import { dragDropAssets } from '../utils/assetDictionary';
 import { generateDynamicActivityData } from '../utils/shuffler';
+import { playCorrectSound } from '@/src/utils/sound';
 
 interface DynamicActivityProps {
     contentData: {
@@ -76,6 +77,7 @@ export default function DragDropActivity({ contentData, onComplete, onFeedback, 
         if (!activityLayout) return;
 
         if (draggedType === targetType) {
+            playCorrectSound();
             const newPlacedItems = { ...placedItems, [draggedType]: true };
             setPlacedItems(newPlacedItems);
 

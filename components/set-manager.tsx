@@ -13,6 +13,7 @@ import { supabase } from '@/src/lib/supabase';
 import { processActivityCompletion } from '@/src/services/achivements';
 import { getStudentHistoricalBaseline } from '@/src/services/sessions';
 import { formatActivityTitle } from '@/src/utils/format';
+import { playCorrectSound, setGlobalSfxEnabled, startBackgroundMusic, stopBackgroundMusic } from '@/src/utils/sound';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -126,11 +127,19 @@ export default function SetManager({
     const [showFeedbackModal, setShowFeedbackModal] = useState(false);
     const [unlockedBadges, setUnlockedBadges] = useState<UnlockedBadge[]>([]);
     const [showAchievementScreen, setShowAchievementScreen] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+    const isSavingRef = useRef(false);
 
     // Accumulator State Trackers
     const [totalMistakesAccumulator, setTotalMistakesAccumulator] = useState(0);
     const [totalScoreAccumulator, setTotalScoreAccumulator] = useState(0);
     const [playedActivityPaths, setPlayedActivityPaths] = useState<string[]>([]);
+
+    const [studentPreferences, setStudentPreferences] = useState<{ sfx_enabled: boolean; music_enabled: boolean; confetti_enabled: boolean }>({
+        sfx_enabled: true,
+        music_enabled: true,
+        confetti_enabled: true,
+    });
 
     // Initialization Logic
     useEffect(() => {
@@ -141,6 +150,25 @@ export default function SetManager({
 
             setIsInitializing(true);
             setActivityPool(initialPool);
+
+            // Fetch student preferences
+            if (studentId) {
+                const { data: studentRes } = await supabase
+                    .from('students')
+                    .select('preferences')
+                    .eq('id', studentId)
+                    .single();
+
+                if (isMounted && studentRes?.preferences) {
+                    const sfxVal = studentRes.preferences.sfx_enabled ?? true;
+                    setGlobalSfxEnabled(sfxVal);
+                    setStudentPreferences({
+                        sfx_enabled: sfxVal,
+                        music_enabled: studentRes.preferences.music_enabled ?? true,
+                        confetti_enabled: studentRes.preferences.confetti_enabled ?? true,
+                    });
+                }
+            }
 
             const category = initialPool[0]?.category || 'Activity';
             let startingActivity: any = null;
@@ -215,6 +243,8 @@ export default function SetManager({
                 setTotalMistakesAccumulator(0);
                 setTotalScoreAccumulator(0);
                 setIsInitializing(false);
+                isSavingRef.current = false;
+                setIsSaving(false);
             }
         };
 
@@ -224,6 +254,19 @@ export default function SetManager({
             isMounted = false;
         };
     }, [initialPool, studentId]);
+
+    // Continuous Background Music during active activity session
+    useEffect(() => {
+        if (!isInitializing && !isSetComplete) {
+            startBackgroundMusic(studentPreferences.music_enabled);
+        } else if (isSetComplete) {
+            stopBackgroundMusic();
+        }
+
+        return () => {
+            stopBackgroundMusic();
+        };
+    }, [isInitializing, isSetComplete, studentPreferences.music_enabled]);
 
     // Countdown Timer - runs smoothly and freezes when completedCount is 3 or set is complete
     useEffect(() => {
@@ -274,6 +317,7 @@ export default function SetManager({
 
     // Callback caught from finished game loop
     const handleActivityComplete = (score: number, timeSpent: number, mistakes: number) => {
+        playCorrectSound(studentPreferences.sfx_enabled);
         setCompletedMetrics({ score, timeSpent, mistakes });
         // Immediately add activity finished score and mistakes to accumulators
         setTotalScoreAccumulator(prev => prev + score);
@@ -287,7 +331,7 @@ export default function SetManager({
 
     // CHECK / Next Activity double-click transition logic
     const handleCheckPress = async () => {
-        if (!isActivityDone || !completedMetrics || !currentActivity) return;
+        if (!isActivityDone || !completedMetrics || !currentActivity || isSavingRef.current || isSetComplete) return;
 
         // successMode will be true because it's immediately set on completion.
         if (!successMode) {
@@ -381,6 +425,10 @@ export default function SetManager({
                     console.warn("[SET_MANAGER] No more unplayed activities left in pool.");
                 }
             } else if (completedCount === 2) {
+                if (isSavingRef.current) return;
+                isSavingRef.current = true;
+                setIsSaving(true);
+
                 // TASK: Unified Database Payload Insertion on completedCount === 2 (finished 3rd activity)
                 const finalMistakes = totalMistakesAccumulator;
                 const finalScore = totalScoreAccumulator;
@@ -519,6 +567,7 @@ export default function SetManager({
                 setCompletedCount(3);
                 setIsSetComplete(true);
                 setBearMessage("Incredible job! You finished all 3 activities! 🎉");
+                setIsSaving(false);
             }
         }
     };
@@ -640,13 +689,17 @@ export default function SetManager({
                 {!isSetComplete && (
                     <View className="px-6 pb-4">
                         <Pressable
-                            disabled={!isActivityDone}
+                            disabled={!isActivityDone || isSaving}
                             onPress={handleCheckPress}
-                            className={`w-full flex items-center justify-center border-b-[4px] p-[10px] h-[60px] rounded-full ${isActivityDone ? 'bg-[#62A9E6] border-[#5298D4]' : 'bg-[#D1D5DB] border-[#9CA3AF]'}`}
+                            className={`w-full flex items-center justify-center border-b-[4px] p-[10px] h-[60px] rounded-full ${isActivityDone && !isSaving ? 'bg-[#62A9E6] border-[#5298D4]' : 'bg-[#D1D5DB] border-[#9CA3AF]'}`}
                         >
-                            <Text className="text-white font-fredoka-regular text-2xl">
-                                {successMode ? 'Next Activity' : 'CHECK'}
-                            </Text>
+                            {isSaving ? (
+                                <ActivityIndicator color="white" size="small" />
+                            ) : (
+                                <Text className="text-white font-fredoka-regular text-2xl">
+                                    {successMode ? 'Next Activity' : 'CHECK'}
+                                </Text>
+                            )}
                         </Pressable>
                     </View>
                 )}

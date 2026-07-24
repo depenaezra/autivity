@@ -3,8 +3,10 @@ import { useFocusEffect, useGlobalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 
-// Import supabase directly for fetching data
+// Import services
+import { updateStudentPreferences, StudentPreferences } from '../../../../src/services/students';
 import { supabase } from '../../../../src/lib/supabase';
+import { setGlobalSfxEnabled } from '../../../../src/utils/sound';
 
 export default function StudentProfile() {
     const router = useRouter();
@@ -15,6 +17,12 @@ export default function StudentProfile() {
     // State for fetched profile details
     const [studentData, setStudentData] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [preferences, setPreferences] = useState<StudentPreferences>({
+        sfx_enabled: true,
+        music_enabled: true,
+        confetti_enabled: true,
+    });
+    const [isUpdatingPref, setIsUpdatingPref] = useState(false);
 
     // Fetch the student, sessions count, class, and teacher details from DB on screen focus
     useFocusEffect(
@@ -69,6 +77,16 @@ export default function StudentProfile() {
                             grade: classData?.grade || 'Grade 1',
                             teacherName: teacherData ? `${teacherData.first_name} ${teacherData.last_name}` : 'Unknown Teacher',
                         });
+
+                        if (student.preferences) {
+                            const sfx = student.preferences.sfx_enabled ?? true;
+                            setGlobalSfxEnabled(sfx);
+                            setPreferences({
+                                sfx_enabled: sfx,
+                                music_enabled: student.preferences.music_enabled ?? true,
+                                confetti_enabled: student.preferences.confetti_enabled ?? true,
+                            });
+                        }
                     }
                 } catch (error) {
                     console.error("Error fetching student profile:", error);
@@ -84,6 +102,32 @@ export default function StudentProfile() {
             };
         }, [studentId])
     );
+
+    const handleTogglePreference = async (key: keyof StudentPreferences) => {
+        const safeId = Array.isArray(studentId) ? studentId[0] : studentId;
+        if (!safeId || isUpdatingPref) return;
+
+        const nextVal = !preferences[key];
+        const updated = { ...preferences, [key]: nextVal };
+
+        if (key === 'sfx_enabled') {
+            setGlobalSfxEnabled(nextVal);
+        }
+
+        // Optimistic UI update
+        setPreferences(updated);
+        setIsUpdatingPref(true);
+
+        try {
+            await updateStudentPreferences(safeId, { [key]: nextVal });
+        } catch (err) {
+            console.error(`Failed to update preference ${key}:`, err);
+            // Revert on error
+            setPreferences(preferences);
+        } finally {
+            setIsUpdatingPref(false);
+        }
+    };
 
     return (
         <View className="flex-1 bg-[#F5F8FA]">
@@ -225,13 +269,30 @@ export default function StudentProfile() {
                                         Music
                                     </Text>
                                 </View>
-                                <View className={`flex-row items-center bg-[#E1F0FF] border border-[#9ACBF9] rounded-full ${isTablet ? 'px-4 py-2' : 'px-3 py-1.5'}`}>
-                                    <Feather name="bell" size={isTablet ? 14 : 12} color="#0284C7" />
-                                    <Text className={`text-[#0284C7] font-quicksand-bold ml-1.5 ${isTablet ? 'text-sm' : 'text-xs'}`}>ON</Text>
-                                </View>
+                                <Pressable
+                                    onPress={() => handleTogglePreference('music_enabled')}
+                                    className={`flex-row items-center rounded-full border ${
+                                        preferences.music_enabled
+                                            ? 'bg-[#E1F0FF] border-[#9ACBF9]'
+                                            : 'bg-[#F3F4F6] border-[#D1D5DB]'
+                                    } ${isTablet ? 'px-4 py-2' : 'px-3 py-1.5'}`}
+                                >
+                                    <Feather
+                                        name={preferences.music_enabled ? "bell" : "bell-off"}
+                                        size={isTablet ? 14 : 12}
+                                        color={preferences.music_enabled ? "#0284C7" : "#6B7280"}
+                                    />
+                                    <Text
+                                        className={`font-quicksand-bold ml-1.5 ${
+                                            preferences.music_enabled ? 'text-[#0284C7]' : 'text-[#6B7280]'
+                                        } ${isTablet ? 'text-sm' : 'text-xs'}`}
+                                    >
+                                        {preferences.music_enabled ? 'ON' : 'OFF'}
+                                    </Text>
+                                </Pressable>
                             </View>
 
-                            {/* Sounds Effects Row */}
+                            {/* Sound Effects Row */}
                             <View className={`flex-row items-center justify-between border-b border-[#F3F4F6] ${isTablet ? 'pb-4 mb-4' : 'pb-3 mb-3'}`}>
                                 <View className="flex-row items-center">
                                     <Ionicons name="musical-note-outline" size={isTablet ? 24 : 18} color="#FB923C" />
@@ -239,10 +300,27 @@ export default function StudentProfile() {
                                         Sound Effects
                                     </Text>
                                 </View>
-                                <View className={`flex-row items-center bg-[#E1F0FF] border border-[#9ACBF9] rounded-full ${isTablet ? 'px-4 py-2' : 'px-3 py-1.5'}`}>
-                                    <Feather name="bell" size={isTablet ? 14 : 12} color="#0284C7" />
-                                    <Text className={`text-[#0284C7] font-quicksand-bold ml-1.5 ${isTablet ? 'text-sm' : 'text-xs'}`}>ON</Text>
-                                </View>
+                                <Pressable
+                                    onPress={() => handleTogglePreference('sfx_enabled')}
+                                    className={`flex-row items-center rounded-full border ${
+                                        preferences.sfx_enabled
+                                            ? 'bg-[#E1F0FF] border-[#9ACBF9]'
+                                            : 'bg-[#F3F4F6] border-[#D1D5DB]'
+                                    } ${isTablet ? 'px-4 py-2' : 'px-3 py-1.5'}`}
+                                >
+                                    <Feather
+                                        name={preferences.sfx_enabled ? "bell" : "bell-off"}
+                                        size={isTablet ? 14 : 12}
+                                        color={preferences.sfx_enabled ? "#0284C7" : "#6B7280"}
+                                    />
+                                    <Text
+                                        className={`font-quicksand-bold ml-1.5 ${
+                                            preferences.sfx_enabled ? 'text-[#0284C7]' : 'text-[#6B7280]'
+                                        } ${isTablet ? 'text-sm' : 'text-xs'}`}
+                                    >
+                                        {preferences.sfx_enabled ? 'ON' : 'OFF'}
+                                    </Text>
+                                </Pressable>
                             </View>
 
                             {/* Confetti Effects Row */}
@@ -253,13 +331,28 @@ export default function StudentProfile() {
                                         Confetti Effects
                                     </Text>
                                 </View>
-                                <View className={`flex-row items-center bg-[#E1F0FF] border border-[#9ACBF9] rounded-full ${isTablet ? 'px-4 py-2' : 'px-3 py-1.5'}`}>
-                                    <Feather name="bell" size={isTablet ? 14 : 12} color="#0284C7" />
-                                    <Text className={`text-[#0284C7] font-quicksand-bold ml-1.5 ${isTablet ? 'text-sm' : 'text-xs'}`}>ON</Text>
-                                </View>
+                                <Pressable
+                                    onPress={() => handleTogglePreference('confetti_enabled')}
+                                    className={`flex-row items-center rounded-full border ${
+                                        preferences.confetti_enabled
+                                            ? 'bg-[#E1F0FF] border-[#9ACBF9]'
+                                            : 'bg-[#F3F4F6] border-[#D1D5DB]'
+                                    } ${isTablet ? 'px-4 py-2' : 'px-3 py-1.5'}`}
+                                >
+                                    <Feather
+                                        name={preferences.confetti_enabled ? "bell" : "bell-off"}
+                                        size={isTablet ? 14 : 12}
+                                        color={preferences.confetti_enabled ? "#0284C7" : "#6B7280"}
+                                    />
+                                    <Text
+                                        className={`font-quicksand-bold ml-1.5 ${
+                                            preferences.confetti_enabled ? 'text-[#0284C7]' : 'text-[#6B7280]'
+                                        } ${isTablet ? 'text-sm' : 'text-xs'}`}
+                                    >
+                                        {preferences.confetti_enabled ? 'ON' : 'OFF'}
+                                    </Text>
+                                </Pressable>
                             </View>
-
-
                         </View>
                     </View>
 

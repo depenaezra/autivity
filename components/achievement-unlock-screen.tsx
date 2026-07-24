@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Audio } from 'expo-av';
 import React, { useEffect, useRef, useState } from 'react';
+import { playAchievementSound } from '@/src/utils/sound';
 import {
     Dimensions,
     Pressable,
@@ -176,22 +176,7 @@ export default function AchievementUnlockScreen({
             );
 
             // Play achievement sound
-            const playSound = async () => {
-                try {
-                    const { sound } = await Audio.Sound.createAsync(
-                        require('../assets/sounds/achievement.mp3'),
-                        { shouldPlay: true }
-                    );
-                    sound.setOnPlaybackStatusUpdate((status) => {
-                        if (status.isLoaded && status.didJustFinish) {
-                            sound.unloadAsync();
-                        }
-                    });
-                } catch (error) {
-                    console.warn("Failed to play achievement sound:", error);
-                }
-            };
-            playSound();
+            playAchievementSound();
         }
     }, [visible, currentIndex, badges.length]);
 

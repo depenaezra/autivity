@@ -111,3 +111,46 @@ export const getStudentCount = async () => {
     if (error) throw new Error(error.message);
     return count || 0;
 };
+
+export interface StudentPreferences {
+    sfx_enabled: boolean;
+    music_enabled: boolean;
+    confetti_enabled: boolean;
+}
+
+// Update preferences for a student
+export const updateStudentPreferences = async (
+    studentId: string,
+    preferences: Partial<StudentPreferences>
+) => {
+    // 1. Fetch current preferences to merge updates safely
+    const { data: currentStudent, error: fetchError } = await supabase
+        .from('students')
+        .select('preferences')
+        .eq('id', studentId)
+        .single();
+
+    if (fetchError) throw new Error(fetchError.message);
+
+    const existingPrefs: StudentPreferences = {
+        sfx_enabled: true,
+        music_enabled: true,
+        confetti_enabled: true,
+        ...(currentStudent?.preferences || {}),
+    };
+
+    const updatedPrefs: StudentPreferences = {
+        ...existingPrefs,
+        ...preferences,
+    };
+
+    const { data, error } = await supabase
+        .from('students')
+        .update({ preferences: updatedPrefs })
+        .eq('id', studentId)
+        .select()
+        .single();
+
+    if (error) throw new Error(error.message);
+    return data;
+};
