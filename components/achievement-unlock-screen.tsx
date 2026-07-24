@@ -33,6 +33,7 @@ interface AchievementUnlockScreenProps {
     visible: boolean;
     badges: UnlockedBadge[];
     onComplete: () => void;
+    confettiEnabled?: boolean;
 }
 
 function FullScreenConfetti() {
@@ -149,6 +150,7 @@ export default function AchievementUnlockScreen({
     visible,
     badges,
     onComplete,
+    confettiEnabled = true,
 }: AchievementUnlockScreenProps) {
     const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -206,7 +208,7 @@ export default function AchievementUnlockScreen({
         <View className="absolute inset-0 bg-[#F8FAFC] z-[10000] items-center justify-center">
             {/* Background Sunburst & Confetti */}
             <RotatingSunburst />
-            <FullScreenConfetti />
+            {confettiEnabled && <FullScreenConfetti />}
 
             {/* Content Container */}
             <View className="items-center px-6 w-full max-w-[460px] z-10">

@@ -709,7 +709,7 @@ export default function SetManager({
             {/* End-of-Set Congratulations Overlay */}
             {isSetComplete && (
                 <View className="absolute inset-0 bg-black/60 items-center justify-center p-6 z-[9999]" style={{ width: screenWidth, height: screenHeight }}>
-                    <ConfettiEffect />
+                    {studentPreferences.confetti_enabled && <ConfettiEffect />}
 
                     <View className="bg-white rounded-[32px] p-8 items-center border-[3px] border-[#FDBA74] w-full max-w-[420px] shadow-2xl">
 
@@ -769,6 +769,7 @@ export default function SetManager({
             <AchievementUnlockScreen
                 visible={showAchievementScreen}
                 badges={unlockedBadges}
+                confettiEnabled={studentPreferences.confetti_enabled}
                 onComplete={() => {
                     setShowAchievementScreen(false);
                     router.back();
