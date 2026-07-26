@@ -28,7 +28,8 @@ export const getActivitiesByPaths = async (paths: string[]) => {
     const { data, error } = await supabase
         .from('activities')
         .select('*')
-        .in('path', expandedPaths);
+        .in('path', expandedPaths)
+        .eq('is_hidden', false);
 
     if (error) throw new Error(error.message);
     return data || [];
@@ -65,7 +66,8 @@ export const getActivitiesBySubcategories = async (subcategories: string[]) => {
     const { data, error } = await supabase
         .from('activities')
         .select('*')
-        .or(orFilter);
+        .or(orFilter)
+        .eq('is_hidden', false);
 
     if (error) {
         console.error('Error fetching activities by subcategory:', error);
@@ -79,6 +81,7 @@ export const getDefaultActivities = async (limit: number = 5) => {
     const { data, error } = await supabase
         .from('activities')
         .select('*')
+        .eq('is_hidden', false)
         .limit(limit);
 
     if (error) throw new Error(error.message);

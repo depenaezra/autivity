@@ -51,7 +51,8 @@ export default function LessonScreen() {
                         const { data } = await supabase
                             .from('activities')
                             .select('*')
-                            .ilike('category', '%bubble%');
+                            .ilike('category', '%bubble%')
+                            .eq('is_hidden', false);
                         pool = data || [];
                     }
                     if (!pool || pool.length === 0) {

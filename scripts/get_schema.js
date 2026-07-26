@@ -5,7 +5,7 @@ const supabaseAnonKey = 'sb_publishable_2VCENx-Jd9xKhLmS38W-rQ_vRl3eLR_';
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 async function testColumn(col) {
-  const { data, error } = await supabase.from('classes').select(col).limit(1);
+  const { data, error } = await supabase.from('activities').select(col).limit(1);
   if (error && error.code === '42703') {
     console.log(`Column '${col}' DOES NOT exist.`);
   } else if (error) {
@@ -16,7 +16,7 @@ async function testColumn(col) {
 }
 
 async function main() {
-  const columns = ['is_archived', 'is_achived', 'archived'];
+  const columns = ['is_hidden', 'hidden', 'is_visible', 'visible'];
   for (const col of columns) {
     await testColumn(col);
   }
