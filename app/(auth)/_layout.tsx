@@ -8,6 +8,8 @@ export default function AuthLayout() {
       <Stack.Screen name="user" />
       <Stack.Screen name="onboarding" />
       <Stack.Screen name="signup" />
+      <Stack.Screen name="teacher-verification" />
+      <Stack.Screen name="pending-verification" />
     </Stack>
   );
 }

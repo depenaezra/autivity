@@ -79,7 +79,31 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      await login(email, password);
+      const loginData = await login(email, password);
+      const user = loginData.user;
+
+      if (user) {
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('is_verified')
+          .eq('id', user.id)
+          .single();
+
+        if (profileError) {
+          await supabase.auth.signOut();
+          throw new Error(profileError.message);
+        }
+
+        if (profile && !profile.is_verified) {
+          await supabase.auth.signOut();
+          Alert.alert(
+            'Account Not Verified',
+            'Your account is not yet verified. Please wait for approval.'
+          );
+          setIsLoading(false);
+          return;
+        }
+      }
 
       // update storage based on remember me state
       if (rememberMe) {

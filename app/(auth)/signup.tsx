@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { ActivityIndicator, Alert, Keyboard, Pressable, Text, TextInput, TouchableWithoutFeedback, View, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { register } from '../../src/services/auth';
+import { supabase } from '../../src/lib/supabase';
 
 export default function Signup() {
   const router = useRouter();
@@ -49,16 +50,31 @@ export default function Signup() {
       );
       return;
     }
+
+    if (role === 'teacher') {
+      router.push({
+        pathname: '/(auth)/teacher-verification',
+        params: {
+          firstName,
+          lastName,
+          email,
+          password,
+          goals: params.goals,
+          role,
+        }
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
       await register(email, password, firstName, lastName, userGoals, role);
 
-      // .replace used so they can't swipe back to signup
-      router.replace({
-        pathname: '/(tabs)',
-        params: { firstName: firstName }
-      });
+      // Sign out immediately to clear the auto-logged in session
+      await supabase.auth.signOut();
+
+      router.replace('/(auth)/pending-verification');
     } catch (error: any) {
       Alert.alert('Registration Failed', error.message);
     } finally {
@@ -190,7 +206,9 @@ export default function Signup() {
               {isLoading ? (
                 <ActivityIndicator color="white" />
               ) : (
-                <Text className={`text-white font-fredoka-regular ${isTablet ? 'text-2xl' : 'text-lg'}`}>Register</Text>
+                <Text className={`text-white font-fredoka-regular ${isTablet ? 'text-2xl' : 'text-lg'}`}>
+                  {role === 'teacher' ? 'Next' : 'Register'}
+                </Text>
               )}
             </Pressable>
           </View>

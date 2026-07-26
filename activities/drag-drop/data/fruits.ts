@@ -4,7 +4,6 @@ export const fruitItems: DragDropItem[] = [
     {
         id: 'fruit-apple-item',
         type: 'Apple',
-        // Dynamically references your local asset folder
         imageSource: require('../../../assets/images/activities/drag-drop/apple.png'),
         color: '#EF4444',
     },

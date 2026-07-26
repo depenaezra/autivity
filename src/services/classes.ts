@@ -90,3 +90,16 @@ export const getClassCount = async () => {
     if (error) throw new Error(error.message);
     return count || 0;
 };
+
+// Archive / Unarchive a class
+export const archiveClass = async (classId: string, isArchived: boolean) => {
+    const { data, error } = await supabase
+        .from('classes')
+        .update({ is_archived: isArchived })
+        .eq('id', classId)
+        .select()
+        .single();
+
+    if (error) throw new Error(error.message);
+    return data;
+};

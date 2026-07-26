@@ -7,10 +7,11 @@ import Animated, { Easing, useSharedValue, withTiming } from 'react-native-reani
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 // [ADDED] Import your new services
-import { createClass, getClassCount, getTeacherClasses } from '../../src/services/classes';
+import { createClass, getClassCount, getTeacherClasses, archiveClass } from '../../src/services/classes';
 import { getMaterialCount } from '../../src/services/materials'; // [ADDED]
 import { getUserProfile } from '../../src/services/profile';
 import { getStudentCount } from '../../src/services/students';
+import { ArchivedClassesModal } from '../../components/archived-classes-modal';
 
 import { Picker } from "@react-native-picker/picker";
 
@@ -83,6 +84,8 @@ export default function TeacherHome() {
 
   // [MODIFIED] Emptied the initial static state
   const [classesData, setClassesData] = useState<ClassItem[]>([]);
+  const [archivedClasses, setArchivedClasses] = useState<any[]>([]);
+  const [isArchivedModalVisible, setArchivedModalVisible] = useState(false);
   // [ADDED] Loading states for fetching and creating
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
@@ -97,9 +100,8 @@ export default function TeacherHome() {
   useEffect(() => {
     const loadStats = async () => {
       const studentCount = await getStudentCount();
-      const classCount = await getClassCount();
       const materialCount = await getMaterialCount();
-      setStats({ students: studentCount, classes: classCount, lessons: materialCount });
+      setStats({ students: studentCount, classes: classesData.length, lessons: materialCount });
     };
     loadStats();
   }, [classesData]); // Refreshes when classesData changes
@@ -117,7 +119,7 @@ export default function TeacherHome() {
     try {
       setIsLoading(true);
       const data = await getTeacherClasses();
-
+ 
       // Map the database output to your UI format
       const formattedClasses = data.map((dbClass: any) => {
         const theme = themeColors.find(t => t.name === dbClass.theme_name) || themeColors[0];
@@ -133,10 +135,15 @@ export default function TeacherHome() {
           themeColor: theme.value,
           shadowColor: theme.shadow,
           themeName: theme.name,
+          isArchived: dbClass.is_archived || false,
         };
       });
-
-      setClassesData(formattedClasses);
+ 
+      const activeClasses = formattedClasses.filter((c: any) => !c.isArchived);
+      const archived = formattedClasses.filter((c: any) => c.isArchived);
+ 
+      setClassesData(activeClasses);
+      setArchivedClasses(archived);
     } catch (error: any) {
       Alert.alert("Error fetching classes", error.message);
     } finally {
@@ -144,15 +151,24 @@ export default function TeacherHome() {
     }
   };
 
+  const handleUnarchiveClass = async (classId: string) => {
+    try {
+      await archiveClass(classId, false);
+      await fetchClasses();
+    } catch (error: any) {
+      Alert.alert("Error unarchiving class", error.message);
+    }
+  };
+
   useEffect(() => {
-    if (isAddClassModalVisible) {
+    if (isAddClassModalVisible || isArchivedModalVisible) {
       slideAnim.value = 600;
       slideAnim.value = withTiming(0, {
         duration: 250,
         easing: Easing.out(Easing.quad),
       });
     }
-  }, [isAddClassModalVisible]);
+  }, [isAddClassModalVisible, isArchivedModalVisible]);
 
   const [newClassName, setNewClassName] = useState('');
   const [newClassSchedule, setNewClassSchedule] = useState('');
@@ -277,9 +293,24 @@ export default function TeacherHome() {
 
       {/* CLASSES SECTION */}
       <View className={`w-full ${isTablet ? 'mt-10' : 'mt-6'}`}>
-        <Text className={`font-fredoka-one text-[#4B5563] ${isTablet ? 'text-3xl px-12 mb-6' : 'text-xl px-6 mb-4'}`}>
-          Classes
-        </Text>
+        <View className={`flex-row items-center justify-between ${isTablet ? 'px-12 mb-6' : 'px-6 mb-4'}`}>
+          <View className="flex-row items-center gap-3">
+            <Text className={`font-fredoka-one text-[#4B5563] ${isTablet ? 'text-3xl' : 'text-xl'}`}>
+              Classes
+            </Text>
+            {archivedClasses.length > 0 && (
+              <Pressable
+                onPress={() => setArchivedModalVisible(true)}
+                className="bg-[#EBF5FF] border border-[#9ACBF9] px-3 py-1 rounded-full flex-row items-center gap-1 active:opacity-75"
+              >
+                <Ionicons name="archive-outline" size={isTablet ? 14 : 11} color="#62A9E6" />
+                <Text className={`font-quicksand-bold text-[#62A9E6] ${isTablet ? 'text-sm' : 'text-[11px]'}`}>
+                  {archivedClasses.length} Archived
+                </Text>
+              </Pressable>
+            )}
+          </View>
+        </View>
 
         {/* [ADDED] Show spinner while fetching initial classes */}
         {isLoading ? (
@@ -582,6 +613,16 @@ export default function TeacherHome() {
           </Animated.View>
         </KeyboardAvoidingView>
       </Modal>
+
+      {/* ARCHIVED CLASSES MODAL */}
+      <ArchivedClassesModal
+        visible={isArchivedModalVisible}
+        onClose={() => setArchivedModalVisible(false)}
+        archivedClasses={archivedClasses}
+        onUnarchive={handleUnarchiveClass}
+        slideAnim={slideAnim}
+        isTablet={isTablet}
+      />
 
     </SafeAreaView>
   );

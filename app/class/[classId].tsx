@@ -16,6 +16,7 @@ import {
   getTeacherClasses,
   updateClass,
   deleteClass,
+  archiveClass,
 } from "../../src/services/classes";
 import {
   addStudent,
@@ -348,6 +349,30 @@ const handleSaveClassEdit = async () => {
               router.back();
             } catch (error: any) {
               Alert.alert("Error deleting class", error.message);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  // Handle archiving this class
+  const handleArchiveClass = () => {
+    Alert.alert(
+      "Archive Class",
+      `Are you sure you want to archive "${classDetails.name}"? This class will be hidden from your active classes grid.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Archive",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await archiveClass(classDetails.id, true);
+              setEditClassModalVisible(false);
+              router.back();
+            } catch (error: any) {
+              Alert.alert("Error archiving class", error.message);
             }
           }
         }
@@ -907,6 +932,15 @@ const handleSaveClassEdit = async () => {
     </Text>
   )}
 </Pressable>
+
+              {/* Archive Class Button */}
+              <Pressable
+                onPress={handleArchiveClass}
+                className="py-4 rounded-xl items-center mb-3 border border-[#FFE4E6] bg-[#FFF1F2] flex-row justify-center gap-2"
+              >
+                <Ionicons name="archive-outline" size={18} color="#E11D48" />
+                <Text className="font-quicksand-bold text-[#E11D48] text-lg">Archive Class</Text>
+              </Pressable>
 
               {/* Delete Class Button */}
               <Pressable

@@ -15,7 +15,16 @@ export const login = async (email: string, password: string) => {
 };
 
 // Register a new user
-export const register = async (email: string, password: string, firstName: string, lastName: string, goals: string[], role: string) => {
+export const register = async (
+    email: string,
+    password: string,
+    firstName: string,
+    lastName: string,
+    goals: string[],
+    role: string,
+    institution?: string,
+    prcNumber?: string
+) => {
     const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -25,6 +34,9 @@ export const register = async (email: string, password: string, firstName: strin
                 last_name: lastName,
                 goals: goals,
                 user_role: role,
+                role: role,
+                university: institution,
+                prc_number: prcNumber,
             }
         }
     });
