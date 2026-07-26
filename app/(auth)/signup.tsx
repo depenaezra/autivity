@@ -69,12 +69,20 @@ export default function Signup() {
     setIsLoading(true);
 
     try {
-      await register(email, password, firstName, lastName, userGoals, role);
+      const signUpResult = await register(email, password, firstName, lastName, userGoals, role);
 
-      // Sign out immediately to clear the auto-logged in session
-      await supabase.auth.signOut();
+      // Parents do not need verification, set is_verified to true immediately
+      if (signUpResult?.user) {
+        await supabase
+          .from('profiles')
+          .update({ is_verified: true })
+          .eq('id', signUpResult.user.id);
+      }
 
-      router.replace('/(auth)/pending-verification');
+      router.replace({
+        pathname: '/(tabs)',
+        params: { firstName: firstName }
+      });
     } catch (error: any) {
       Alert.alert('Registration Failed', error.message);
     } finally {
