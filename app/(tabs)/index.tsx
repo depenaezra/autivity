@@ -11,6 +11,7 @@ import { createClass, getClassCount, getTeacherClasses } from '../../src/service
 import { getMaterialCount } from '../../src/services/materials'; // [ADDED]
 import { getUserProfile } from '../../src/services/profile';
 import { getStudentCount } from '../../src/services/students';
+import ParentHomeDashboard from '../../components/parent/ParentHomeDashboard';
 
 import { Picker } from "@react-native-picker/picker";
 
@@ -51,7 +52,7 @@ const themeColors = [
   { name: 'green', value: '#86EFAC', shadow: '#4ADE80' },
 ];
 
-export default function TeacherHome() {
+function TeacherHome() {
   const { firstName: paramFirstName } = useLocalSearchParams();
   const [firstName, setFirstName] = useState<string>((paramFirstName as string) || '');
   const router = useRouter();
@@ -585,4 +586,39 @@ export default function TeacherHome() {
 
     </SafeAreaView>
   );
+}
+
+// Both roles land on `(tabs)` after login/signup, so this screen decides
+// which experience to show: the teacher's classes/students home, or the
+// parent's child-progress dashboard.
+export default function HomeScreen() {
+  const [role, setRole] = useState<string | null>(null);
+  const [checkingRole, setCheckingRole] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const profileData = await getUserProfile();
+        setRole(profileData?.role || null);
+      } catch {
+        setRole(null);
+      } finally {
+        setCheckingRole(false);
+      }
+    })();
+  }, []);
+
+  if (checkingRole) {
+    return (
+      <View className="flex-1 bg-[#F5F8FA] items-center justify-center">
+        <ActivityIndicator size="large" color="#62A9E6" />
+      </View>
+    );
+  }
+
+  if (role === 'parent') {
+    return <ParentHomeDashboard />;
+  }
+
+  return <TeacherHome />;
 }

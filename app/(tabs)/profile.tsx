@@ -279,12 +279,29 @@ const handleLinkCode = async () => {
 
             {linkedStudent ? (
               <View className="bg-white rounded-[20px] shadow-sm border border-[#F3F4F6] p-5 mb-6">
-                <Text className={`font-quicksand-bold text-[#4B5563] ${isTablet ? 'text-xl' : 'text-base'}`}>
-                  {linkedStudent.name}
-                </Text>
-                <Text className={`font-quicksand-medium text-[#9CA3AF] mt-1 ${isTablet ? 'text-base' : 'text-xs'}`}>
-                  Learner Code: {linkedStudent.learner_code}
-                </Text>
+                <View className="flex-row items-center gap-3 mb-2">
+                  <View className="w-12 h-12 rounded-full bg-[#EBF5FF] items-center justify-center border border-[#9ACBF9]">
+                    <Text style={{ fontSize: 22 }}>{linkedStudent.avatar || '🙂'}</Text>
+                  </View>
+                  <View className="flex-1">
+                    <Text className={`font-quicksand-bold text-[#4B5563] ${isTablet ? 'text-xl' : 'text-base'}`}>
+                      {linkedStudent.name}
+                    </Text>
+                    <Text className={`font-quicksand-medium text-[#9CA3AF] ${isTablet ? 'text-base' : 'text-xs'}`}>
+                      Learner Code: {linkedStudent.learner_code}
+                    </Text>
+                  </View>
+                </View>
+                {linkedStudent.spectrum_level ? (
+                  <Text className="font-quicksand-medium text-[#6B7280] text-xs mt-1">
+                    Spectrum Level: <Text className="font-quicksand-bold text-[#4B5563]">{linkedStudent.spectrum_level}</Text>
+                  </Text>
+                ) : null}
+                {linkedStudent.bio ? (
+                  <Text className="font-quicksand-medium text-[#9CA3AF] text-xs mt-2 leading-5">
+                    {linkedStudent.bio}
+                  </Text>
+                ) : null}
                 <View className="bg-[#DCFCE7] border border-[#86EFAC] rounded-full px-3 py-1 self-start mt-3">
                   <Text className="text-[#15803D] font-quicksand-bold text-xs">Linked</Text>
                 </View>
