@@ -14,14 +14,9 @@ import {
 } from "react-native";
 
 // services
-<<<<<<< HEAD
-import { logout } from '../../src/services/auth';
-import { getUserProfile } from '../../src/services/profile';
-=======
 import { logout, linkParentToLearner } from '../../src/services/auth';
 import { getUserProfile } from '../../src/services/profile';
 import { getLinkedStudentForParent } from '../../src/services/students';
->>>>>>> 77c6e4e (Enhanced Add Student and Linked Parent Account to Student Dashboard Analytics)
 import { supabase } from "../../src/lib/supabase";
 export default function ProfileScreen() {
   const { width } = useWindowDimensions();
@@ -37,13 +32,10 @@ const [firstName, setFirstName] = useState("");
 const [lastName, setLastName] = useState("");
 const [email, setEmail] = useState("");
 const [university, setUniversity] = useState("");
-<<<<<<< HEAD
-=======
   // Parent-only state: the child linked via learner code, and re-link controls
   const [linkedStudent, setLinkedStudent] = useState<any>(null);
   const [relinkCode, setRelinkCode] = useState("");
   const [isLinking, setIsLinking] = useState(false);
->>>>>>> 77c6e4e (Enhanced Add Student and Linked Parent Account to Student Dashboard Analytics)
   // [ADDED] Fetch the profile data as soon as the screen loads
   useEffect(() => {
     const fetchProfile = async () => {
@@ -59,8 +51,6 @@ const [university, setUniversity] = useState("");
     } = await supabase.auth.getUser();
 
     if (user) {
-<<<<<<< HEAD
-=======
       if (data?.role === 'parent') {
         // Parents don't have classes/students of their own — fetch the child
         // they're linked to instead.
@@ -71,7 +61,6 @@ const [university, setUniversity] = useState("");
           setLinkedStudent(null);
         }
       } else {
->>>>>>> 77c6e4e (Enhanced Add Student and Linked Parent Account to Student Dashboard Analytics)
       // Count students
       const { count: students } = await supabase
         .from("students")
@@ -93,10 +82,7 @@ const [university, setUniversity] = useState("");
         .eq("teacher_id", user.id);
 
       setClassCount(classes ?? 0);
-<<<<<<< HEAD
-=======
       }
->>>>>>> 77c6e4e (Enhanced Add Student and Linked Parent Account to Student Dashboard Analytics)
     }
   } catch (error: any) {
     Alert.alert("Error loading profile", error.message);
@@ -227,8 +213,6 @@ const handleResetPassword = async () => {
     Alert.alert("Reset Password Failed", error.message);
   }
 };
-<<<<<<< HEAD
-=======
 const handleLinkCode = async () => {
   if (!relinkCode.trim()) {
     Alert.alert("Missing code", "Please enter a learner code.");
@@ -251,8 +235,6 @@ const handleLinkCode = async () => {
     setIsLinking(false);
   }
 };
-
->>>>>>> 77c6e4e (Enhanced Add Student and Linked Parent Account to Student Dashboard Analytics)
   // [ADDED] Show a loading spinner while fetching data
   if (loading) {
     return (
@@ -262,8 +244,6 @@ const handleLinkCode = async () => {
     );
   }
 
-<<<<<<< HEAD
-=======
   // PARENT VIEW — parents don't manage classes/students, so they get a
   // simpler profile: their own info + whichever child they're linked to.
   if (profile?.role === 'parent') {
@@ -344,8 +324,6 @@ const handleLinkCode = async () => {
       </View>
     );
   }
-
->>>>>>> 77c6e4e (Enhanced Add Student and Linked Parent Account to Student Dashboard Analytics)
   return (
     <View className="flex-1 bg-[#F5F8FA]">
       <ScrollView
