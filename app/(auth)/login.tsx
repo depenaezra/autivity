@@ -85,7 +85,7 @@ export default function Login() {
       if (user) {
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
-          .select('is_verified')
+          .select('is_verified, is_suspended, suspended_until')
           .eq('id', user.id)
           .single();
 
@@ -94,14 +94,50 @@ export default function Login() {
           throw new Error(profileError.message);
         }
 
-        if (profile && !profile.is_verified) {
-          await supabase.auth.signOut();
-          Alert.alert(
-            'Account Not Verified',
-            'Your account is not yet verified. Please wait for approval.'
-          );
-          setIsLoading(false);
-          return;
+        if (profile) {
+          // Check if user is suspended
+          if (profile.is_suspended) {
+            if (!profile.suspended_until) {
+              await supabase.auth.signOut();
+              Alert.alert(
+                'Account Banned',
+                'Your account has been permanently banned.'
+              );
+              setIsLoading(false);
+              return;
+            }
+
+            const suspendedUntilDate = new Date(profile.suspended_until);
+            if (suspendedUntilDate > new Date()) {
+              await supabase.auth.signOut();
+
+              const formattedDate = suspendedUntilDate.toLocaleDateString(undefined, {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit'
+              });
+
+              Alert.alert(
+                'Account Suspended',
+                `Your account is suspended until ${formattedDate}.`
+              );
+              setIsLoading(false);
+              return;
+            }
+          }
+
+          // Check if user is verified
+          if (!profile.is_verified) {
+            await supabase.auth.signOut();
+            Alert.alert(
+              'Account Not Verified',
+              'Your account is not yet verified. Please wait for approval.'
+            );
+            setIsLoading(false);
+            return;
+          }
         }
       }
 
