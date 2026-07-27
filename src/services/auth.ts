@@ -78,6 +78,12 @@ export const completePendingLearnerLink = async () => {
         // The parent can always retry manually from their profile.
     }
 };
+
+// Helper to convert JS array of strings to Postgres array literal format
+const formatPostgresArray = (arr: string[]): string => {
+    if (!arr || arr.length === 0) return '{}';
+    return `{${arr.map(x => `"${x.replace(/"/g, '\\"')}"`).join(',')}}`;
+};
 // Register a new user
 export const register = async (
     email: string,
@@ -115,7 +121,7 @@ export const register = async (
             data: {
                 first_name: firstName,
                 last_name: lastName,
-                goals: goals,
+                goals: formatPostgresArray(goals),
                 user_role: role,
                 role: role,
                 university: role === 'teacher' ? institutionOrLearnerCode : undefined,

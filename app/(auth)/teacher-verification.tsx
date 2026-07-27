@@ -37,7 +37,27 @@ export default function TeacherVerification() {
     setIsLoading(true);
 
     try {
-      await register(email, password, firstName, lastName, userGoals, role, institution, prcNumber);
+      const signUpResult = await register(email, password, firstName, lastName, userGoals, role, institution, prcNumber);
+
+      if (signUpResult?.user) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .upsert({
+            id: signUpResult.user.id,
+            email,
+            first_name: firstName,
+            last_name: lastName,
+            goals: userGoals,
+            role,
+            university: institution,
+            prc_number: prcNumber,
+            is_verified: false,
+          });
+
+        if (profileError) {
+          console.error('Error saving profile details:', profileError.message);
+        }
+      }
 
       // Sign out immediately to clear the auto-logged in session
       await supabase.auth.signOut();
