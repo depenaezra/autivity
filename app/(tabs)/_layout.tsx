@@ -2,15 +2,31 @@ import { HapticTab } from '@/components/haptic-tab';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import { Tabs } from 'expo-router';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getUserProfile } from '../../src/services/profile';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
 
   // get device's notch / island spacing so navigation doesn't go under it
   const insets = useSafeAreaInsets();
+
+  // Parents only get Home + Profile — no Analytics tab (that lives inside
+  // their Home tab instead, as their child's dashboard).
+  const [isParent, setIsParent] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const profileData = await getUserProfile();
+        setIsParent(profileData?.role === 'parent');
+      } catch {
+        setIsParent(false);
+      }
+    })();
+  }, []);
 
   return (
     // primary navigation configuration
@@ -50,11 +66,12 @@ export default function TabLayout() {
         }}
       />
 
-      {/* analytics screen */}
+      {/* analytics screen — hidden entirely for parents */}
       <Tabs.Screen
         name="analytics"
         options={{
           title: 'Analytics',
+          href: isParent ? null : undefined,
           tabBarIcon: ({ color }) => <FontAwesome6 size={28} name="chart-line" color={color} />,
         }}
       />

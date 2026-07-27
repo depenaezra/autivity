@@ -13,7 +13,32 @@ import { createMilestone, deleteMilestone, getTeacherAnalyticsOverview, updateMi
 import { formatActivityTitle } from '../../src/utils/format';
 import { supabase } from '../../src/lib/supabase';
 
-// color themes
+// DepEd SNED Standard: 5 Core Functional Master Domains
+const TOTAL_DEPED_MASTER_DOMAINS = 5;
+
+/**
+ * DepEd Percentage Score Converter
+ * Normalizes raw rubric ratings or raw game scores into standard 0-100% scale.
+ */
+const normalizeDepEdScore = (rawScore: any): number => {
+  if (rawScore == null) return 0;
+  
+  let numericScore = typeof rawScore === 'string' 
+    ? parseFloat(rawScore.replace('%', '')) 
+    : Number(rawScore);
+
+  if (isNaN(numericScore)) return 0;
+
+  // If rubric level scale (0 to 4) is passed
+  if (numericScore > 0 && numericScore <= 4) {
+    numericScore = (numericScore / 4) * 100;
+  }
+
+  // Strict DepEd Percentage Clamping [0% - 100%]
+  return Math.min(100, Math.max(0, numericScore));
+};
+
+// Color themes
 const THEME_MAP: Record<string, { themeColor: string; shadowColor: string; lightBg: string }> = {
   green: { themeColor: '#86EFAC', shadowColor: '#4ADE80', lightBg: '#F0FDF4' },
   orange: { themeColor: '#FDBA74', shadowColor: '#FB923C', lightBg: '#FFF7ED' },
@@ -78,6 +103,13 @@ export interface SessionRecord {
   validated_at?: string;
 }
 
+export interface StudentSkillReport {
+  student_id: string;
+  skill_domain: string;
+  skill_percentage: number;
+  total_validated_activities: number;
+}
+
 export default function AnalyticsScreen() {
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
@@ -90,39 +122,13 @@ export default function AnalyticsScreen() {
 
   const [masterDomains, setMasterDomains] = useState<MasterDomain[]>([]);
 
-  useEffect(() => {
-    async function fetchMasterDomains() {
-      const { data, error } = await supabase
-        .from('master_domains')
-        .select(`
-          name,
-          color,
-          description,
-          sub_skills ( name )
-        `);
-
-      if (data && !error) {
-        // Transform Supabase response to match your existing array format
-        const formattedDomains = data.map((domain: any) => ({
-          name: domain.name,
-          color: domain.color,
-          description: domain.description,
-          subSkills: domain.sub_skills.map((s: any) => s.name),
-        }));
-
-        setMasterDomains(formattedDomains);
-      }
-    }
-
-    fetchMasterDomains();
-  }, []);
-
   // dynamic data states
   const [isLoading, setIsLoading] = useState(true);
   const [classesData, setClassesData] = useState<ClassInfo[]>([]);
   const [studentsData, setStudentsData] = useState<StudentInfo[]>([]);
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
+  const [skillReports, setSkillReports] = useState<StudentSkillReport[]>([]);
   const [isMilestoneModalVisible, setMilestoneModalVisible] = useState(false);
   const [newMilestoneTitle, setNewMilestoneTitle] = useState('');
   const [newMilestoneDate, setNewMilestoneDate] = useState('');
@@ -138,7 +144,52 @@ export default function AnalyticsScreen() {
     validated_at?: string;
   } | null>(null);
 
-  // fetch and process data
+  // Fetch Master Domains
+  useEffect(() => {
+    async function fetchMasterDomains() {
+      const { data, error } = await supabase
+        .from('master_domains')
+        .select(`
+          name,
+          color,
+          description,
+          sub_skills ( name )
+        `);
+
+      if (data && !error) {
+        const formattedDomains = data.map((domain: any) => ({
+          name: domain.name,
+          color: domain.color,
+          description: domain.description,
+          subSkills: domain.sub_skills.map((s: any) => s.name),
+        }));
+
+        setMasterDomains(formattedDomains);
+      }
+    }
+
+    fetchMasterDomains();
+  }, []);
+
+  // Fetch Skill Reports
+  const fetchStudentSkillReports = async (studentId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('student_skill_reports')
+        .select('*')
+        .eq('student_id', studentId);
+
+      if (error) {
+        console.error('Error fetching skill reports:', error.message);
+        return;
+      }
+
+      setSkillReports(data || []);
+    } catch (err) {
+      console.error('Unexpected error fetching skill reports:', err);
+    }
+  };
+
   useFocusEffect(
     useCallback(() => {
       fetchDashboardData();
@@ -150,66 +201,69 @@ export default function AnalyticsScreen() {
     try {
       const data = await getTeacherAnalyticsOverview();
 
-      // process sessions
-      const processedSessions: SessionRecord[] = data.sessions.map((s: any) => ({
-        id: s.id,
-        studentId: s.student_id,
-        activityName: (() => {
-          if (Array.isArray(s.activity_path)) {
-            return s.activity_path.length > 0
-              ? s.activity_path.map((path: string) => formatActivityTitle(path)).join(', ')
-              : 'Unknown Session';
-          }
-          if (typeof s.activity_path === 'string') {
-            return formatActivityTitle(s.activity_path);
-          }
-          return 'Unknown Session';
-        })(),
-        category: s.category || 'General',
-        skill_domain: (() => {
-          if (Array.isArray(s.skill_domain)) return s.skill_domain;
-
-          if (typeof s.skill_domain === 'string') {
-            const trimmed: string = s.skill_domain.trim();
-
-            if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
-              try {
-                return JSON.parse(trimmed);
-              } catch (e) {
-                // fall through
-              }
+      // Process sessions with DepEd Score Normalization
+      const processedSessions: SessionRecord[] = data.sessions.map((s: any) => {
+        const normalized = normalizeDepEdScore(s.score);
+        return {
+          id: s.id,
+          studentId: s.student_id,
+          activityName: (() => {
+            if (Array.isArray(s.activity_path)) {
+              return s.activity_path.length > 0
+                ? s.activity_path.map((path: string) => formatActivityTitle(path)).join(', ')
+                : 'Unknown Session';
             }
+            if (typeof s.activity_path === 'string') {
+              return formatActivityTitle(s.activity_path);
+            }
+            return 'Unknown Session';
+          })(),
+          category: s.category || 'General',
+          skill_domain: (() => {
+            if (Array.isArray(s.skill_domain)) return s.skill_domain;
 
-            if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+            if (typeof s.skill_domain === 'string') {
+              const trimmed: string = s.skill_domain.trim();
+
+              if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+                try {
+                  return JSON.parse(trimmed);
+                } catch (e) {
+                  // fall through
+                }
+              }
+
+              if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+                return trimmed
+                  .slice(1, -1)
+                  .split(',')
+                  .map(item => item.trim().replace(/^"|"$/g, ''))
+                  .filter(Boolean);
+              }
+
               return trimmed
-                .slice(1, -1)
                 .split(',')
-                .map(item => item.trim().replace(/^"|"$/g, ''))
+                .map(item => item.trim())
                 .filter(Boolean);
             }
 
-            return trimmed
-              .split(',')
-              .map(item => item.trim())
-              .filter(Boolean);
-          }
-
-          return [];
-        })(),
-        date: new Date(s.created_at).toLocaleDateString(),
-        duration: s.duration_seconds
-          ? `${Math.floor(s.duration_seconds / 60)} mins`
-          : '5 mins',
-        score: s.score != null ? `${s.score}%` : 'N/A',
-        status: s.status as 'pending' | 'validated',
-        rubric_evaluation: s.rubric_evaluation || null,
-        teacher_feedback: s.teacher_feedback || '',
-        validated_at: s.validated_at || null,
-      }));
+            return [];
+          })(),
+          date: new Date(s.created_at).toLocaleDateString(),
+          duration: s.duration_seconds
+            ? `${Math.floor(s.duration_seconds / 60)} mins`
+            : '5 mins',
+          score: `${Math.round(normalized)}%`,
+          status: s.status as 'pending' | 'validated',
+          rubric_evaluation: s.rubric_evaluation || null,
+          teacher_feedback: s.teacher_feedback || '',
+          validated_at: s.validated_at || null,
+        };
+      });
 
       setSessions(processedSessions);
 
-      // process milestones
+      // Process milestones
       const processedMilestones: Milestone[] = data.milestones.map((m: any) => ({
         id: m.id,
         studentId: m.student_id,
@@ -219,16 +273,39 @@ export default function AnalyticsScreen() {
       }));
       setMilestones(processedMilestones);
 
-      // process students
+      // 1. Process Individual Student Overall Progress (DepEd SNED Development Index)
       const processedStudents: StudentInfo[] = data.students.map((st: any) => {
         const studentSessions = processedSessions.filter((s) => s.studentId === st.id);
         const pending = studentSessions.filter((s) => s.status === 'pending').length;
-        const completedSessions = studentSessions.filter((s) => s.status === 'validated' || s.status === 'pending');
+        const validatedSessions = studentSessions.filter((s) => s.status === 'validated');
 
-        let avg = 0;
-        if (completedSessions.length > 0) {
-          const scores = completedSessions.map(s => parseInt(s.score.replace('%', '')) || 0);
-          avg = Math.round(scores.reduce((a, b) => a + b, 0) / completedSessions.length);
+        let developmentIndex = 0;
+
+        if (validatedSessions.length > 0) {
+          // Group validated scores per unique domain
+          const domainScoresMap: Record<string, number[]> = {};
+
+          validatedSessions.forEach((s) => {
+            const scoreVal = normalizeDepEdScore(s.score);
+
+            if (Array.isArray(s.skill_domain)) {
+              s.skill_domain.forEach((domain) => {
+                const cleanDomain = domain.trim();
+                if (!domainScoresMap[cleanDomain]) domainScoresMap[cleanDomain] = [];
+                domainScoresMap[cleanDomain].push(scoreVal);
+              });
+            }
+          });
+
+          // Compute average per domain
+          let totalDomainAverageSum = 0;
+          Object.values(domainScoresMap).forEach((scores) => {
+            const domainAvg = scores.reduce((a, b) => a + b, 0) / scores.length;
+            totalDomainAverageSum += Math.min(100, Math.max(0, domainAvg));
+          });
+
+          // Development Index = Total Domain Averages / 5 DepEd Master Domains (Each domain gives 20%)
+          developmentIndex = Math.min(100, Math.round(totalDomainAverageSum / TOTAL_DEPED_MASTER_DOMAINS));
         }
 
         return {
@@ -238,7 +315,7 @@ export default function AnalyticsScreen() {
           learnerCode: st.learner_code || '',
           age: 7,
           focusScore: 'N/A',
-          overallProgress: avg,
+          overallProgress: developmentIndex, // Strictly 0 - 100%
           pendingCount: pending,
           statusColor: '#62A9E6',
           avatarBg: '#EBF5FF',
@@ -247,7 +324,12 @@ export default function AnalyticsScreen() {
       });
       setStudentsData(processedStudents);
 
-      // process classes
+      const targetStudentId = selectedStudentId || processedStudents[0]?.id;
+      if (targetStudentId) {
+        fetchStudentSkillReports(targetStudentId);
+      }
+
+      // 2. Process Class Performance Average (Divided by total enrolled students)
       const processedClasses: ClassInfo[] = data.classes.map((cls: any) => {
         const classStudents = processedStudents.filter((s) => s.classId === cls.id);
         const classSessions = processedSessions.filter((s) =>
@@ -257,11 +339,10 @@ export default function AnalyticsScreen() {
         const pendingCount = classSessions.filter((s) => s.status === 'pending').length;
         const completedCount = classSessions.filter((s) => s.status === 'validated' || s.status === 'pending').length;
 
-        const completedSessions = classSessions.filter((s) => s.status === 'validated' || s.status === 'pending');
-        let classAvg = 0;
-        if (completedSessions.length > 0) {
-          const scores = completedSessions.map(s => parseInt(s.score.replace('%', '')) || 0);
-          classAvg = Math.round(scores.reduce((a, b) => a + b, 0) / completedSessions.length);
+        let classAverage = 0;
+        if (classStudents.length > 0) {
+          const sumOfStudentIndexes = classStudents.reduce((sum, student) => sum + student.overallProgress, 0);
+          classAverage = Math.min(100, Math.round(sumOfStudentIndexes / classStudents.length));
         }
 
         const colors = THEME_MAP[cls.theme_name] || THEME_MAP.green;
@@ -271,7 +352,7 @@ export default function AnalyticsScreen() {
           name: cls.title,
           level: cls.grade || 'Grade 1',
           totalStudents: classStudents.length,
-          avgProgress: classAvg,
+          avgProgress: classAverage,
           completedActivities: completedCount,
           pendingFeedback: pendingCount,
           ...colors
@@ -286,17 +367,15 @@ export default function AnalyticsScreen() {
     }
   };
 
-  // actions
   const handleSelectClass = (classId: string) => {
     setSelectedClassId(classId);
     setSelectedStudentId(null);
-
     setCurrentView('class');
   };
 
   const handleSelectStudent = (studentId: string) => {
     setSelectedStudentId(studentId);
-
+    fetchStudentSkillReports(studentId);
     setCurrentView('student');
   };
 
@@ -333,10 +412,13 @@ export default function AnalyticsScreen() {
 
     setActiveModalSession(null);
     Alert.alert("Validated", "Session synced and feedback published successfully!");
+    
+    if (selectedStudentId) {
+      fetchStudentSkillReports(selectedStudentId);
+    }
     fetchDashboardData();
   };
 
-  // toggle milestone logic
   const handleToggleMilestone = async (milestoneId: string, currentStatus: string) => {
     const statusCycle: any = {
       'Target Set': 'In Progress',
@@ -377,7 +459,6 @@ export default function AnalyticsScreen() {
     );
   };
 
-  // helpers
   const currentClass = classesData.find(c => c.id === selectedClassId) || classesData[0];
   const classStudents = (studentsData || []).filter(s => s.classId === currentClass?.id);
   const currentStudent = (studentsData || []).find(s => s.id === selectedStudentId) || classStudents[0] || studentsData[0];
@@ -387,7 +468,6 @@ export default function AnalyticsScreen() {
 
   const totalPendingAllClasses = classesData.reduce((sum, c) => sum + c.pendingFeedback, 0);
 
-  // loading check
   if (isLoading) {
     return (
       <SafeAreaView className="flex-1 bg-[#F5F8FA] justify-center items-center">
@@ -397,7 +477,6 @@ export default function AnalyticsScreen() {
     );
   }
 
-  // main layout
   return (
     <SafeAreaView className="flex-1 bg-[#F5F8FA]">
       <ScrollView
@@ -405,7 +484,6 @@ export default function AnalyticsScreen() {
         showsVerticalScrollIndicator={false}
         bounces={false}
       >
-        {/* header */}
         <View className={`w-full flex-row justify-between items-center ${isTablet ? 'px-12 pt-6' : 'px-6 pt-5'}`}>
           <View className="flex-1">
             <View className="flex-row items-center gap-2">
@@ -429,7 +507,6 @@ export default function AnalyticsScreen() {
           </View>
         </View>
 
-        {/* view switcher */}
         {currentView === 'overview' && (
           <OverviewView
             classesData={classesData}
@@ -454,6 +531,7 @@ export default function AnalyticsScreen() {
             currentStudent={currentStudent}
             studentSessions={studentSessions}
             studentMilestones={studentMilestones}
+            skillReports={skillReports}
             currentClass={currentClass}
             isTablet={isTablet}
             masterDomains={masterDomains}
