@@ -105,6 +105,7 @@ export default function StudentView({
                 </View>
                 <Text className={`font-quicksand-medium text-[#6B7280] ${isTablet ? 'text-base' : 'text-sm'}`}>
                   Class: {currentClass.name}
+                  {currentStudent.learnerCode ? `  •  ${currentStudent.learnerCode}` : ''}
                 </Text>
                 <View className="flex-row items-center mt-1">
                   <View className="w-2 h-2 rounded-full mr-1.5" style={{ backgroundColor: currentStudent.statusColor }} />
@@ -247,13 +248,12 @@ export default function StudentView({
               >
                 <View className="flex-row items-start gap-3 flex-1 mr-2">
                   <View
-                    className={`w-6 h-6 rounded-full items-center justify-center mt-0.5 ${
-                      milestone.status === 'Achieved'
+                    className={`w-6 h-6 rounded-full items-center justify-center mt-0.5 ${milestone.status === 'Achieved'
                         ? 'bg-[#DCFCE7]'
                         : milestone.status === 'In Progress'
-                        ? 'bg-[#FEF9C3]'
-                        : 'bg-[#F3F4F6]'
-                    }`}
+                          ? 'bg-[#FEF9C3]'
+                          : 'bg-[#F3F4F6]'
+                      }`}
                   >
                     <Ionicons
                       name={milestone.status === 'Achieved' ? 'checkmark' : milestone.status === 'In Progress' ? 'refresh' : 'flag-outline'}
@@ -276,22 +276,20 @@ export default function StudentView({
                   <TouchableOpacity
                     activeOpacity={0.7}
                     onPress={() => onToggleMilestone(milestone.id, milestone.status)}
-                    className={`px-3 py-1.5 rounded-full ${
-                      milestone.status === 'Achieved'
+                    className={`px-3 py-1.5 rounded-full ${milestone.status === 'Achieved'
                         ? 'bg-[#DCFCE7]'
                         : milestone.status === 'In Progress'
-                        ? 'bg-[#FEF9C3]'
-                        : 'bg-[#F3F4F6]'
-                    }`}
+                          ? 'bg-[#FEF9C3]'
+                          : 'bg-[#F3F4F6]'
+                      }`}
                   >
                     <Text
-                      className={`font-quicksand-bold uppercase ${isTablet ? 'text-xs' : 'text-[10px]'} ${
-                        milestone.status === 'Achieved'
+                      className={`font-quicksand-bold uppercase ${isTablet ? 'text-xs' : 'text-[10px]'} ${milestone.status === 'Achieved'
                           ? 'text-[#16A34A]'
                           : milestone.status === 'In Progress'
-                          ? 'text-[#CA8A04]'
-                          : 'text-[#6B7280]'
-                      }`}
+                            ? 'text-[#CA8A04]'
+                            : 'text-[#6B7280]'
+                        }`}
                     >
                       {milestone.status}
                     </Text>
@@ -330,34 +328,30 @@ export default function StudentView({
                 filterOption === 'all'
                   ? studentSessions.length
                   : filterOption === 'unvalidated'
-                  ? studentSessions.filter((s) => s.status === 'pending').length
-                  : studentSessions.filter((s) => s.status === 'validated').length;
+                    ? studentSessions.filter((s) => s.status === 'pending').length
+                    : studentSessions.filter((s) => s.status === 'validated').length;
 
               return (
                 <TouchableOpacity
                   key={filterOption}
                   activeOpacity={0.7}
                   onPress={() => setSessionFilter(filterOption)}
-                  className={`px-3 py-1 rounded-full flex-row items-center gap-1.5 ${
-                    isActive ? 'bg-[#62A9E6]' : 'bg-transparent'
-                  }`}
+                  className={`px-3 py-1 rounded-full flex-row items-center gap-1.5 ${isActive ? 'bg-[#62A9E6]' : 'bg-transparent'
+                    }`}
                 >
                   <Text
-                    className={`font-quicksand-bold capitalize ${
-                      isActive ? 'text-white' : 'text-[#6B7280]'
-                    } ${isTablet ? 'text-sm' : 'text-xs'}`}
+                    className={`font-quicksand-bold capitalize ${isActive ? 'text-white' : 'text-[#6B7280]'
+                      } ${isTablet ? 'text-sm' : 'text-xs'}`}
                   >
                     {filterOption === 'unvalidated' ? 'Unvalidated' : filterOption === 'validated' ? 'Validated' : 'All'}
                   </Text>
                   <View
-                    className={`px-1.5 py-0.5 rounded-full ${
-                      isActive ? 'bg-white/30' : 'bg-[#D1D5DB]'
-                    }`}
+                    className={`px-1.5 py-0.5 rounded-full ${isActive ? 'bg-white/30' : 'bg-[#D1D5DB]'
+                      }`}
                   >
                     <Text
-                      className={`font-quicksand-bold text-[10px] ${
-                        isActive ? 'text-white' : 'text-[#4B5563]'
-                      }`}
+                      className={`font-quicksand-bold text-[10px] ${isActive ? 'text-white' : 'text-[#4B5563]'
+                        }`}
                     >
                       {count}
                     </Text>
@@ -375,9 +369,8 @@ export default function StudentView({
           {filteredSessions.map((session) => (
             <View
               key={session.id}
-              className={`bg-white rounded-2xl border-[1.5px] p-4 shadow-sm ${
-                session.status === 'pending' ? 'border-[#FDBA74] bg-[#FFFBF5]' : 'border-[#E5E7EB]'
-              }`}
+              className={`bg-white rounded-2xl border-[1.5px] p-4 shadow-sm ${session.status === 'pending' ? 'border-[#FDBA74] bg-[#FFFBF5]' : 'border-[#E5E7EB]'
+                }`}
             >
               <View className="flex-row justify-between items-start mb-2">
                 <View className="flex-1 mr-2">
@@ -409,9 +402,8 @@ export default function StudentView({
                 <View className="flex-row items-center gap-1.5">
                   <View className={`w-2 h-2 rounded-full ${session.status === 'validated' ? 'bg-[#10B981]' : 'bg-[#EA580C]'}`} />
                   <Text
-                    className={`font-quicksand-bold uppercase ${
-                      session.status === 'validated' ? 'text-[#10B981]' : 'text-[#EA580C]'
-                    } ${isTablet ? 'text-sm' : 'text-xs'}`}
+                    className={`font-quicksand-bold uppercase ${session.status === 'validated' ? 'text-[#10B981]' : 'text-[#EA580C]'
+                      } ${isTablet ? 'text-sm' : 'text-xs'}`}
                   >
                     {session.status === 'validated' ? 'Validated & Synced' : 'Pending Teacher Review'}
                   </Text>
@@ -457,8 +449,8 @@ export default function StudentView({
                 {sessionFilter === 'unvalidated'
                   ? 'No unvalidated sessions for this learner.'
                   : sessionFilter === 'validated'
-                  ? 'No validated sessions for this learner.'
-                  : 'No recorded sessions for this learner yet.'}
+                    ? 'No validated sessions for this learner.'
+                    : 'No recorded sessions for this learner yet.'}
               </Text>
             </View>
           )}

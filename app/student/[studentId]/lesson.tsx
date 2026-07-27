@@ -6,9 +6,9 @@ import { ActivityIndicator, Pressable, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import SetManager from '@/components/set-manager';
+import { supabase } from '@/src/lib/supabase';
 import { getActivitiesBySubcategories, getDefaultActivities } from '@/src/services/materials';
 import { getStudentById } from '@/src/services/students';
-import { supabase } from '@/src/lib/supabase';
 
 export default function LessonScreen() {
     const params = useLocalSearchParams();

@@ -6,7 +6,7 @@ export const getTeacherAnalyticsOverview = async () => {
 
     const [classesRes, studentsRes, sessionsRes, milestonesRes] = await Promise.all([
         supabase.from('classes').select('id, title, grade, theme_name').eq('teacher_id', user.id),
-        supabase.from('students').select('id, class_id, name').eq('teacher_id', user.id),
+        supabase.from('students').select('id, class_id, name, learner_code').eq('teacher_id', user.id),
         supabase.from('student_sessions').select('*').eq('teacher_id', user.id),
         supabase.from('student_milestones').select('*').eq('teacher_id', user.id)
     ]);

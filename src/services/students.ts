@@ -17,7 +17,13 @@ export const getClassStudents = async (classId: string) => {
 };
 
 // Add a new student to a class
-export const addStudent = async (classId: string, name: string, avatar: string) => {
+export const addStudent = async (
+    classId: string,
+    name: string,
+    avatar: string,
+    spectrumLevel?: string,
+    bio?: string
+) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) throw new Error('User not logged in');
 
@@ -29,10 +35,30 @@ export const addStudent = async (classId: string, name: string, avatar: string) 
                 teacher_id: user.id,
                 name: name,
                 avatar: avatar,
+                spectrum_level: spectrumLevel || null,
+                bio: bio || null,
             }
         ])
         .select()
         .single();
+
+    if (error) throw new Error(error.message);
+    return data;
+};
+
+// Fetch the student linked to the currently logged-in parent account.
+// This is the function a parent dashboard screen should call: the link is
+// made via the learner code (AUT-0000) at registration time, and stored as
+// students.parent_id.
+export const getLinkedStudentForParent = async () => {
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) throw new Error('User not logged in');
+
+    const { data, error } = await supabase
+        .from('students')
+        .select('*')
+        .eq('parent_id', user.id)
+        .maybeSingle();
 
     if (error) throw new Error(error.message);
     return data;
@@ -153,4 +179,4 @@ export const updateStudentPreferences = async (
 
     if (error) throw new Error(error.message);
     return data;
-};
+};

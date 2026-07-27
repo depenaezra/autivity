@@ -76,9 +76,8 @@ export default function ClassView({
               className={`px-3 py-1 rounded-full ${timeRange === range ? 'bg-[#62A9E6]' : 'bg-transparent'}`}
             >
               <Text
-                className={`font-quicksand-semibold capitalize ${timeRange === range ? 'text-white' : 'text-[#6B7280]'} ${
-                  isTablet ? 'text-base' : 'text-xs'
-                }`}
+                className={`font-quicksand-semibold capitalize ${timeRange === range ? 'text-white' : 'text-[#6B7280]'} ${isTablet ? 'text-base' : 'text-xs'
+                  }`}
               >
                 {range}
               </Text>
@@ -99,8 +98,8 @@ export default function ClassView({
                 {timeRange === 'daily'
                   ? '+0.0% Daily Growth'
                   : timeRange === 'weekly'
-                  ? '+0.0% Weekly Growth'
-                  : '+0.0% Monthly Gain'}
+                    ? '+0.0% Weekly Growth'
+                    : '+0.0% Monthly Gain'}
               </Text>
               <Text className={`font-quicksand-medium text-[#6B7280] ${isTablet ? 'text-base' : 'text-xs'}`}>
                 Data will populate as students complete sessions.
@@ -148,6 +147,13 @@ export default function ClassView({
                       <Text className={`font-quicksand-bold text-[#4B5563] ${isTablet ? 'text-xl' : 'text-base'}`}>
                         {student.name}
                       </Text>
+                      {student.learnerCode ? (
+                        <View className="bg-[#F3F4F6] px-2 py-0.5 rounded-full">
+                          <Text className={`font-quicksand-bold text-[#6B7280] ${isTablet ? 'text-xs' : 'text-[10px]'}`}>
+                            {student.learnerCode}
+                          </Text>
+                        </View>
+                      ) : null}
                       {student.pendingCount > 0 && (
                         <View className="bg-[#EA580C] px-2 py-0.5 rounded-full flex-row items-center gap-1">
                           <Text className={`font-quicksand-bold text-white ${isTablet ? 'text-xs' : 'text-[10px]'}`}>

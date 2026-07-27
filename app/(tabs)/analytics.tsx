@@ -45,6 +45,10 @@ export interface StudentInfo {
   id: string;
   classId: string;
   name: string;
+<<<<<<< HEAD
+=======
+  learnerCode: string;
+>>>>>>> 77c6e4e (Enhanced Add Student and Linked Parent Account to Student Dashboard Analytics)
   age: number;
   focusScore: string;
   overallProgress: number;
@@ -234,6 +238,10 @@ export default function AnalyticsScreen() {
           id: st.id,
           classId: st.class_id,
           name: st.name,
+<<<<<<< HEAD
+=======
+          learnerCode: st.learner_code || '',
+>>>>>>> 77c6e4e (Enhanced Add Student and Linked Parent Account to Student Dashboard Analytics)
           age: 7,
           focusScore: 'N/A',
           overallProgress: avg,

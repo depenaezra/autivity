@@ -14,8 +14,14 @@ import {
 } from "react-native";
 
 // services
+<<<<<<< HEAD
 import { logout } from '../../src/services/auth';
 import { getUserProfile } from '../../src/services/profile';
+=======
+import { logout, linkParentToLearner } from '../../src/services/auth';
+import { getUserProfile } from '../../src/services/profile';
+import { getLinkedStudentForParent } from '../../src/services/students';
+>>>>>>> 77c6e4e (Enhanced Add Student and Linked Parent Account to Student Dashboard Analytics)
 import { supabase } from "../../src/lib/supabase";
 export default function ProfileScreen() {
   const { width } = useWindowDimensions();
@@ -31,6 +37,13 @@ const [firstName, setFirstName] = useState("");
 const [lastName, setLastName] = useState("");
 const [email, setEmail] = useState("");
 const [university, setUniversity] = useState("");
+<<<<<<< HEAD
+=======
+  // Parent-only state: the child linked via learner code, and re-link controls
+  const [linkedStudent, setLinkedStudent] = useState<any>(null);
+  const [relinkCode, setRelinkCode] = useState("");
+  const [isLinking, setIsLinking] = useState(false);
+>>>>>>> 77c6e4e (Enhanced Add Student and Linked Parent Account to Student Dashboard Analytics)
   // [ADDED] Fetch the profile data as soon as the screen loads
   useEffect(() => {
     const fetchProfile = async () => {
@@ -46,6 +59,19 @@ const [university, setUniversity] = useState("");
     } = await supabase.auth.getUser();
 
     if (user) {
+<<<<<<< HEAD
+=======
+      if (data?.role === 'parent') {
+        // Parents don't have classes/students of their own — fetch the child
+        // they're linked to instead.
+        try {
+          const linked = await getLinkedStudentForParent();
+          setLinkedStudent(linked);
+        } catch {
+          setLinkedStudent(null);
+        }
+      } else {
+>>>>>>> 77c6e4e (Enhanced Add Student and Linked Parent Account to Student Dashboard Analytics)
       // Count students
       const { count: students } = await supabase
         .from("students")
@@ -67,6 +93,10 @@ const [university, setUniversity] = useState("");
         .eq("teacher_id", user.id);
 
       setClassCount(classes ?? 0);
+<<<<<<< HEAD
+=======
+      }
+>>>>>>> 77c6e4e (Enhanced Add Student and Linked Parent Account to Student Dashboard Analytics)
     }
   } catch (error: any) {
     Alert.alert("Error loading profile", error.message);
@@ -197,6 +227,32 @@ const handleResetPassword = async () => {
     Alert.alert("Reset Password Failed", error.message);
   }
 };
+<<<<<<< HEAD
+=======
+const handleLinkCode = async () => {
+  if (!relinkCode.trim()) {
+    Alert.alert("Missing code", "Please enter a learner code.");
+    return;
+  }
+  setIsLinking(true);
+  try {
+    const result = await linkParentToLearner(relinkCode.trim());
+    if (!result.success) {
+      Alert.alert("Could not link", result.message || "Please check the code and try again.");
+      return;
+    }
+    const linked = await getLinkedStudentForParent();
+    setLinkedStudent(linked);
+    setRelinkCode("");
+    Alert.alert("Linked!", "Your dashboard is now linked to your child's profile.");
+  } catch (error: any) {
+    Alert.alert("Error linking code", error.message);
+  } finally {
+    setIsLinking(false);
+  }
+};
+
+>>>>>>> 77c6e4e (Enhanced Add Student and Linked Parent Account to Student Dashboard Analytics)
   // [ADDED] Show a loading spinner while fetching data
   if (loading) {
     return (
@@ -206,6 +262,90 @@ const handleResetPassword = async () => {
     );
   }
 
+<<<<<<< HEAD
+=======
+  // PARENT VIEW — parents don't manage classes/students, so they get a
+  // simpler profile: their own info + whichever child they're linked to.
+  if (profile?.role === 'parent') {
+    return (
+      <View className="flex-1 bg-[#F5F8FA]">
+        <ScrollView
+          contentContainerStyle={{ paddingBottom: isTablet ? 40 : 20, paddingTop: isTablet ? 40 : 24 }}
+          showsVerticalScrollIndicator={false}
+        >
+          <View className={isTablet ? 'px-12' : 'px-6'}>
+            <Text className={`font-fredoka-one text-[#4B5563] ${isTablet ? 'text-4xl mb-6' : 'text-2xl mb-4'}`}>
+              My Profile
+            </Text>
+
+            {/* Account info */}
+            <View className="bg-white rounded-[20px] shadow-sm border border-[#F3F4F6] p-5 mb-6">
+              <Text className={`font-quicksand-bold text-[#4B5563] ${isTablet ? 'text-2xl' : 'text-lg'}`}>
+                {firstName} {lastName}
+              </Text>
+              <Text className={`font-quicksand-medium text-[#9CA3AF] mt-1 ${isTablet ? 'text-lg' : 'text-sm'}`}>
+                {email}
+              </Text>
+              <View className="bg-[#EBF5FF] self-start rounded-full px-3 py-1 mt-3">
+                <Text className="font-quicksand-bold text-[#62A9E6] text-xs">PARENT ACCOUNT</Text>
+              </View>
+            </View>
+
+            {/* Linked child */}
+            <Text className={`text-[#6B7280] font-quicksand-semibold tracking-widest mb-3 ${isTablet ? 'text-base' : 'text-sm'}`}>
+              LINKED CHILD
+            </Text>
+
+            {linkedStudent ? (
+              <View className="bg-white rounded-[20px] shadow-sm border border-[#F3F4F6] p-5 mb-6">
+                <Text className={`font-quicksand-bold text-[#4B5563] ${isTablet ? 'text-xl' : 'text-base'}`}>
+                  {linkedStudent.name}
+                </Text>
+                <Text className={`font-quicksand-medium text-[#9CA3AF] mt-1 ${isTablet ? 'text-base' : 'text-xs'}`}>
+                  Learner Code: {linkedStudent.learner_code}
+                </Text>
+                <View className="bg-[#DCFCE7] border border-[#86EFAC] rounded-full px-3 py-1 self-start mt-3">
+                  <Text className="text-[#15803D] font-quicksand-bold text-xs">Linked</Text>
+                </View>
+              </View>
+            ) : (
+              <View className="bg-white rounded-[20px] shadow-sm border border-[#F3F4F6] p-5 mb-6">
+                <Text className={`font-quicksand-medium text-[#9CA3AF] mb-3 ${isTablet ? 'text-base' : 'text-sm'}`}>
+                  You're not linked to a child yet. Enter the learner code your child's teacher gave you.
+                </Text>
+                <TextInput
+                  value={relinkCode}
+                  onChangeText={(t) => setRelinkCode(t.toUpperCase())}
+                  placeholder="e.g. AUT-0001"
+                  placeholderTextColor="#9CA3AF"
+                  autoCapitalize="characters"
+                  className="bg-[#F5F8FA] rounded-xl px-4 py-3 font-quicksand-medium text-[#4B5563] mb-3"
+                />
+                <Pressable
+                  onPress={handleLinkCode}
+                  disabled={isLinking}
+                  className={`py-3 rounded-xl items-center ${isLinking ? 'bg-[#E5E7EB]' : 'bg-[#62A9E6]'}`}
+                >
+                  {isLinking ? <ActivityIndicator color="white" /> : (
+                    <Text className="text-white font-quicksand-bold">Link Code</Text>
+                  )}
+                </Pressable>
+              </View>
+            )}
+
+            <Pressable
+              onPress={handleLogout}
+              className="w-full bg-white border border-[#FCA5A5] rounded-full items-center justify-center py-4 mb-6"
+            >
+              <Text className="text-[#DC2626] font-fredoka-regular text-lg">Log Out</Text>
+            </Pressable>
+          </View>
+        </ScrollView>
+      </View>
+    );
+  }
+
+>>>>>>> 77c6e4e (Enhanced Add Student and Linked Parent Account to Student Dashboard Analytics)
   return (
     <View className="flex-1 bg-[#F5F8FA]">
       <ScrollView

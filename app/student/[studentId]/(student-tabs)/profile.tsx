@@ -4,8 +4,8 @@ import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 
 // Import services
-import { updateStudentPreferences, StudentPreferences } from '../../../../src/services/students';
 import { supabase } from '../../../../src/lib/supabase';
+import { StudentPreferences, updateStudentPreferences } from '../../../../src/services/students';
 import { setGlobalSfxEnabled } from '../../../../src/utils/sound';
 
 export default function StudentProfile() {
@@ -69,6 +69,19 @@ export default function StudentProfile() {
                         .eq('id', student.teacher_id)
                         .single();
 
+                    // Resolve the actual linked parent (if any) instead of a static placeholder
+                    let guardianName: string | null = null;
+                    if (student.parent_id) {
+                        const { data: parentData } = await supabase
+                            .from('profiles')
+                            .select('first_name, last_name')
+                            .eq('id', student.parent_id)
+                            .single();
+                        if (parentData) {
+                            guardianName = `${parentData.first_name || ''} ${parentData.last_name || ''}`.trim();
+                        }
+                    }
+
                     if (isActive) {
                         setStudentData({
                             ...student,
@@ -76,6 +89,8 @@ export default function StudentProfile() {
                             className: classData?.title || 'Unknown Class',
                             grade: classData?.grade || 'Grade 1',
                             teacherName: teacherData ? `${teacherData.first_name} ${teacherData.last_name}` : 'Unknown Teacher',
+                            guardianName,
+                            isParentLinked: !!student.parent_id,
                         });
 
                         if (student.preferences) {
@@ -271,11 +286,10 @@ export default function StudentProfile() {
                                 </View>
                                 <Pressable
                                     onPress={() => handleTogglePreference('music_enabled')}
-                                    className={`flex-row items-center rounded-full border ${
-                                        preferences.music_enabled
+                                    className={`flex-row items-center rounded-full border ${preferences.music_enabled
                                             ? 'bg-[#E1F0FF] border-[#9ACBF9]'
                                             : 'bg-[#F3F4F6] border-[#D1D5DB]'
-                                    } ${isTablet ? 'px-4 py-2' : 'px-3 py-1.5'}`}
+                                        } ${isTablet ? 'px-4 py-2' : 'px-3 py-1.5'}`}
                                 >
                                     <Feather
                                         name={preferences.music_enabled ? "bell" : "bell-off"}
@@ -283,9 +297,8 @@ export default function StudentProfile() {
                                         color={preferences.music_enabled ? "#0284C7" : "#6B7280"}
                                     />
                                     <Text
-                                        className={`font-quicksand-bold ml-1.5 ${
-                                            preferences.music_enabled ? 'text-[#0284C7]' : 'text-[#6B7280]'
-                                        } ${isTablet ? 'text-sm' : 'text-xs'}`}
+                                        className={`font-quicksand-bold ml-1.5 ${preferences.music_enabled ? 'text-[#0284C7]' : 'text-[#6B7280]'
+                                            } ${isTablet ? 'text-sm' : 'text-xs'}`}
                                     >
                                         {preferences.music_enabled ? 'ON' : 'OFF'}
                                     </Text>
@@ -302,11 +315,10 @@ export default function StudentProfile() {
                                 </View>
                                 <Pressable
                                     onPress={() => handleTogglePreference('sfx_enabled')}
-                                    className={`flex-row items-center rounded-full border ${
-                                        preferences.sfx_enabled
+                                    className={`flex-row items-center rounded-full border ${preferences.sfx_enabled
                                             ? 'bg-[#E1F0FF] border-[#9ACBF9]'
                                             : 'bg-[#F3F4F6] border-[#D1D5DB]'
-                                    } ${isTablet ? 'px-4 py-2' : 'px-3 py-1.5'}`}
+                                        } ${isTablet ? 'px-4 py-2' : 'px-3 py-1.5'}`}
                                 >
                                     <Feather
                                         name={preferences.sfx_enabled ? "bell" : "bell-off"}
@@ -314,9 +326,8 @@ export default function StudentProfile() {
                                         color={preferences.sfx_enabled ? "#0284C7" : "#6B7280"}
                                     />
                                     <Text
-                                        className={`font-quicksand-bold ml-1.5 ${
-                                            preferences.sfx_enabled ? 'text-[#0284C7]' : 'text-[#6B7280]'
-                                        } ${isTablet ? 'text-sm' : 'text-xs'}`}
+                                        className={`font-quicksand-bold ml-1.5 ${preferences.sfx_enabled ? 'text-[#0284C7]' : 'text-[#6B7280]'
+                                            } ${isTablet ? 'text-sm' : 'text-xs'}`}
                                     >
                                         {preferences.sfx_enabled ? 'ON' : 'OFF'}
                                     </Text>
@@ -333,11 +344,10 @@ export default function StudentProfile() {
                                 </View>
                                 <Pressable
                                     onPress={() => handleTogglePreference('confetti_enabled')}
-                                    className={`flex-row items-center rounded-full border ${
-                                        preferences.confetti_enabled
+                                    className={`flex-row items-center rounded-full border ${preferences.confetti_enabled
                                             ? 'bg-[#E1F0FF] border-[#9ACBF9]'
                                             : 'bg-[#F3F4F6] border-[#D1D5DB]'
-                                    } ${isTablet ? 'px-4 py-2' : 'px-3 py-1.5'}`}
+                                        } ${isTablet ? 'px-4 py-2' : 'px-3 py-1.5'}`}
                                 >
                                     <Feather
                                         name={preferences.confetti_enabled ? "bell" : "bell-off"}
@@ -345,9 +355,8 @@ export default function StudentProfile() {
                                         color={preferences.confetti_enabled ? "#0284C7" : "#6B7280"}
                                     />
                                     <Text
-                                        className={`font-quicksand-bold ml-1.5 ${
-                                            preferences.confetti_enabled ? 'text-[#0284C7]' : 'text-[#6B7280]'
-                                        } ${isTablet ? 'text-sm' : 'text-xs'}`}
+                                        className={`font-quicksand-bold ml-1.5 ${preferences.confetti_enabled ? 'text-[#0284C7]' : 'text-[#6B7280]'
+                                            } ${isTablet ? 'text-sm' : 'text-xs'}`}
                                     >
                                         {preferences.confetti_enabled ? 'ON' : 'OFF'}
                                     </Text>
@@ -366,13 +375,13 @@ export default function StudentProfile() {
                         </View>
 
                         <View className={`bg-white rounded-[20px] shadow-sm border border-[#F3F4F6] ${isTablet ? 'p-6' : 'p-4'}`}>
-                            {/* Student ID Row */}
+                            {/* Learner Code Row (the real, database-generated identity code) */}
                             <View className={`flex-row items-center justify-between border-b border-[#F3F4F6] ${isTablet ? 'pb-4 mb-4' : 'pb-3 mb-3'}`}>
                                 <Text className={`font-quicksand-medium text-[#4B5563] ${isTablet ? 'w-[140px] text-lg' : 'w-[110px] text-sm'}`}>
-                                    Student ID
+                                    Learner Code
                                 </Text>
-                                <Text className={`font-quicksand-medium flex-1 text-right text-[#9CA3AF] ${isTablet ? 'text-lg' : 'text-sm'}`}>
-                                    STU-{studentId?.slice(0, 6) || '2026-01'}
+                                <Text className={`font-quicksand-bold flex-1 text-right text-[#62A9E6] ${isTablet ? 'text-lg' : 'text-sm'}`}>
+                                    {studentData?.learner_code || '—'}
                                 </Text>
                             </View>
 
@@ -382,21 +391,62 @@ export default function StudentProfile() {
                                     Guardian
                                 </Text>
                                 <Text className={`font-quicksand-medium flex-1 text-right text-[#9CA3AF] ${isTablet ? 'text-lg' : 'text-sm'}`}>
-                                    Mrs. Santos
+                                    {studentData?.guardianName || 'Not linked yet'}
                                 </Text>
                             </View>
 
-                            {/* Emergency Contact Row */}
+                            {/* Parent Portal Row */}
                             <View className="flex-row items-center justify-between">
                                 <Text className={`font-quicksand-medium text-[#4B5563] ${isTablet ? 'w-[140px] text-lg' : 'w-[110px] text-sm'}`}>
                                     Parent Portal
                                 </Text>
-                                <View className="bg-[#DCFCE7] border border-[#86EFAC] rounded-full px-3 py-1">
-                                    <Text className={`text-[#15803D] font-quicksand-bold ${isTablet ? 'text-base' : 'text-xs'}`}>Linked</Text>
+                                <View className={`rounded-full px-3 py-1 border ${studentData?.isParentLinked
+                                        ? 'bg-[#DCFCE7] border-[#86EFAC]'
+                                        : 'bg-[#FEF3C7] border-[#FDE68A]'
+                                    }`}>
+                                    <Text className={`font-quicksand-bold ${isTablet ? 'text-base' : 'text-xs'} ${studentData?.isParentLinked ? 'text-[#15803D]' : 'text-[#B45309]'
+                                        }`}>
+                                        {studentData?.isParentLinked ? 'Linked' : 'Not Linked'}
+                                    </Text>
                                 </View>
                             </View>
                         </View>
                     </View>
+
+                    {/* SPECTRUM LEVEL & BIO SECTION */}
+                    {(studentData?.spectrum_level || studentData?.bio) && (
+                        <View className={isTablet ? 'mt-8' : 'mt-6'}>
+                            <View className="flex-row items-center mb-3">
+                                <Text className={`text-[#6B7280] font-quicksand-semibold tracking-widest mr-2 ${isTablet ? 'text-base' : 'text-sm'}`}>
+                                    ABOUT
+                                </Text>
+                                <Feather name="info" size={isTablet ? 14 : 12} color="#62A9E6" />
+                            </View>
+
+                            <View className={`bg-white rounded-[20px] shadow-sm border border-[#F3F4F6] ${isTablet ? 'p-6' : 'p-4'}`}>
+                                {studentData?.spectrum_level && (
+                                    <View className={studentData?.bio ? `flex-row items-center justify-between border-b border-[#F3F4F6] ${isTablet ? 'pb-4 mb-4' : 'pb-3 mb-3'}` : 'flex-row items-center justify-between'}>
+                                        <Text className={`font-quicksand-medium text-[#4B5563] ${isTablet ? 'w-[140px] text-lg' : 'w-[110px] text-sm'}`}>
+                                            Spectrum Level
+                                        </Text>
+                                        <Text className={`font-quicksand-medium flex-1 text-right text-[#9CA3AF] ${isTablet ? 'text-lg' : 'text-sm'}`}>
+                                            {studentData.spectrum_level}
+                                        </Text>
+                                    </View>
+                                )}
+                                {studentData?.bio && (
+                                    <View>
+                                        <Text className={`font-quicksand-medium text-[#4B5563] mb-1 ${isTablet ? 'text-lg' : 'text-sm'}`}>
+                                            Bio
+                                        </Text>
+                                        <Text className={`font-quicksand-medium text-[#9CA3AF] leading-5 ${isTablet ? 'text-lg' : 'text-sm'}`}>
+                                            {studentData.bio}
+                                        </Text>
+                                    </View>
+                                )}
+                            </View>
+                        </View>
+                    )}
 
                     {/* ACTION BUTTONS */}
                     <View className={`mb-8 ${isTablet ? 'mt-10' : 'mt-8'}`}>

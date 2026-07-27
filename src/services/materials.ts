@@ -1,5 +1,5 @@
-import { supabase } from '../lib/supabase';
 import * as FileSystem from 'expo-file-system/src/legacy/index';
+import { supabase } from '../lib/supabase';
 
 // Fetch all materials for the logged-in teacher
 export const getMaterials = async () => {

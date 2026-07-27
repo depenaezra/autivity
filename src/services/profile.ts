@@ -11,7 +11,7 @@ export const getUserProfile = async () => {
     // 2. Fetch their matching profile from the public.profiles table
     const { data, error } = await supabase
         .from('profiles')
-        .select('first_name, last_name, email, goals, university')
+        .select('first_name, last_name, email, goals, university, role, learner_code')
         .eq('id', user.id)
         .single();
 

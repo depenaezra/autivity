@@ -22,6 +22,7 @@ export default function Signup() {
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [learnerCode, setLearnerCode] = useState('');
 
   // ui states
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
@@ -42,6 +43,11 @@ export default function Signup() {
       return;
     }
 
+    // parents must provide their child's learner code to register
+    if (role === 'parent' && !learnerCode.trim()) {
+      Alert.alert('Learner Code Required', "Please enter your child's learner code (e.g. AUT-0001) to continue.");
+      return;
+    }
     // if password is not strong
     if (!isStrongPassword(password)) {
       Alert.alert(
@@ -50,7 +56,6 @@ export default function Signup() {
       );
       return;
     }
-
     if (role === 'teacher') {
       router.push({
         pathname: '/(auth)/teacher-verification',
@@ -69,16 +74,15 @@ export default function Signup() {
     setIsLoading(true);
 
     try {
-      const signUpResult = await register(email, password, firstName, lastName, userGoals, role);
+      const signUpResult = await register(email, password, firstName, lastName, userGoals, role, learnerCode);
 
       // Parents do not need verification, set is_verified to true immediately
-      if (signUpResult?.user) {
+      if (role === 'parent' && signUpResult?.user) {
         await supabase
           .from('profiles')
           .update({ is_verified: true })
           .eq('id', signUpResult.user.id);
       }
-
       router.replace({
         pathname: '/(tabs)',
         params: { firstName: firstName }
@@ -187,8 +191,34 @@ export default function Signup() {
                 <Feather name={showPassword ? "eye" : "eye-off"} size={isTablet ? 24 : 20} color="#9CA3AF" />
               </Pressable>
             </View>
+            {/* learner code (parents only) */}
+            {role === 'parent' && (
+              <View
+                className={`w-full border-[2px] justify-center bg-transparent ${isTablet ? 'h-[76px] rounded-[55px] px-8' : 'h-[60px] rounded-full px-6'
+                  } ${focusedInput === 'learnerCode' ? 'border-[#62A9E6]' : 'border-[#E5E7EB]'}`}
+              >
+                <TextInput
+                  className={`font-quicksand-medium text-[#4B5563] w-full p-0 ${isTablet ? 'text-[24px]' : 'text-[18px]'}`}
+                  placeholder="Learner code (e.g. AUT-0001)"
+                  placeholderTextColor="#9CA3AF"
+                  value={learnerCode}
+                  onChangeText={(text) => setLearnerCode(text.toUpperCase())}
+                  onFocus={() => setFocusedInput('learnerCode')}
+                  onBlur={() => setFocusedInput(null)}
+                  autoCapitalize="characters"
+                />
+              </View>
+            )}
           </View>
 
+          {/* learner code hint (parents only) */}
+          {role === 'parent' && (
+            <Text
+              className={`text-[#9CA3AF] px-2 mt-2 ${isTablet ? "text-base" : "text-xs"}`}
+            >
+              Ask your child's teacher for the learner code shown on their student profile.
+            </Text>
+          )}
           {/* password reqs */}
           <Text
             className={`text-[#9CA3AF] px-2 ${isTablet ? "text-base mt-2" : "text-xs mt-2"
