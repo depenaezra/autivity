@@ -72,13 +72,18 @@ export default function StudentProfile() {
                     // Resolve the actual linked parent (if any) instead of a static placeholder
                     let guardianName: string | null = null;
                     if (student.parent_id) {
-                        const { data: parentData } = await supabase
+                        const { data: parentData, error: parentError } = await supabase
                             .from('profiles')
-                            .select('first_name, last_name')
+                            .select('first_name, last_name, email')
                             .eq('id', student.parent_id)
                             .single();
+                        if (parentError) {
+                            console.log('[DEBUG] StudentProfile parent query error:', parentError);
+                        } else {
+                            console.log('[DEBUG] StudentProfile parent query data:', parentData);
+                        }
                         if (parentData) {
-                            guardianName = `${parentData.first_name || ''} ${parentData.last_name || ''}`.trim();
+                            guardianName = `${parentData.first_name || ''} ${parentData.last_name || ''}`.trim() || parentData.email || null;
                         }
                     }
 
@@ -391,7 +396,7 @@ export default function StudentProfile() {
                                     Guardian
                                 </Text>
                                 <Text className={`font-quicksand-medium flex-1 text-right text-[#9CA3AF] ${isTablet ? 'text-lg' : 'text-sm'}`}>
-                                    {studentData?.guardianName || 'Not linked yet'}
+                                    {studentData?.guardianName || (studentData?.isParentLinked ? 'Parent / Guardian' : 'Not linked yet')}
                                 </Text>
                             </View>
 

@@ -431,7 +431,7 @@ export default function SetManager({
 
                 // TASK: Unified Database Payload Insertion on completedCount === 2 (finished 3rd activity)
                 const finalMistakes = totalMistakesAccumulator;
-                const finalScore = totalScoreAccumulator;
+                const finalScore = 15; // Always give 15 stars each session, no matter their performance
                 const totalDuration = 900 - globalTimer; // unified elapsed global session time
                 const allPaths = playedActivityPaths;
 
@@ -729,7 +729,7 @@ export default function SetManager({
                         <View className="flex-row items-center bg-[#FEF3C7] border border-[#FCD34D] rounded-full px-5 py-2 mb-8">
                             <Text className="text-xl mr-1.5">⭐</Text>
                             <Text className="font-quicksand-bold text-[#D97706] text-lg">
-                                +{totalScoreAccumulator} Stars Earned
+                                +15 Stars Earned
                             </Text>
                         </View>
 

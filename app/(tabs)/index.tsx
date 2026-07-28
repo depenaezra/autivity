@@ -13,6 +13,8 @@ import { archiveClass, createClass, getTeacherClasses } from '../../src/services
 import { getMaterialCount } from '../../src/services/materials'; // [ADDED]
 import { getUserProfile } from '../../src/services/profile';
 import { getStudentCount } from '../../src/services/students';
+import StudentList from '../../components/analytics/class/student-list';
+import StudentView from '../../components/analytics/student/student-view';
 
 import { Picker } from "@react-native-picker/picker";
 
@@ -95,6 +97,9 @@ function TeacherHome() {
   const [stats, setStats] = useState({ students: 0, classes: 0, lessons: 0 });
   const [isAddClassModalVisible, setAddClassModalVisible] = useState(false);
   const slideAnim = useSharedValue(600);
+
+  const [viewingAllStudents, setViewingAllStudents] = useState(false);
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
 
 
 
@@ -220,6 +225,29 @@ function TeacherHome() {
     }
   };
 
+  if (selectedStudentId) {
+    return (
+      <SafeAreaView className="flex-1 bg-[#F5F8FA]">
+        <StudentView
+          studentId={selectedStudentId}
+          onBack={() => setSelectedStudentId(null)}
+        />
+      </SafeAreaView>
+    );
+  }
+
+  if (viewingAllStudents) {
+    return (
+      <SafeAreaView className="flex-1 bg-[#F5F8FA]">
+        <StudentList
+          classId="all"
+          onBack={() => setViewingAllStudents(false)}
+          onSelectStudent={setSelectedStudentId}
+        />
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView className="flex-1 bg-[#F5F8FA]">
 
@@ -250,7 +278,10 @@ function TeacherHome() {
       <View className={`w-full flex-row justify-between ${isTablet ? 'px-12 mt-10 gap-4' : 'px-6 mt-6 gap-2'}`}>
 
         {/* CARD 1: STUDENTS (Blue) */}
-        <View className={`flex-1 border-[2px] border-[#A3CFF1] bg-white overflow-hidden ${isTablet ? 'rounded-[16px]' : 'rounded-xl'}`}>
+        <Pressable
+          onPress={() => setViewingAllStudents(true)}
+          className={`flex-1 border-[2px] border-[#A3CFF1] bg-white overflow-hidden active:opacity-90 ${isTablet ? 'rounded-[16px]' : 'rounded-xl'}`}
+        >
           <View className={`bg-[#EBF5FF] flex-row items-center justify-center border-b-[2px] border-b-[#A3CFF1] ${isTablet ? 'py-5 gap-3' : 'py-3 gap-1'}`}>
             <Ionicons name="school-outline" size={isTablet ? 36 : 24} color="#62A9E6" />
             <Text className={`font-quicksand-semibold text-[#62A9E6] ${isTablet ? 'text-4xl' : 'text-2xl'}`}>
@@ -260,7 +291,7 @@ function TeacherHome() {
           <View className={`bg-white items-center justify-center ${isTablet ? 'py-3' : 'py-2'}`}>
             <Text className={`text-[#4B5563] font-quicksand-semibold tracking-widest ${isTablet ? 'text-sm' : 'text-[10px]'}`}>STUDENTS</Text>
           </View>
-        </View>
+        </Pressable>
 
         {/* CARD 2: CLASSES (Green - Replaced Reports) */}
         <View className={`flex-1 border-[2px] border-[#86EFAC] bg-white overflow-hidden ${isTablet ? 'rounded-[16px]' : 'rounded-xl'}`}>

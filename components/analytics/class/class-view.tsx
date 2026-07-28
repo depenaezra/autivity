@@ -113,7 +113,7 @@ export default function ClassView({ classId, onBack }: ClassViewProps) {
                   )}
                 </View>
 
-                {/* Class Details Meta Info */}
+                {/* Class Details Info */}
                 <View className="flex-row flex-wrap items-center gap-x-4 gap-y-2 mt-3">
                   <View className="flex-row items-center gap-1.5">
                     <Ionicons name="school-outline" size={16} color="#62A9E6" />

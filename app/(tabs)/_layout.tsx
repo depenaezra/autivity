@@ -68,7 +68,7 @@ export default function TabLayout() {
 
       {/* analytics screen — hidden entirely for parents */}
       <Tabs.Screen
-        name="analytics-draft"
+        name="analytics"
         options={{
           title: 'Analytics',
           href: isParent ? null : undefined,

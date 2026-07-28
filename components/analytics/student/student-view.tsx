@@ -4,9 +4,9 @@ import { ActivityIndicator, Pressable, Text, useWindowDimensions, View } from 'r
 import { getStudentHeaderDetails, StudentHeaderDetails } from '../../../src/services/student-analytics';
 import Milestones from './milestones';
 import OverviewCards from './overview-cards';
+import Sessions from './sessions';
 import StudentDevelopmentalSkillsHeatmap from './student-developmental-skills-heatmap';
 import StudentEvaluationTrend from './student-evaluation-trend';
-import Sessions from './sessions';
 
 
 
@@ -60,7 +60,7 @@ export default function StudentView({ studentId, onBack }: StudentViewProps) {
                 >
                     <Feather name="arrow-left" size={18} color="#4B5563" />
                     <Text className="font-quicksand-bold text-sm text-[#4B5563]">
-                        Back to Roster
+                        Back to Student List
                     </Text>
                 </Pressable>
             </View>

@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { getClassPendingFeedbackCounts } from '../../../src/services/class-analytics';
 import { getClassStudents } from '../../../src/services/students';
+import { supabase } from '../../../src/lib/supabase';
 
 interface StudentListProps {
     classId: string;
@@ -32,16 +33,39 @@ export default function StudentList({ classId, onBack, onSelectStudent }: Studen
         async function fetchStudentsAndFeedbacks() {
             setIsLoading(true);
             try {
-                const [studentData, feedbackCounts] = await Promise.all([
-                    getClassStudents(classId),
-                    getClassPendingFeedbackCounts(classId)
-                ]);
-                setStudents(studentData);
-                setPendingFeedbackCounts(feedbackCounts);
+                if (classId === 'all') {
+                    const { data: { user }, error: authError } = await supabase.auth.getUser();
+                    if (authError || !user) throw new Error('User not logged in');
+
+                    const { data, error: dbError } = await supabase
+                        .from('students')
+                        .select('*, classes(title, theme_name)')
+                        .eq('teacher_id', user.id)
+                        .order('created_at', { ascending: true });
+
+                    if (dbError) throw dbError;
+
+                    const studentData = (data || []).map((student: any) => ({
+                        ...student,
+                        assigned_activities: student.assigned_activities || [],
+                        class_name: student.classes?.title || 'No Class',
+                        class_theme: student.classes?.theme_name || 'blue',
+                    }));
+
+                    setStudents(studentData);
+                    setPendingFeedbackCounts({});
+                } else {
+                    const [studentData, feedbackCounts] = await Promise.all([
+                        getClassStudents(classId),
+                        getClassPendingFeedbackCounts(classId)
+                    ]);
+                    setStudents(studentData);
+                    setPendingFeedbackCounts(feedbackCounts);
+                }
                 setError(null);
             } catch (err: any) {
-                console.error('StudentList: failed to fetch roster or feedbacks', err);
-                setError('Failed to load student roster.');
+                console.error('StudentList: failed to fetch list or feedbacks', err);
+                setError('Failed to load student list.');
             } finally {
                 setIsLoading(false);
             }
@@ -65,7 +89,7 @@ export default function StudentList({ classId, onBack, onSelectStudent }: Studen
                 >
                     <Feather name="arrow-left" size={18} color="#4B5563" />
                     <Text className="font-quicksand-bold text-sm text-[#4B5563]">
-                        Back to Class Analytics
+                        {classId === 'all' ? 'Back to Dashboard' : 'Back to Class Analytics'}
                     </Text>
                 </Pressable>
             </View>
@@ -73,10 +97,10 @@ export default function StudentList({ classId, onBack, onSelectStudent }: Studen
             {/* Header */}
             <View className="mb-6">
                 <Text className={`font-fredoka-one text-[#4B5563] ${isTablet ? 'text-4xl' : 'text-2xl'}`}>
-                    Student Roster
+                    Student List
                 </Text>
                 <Text className={`font-quicksand-medium text-[#9CA3AF] mt-1 ${isTablet ? 'text-lg' : 'text-sm'}`}>
-                    Manage and view students enrolled in this class
+                    {classId === 'all' ? 'Manage and view your students' : 'Manage and view students enrolled in this class'}
                 </Text>
             </View>
 
@@ -102,7 +126,7 @@ export default function StudentList({ classId, onBack, onSelectStudent }: Studen
                 <View className="w-full justify-center items-center py-20 bg-white border-2 border-[#E5E7EB] rounded-2xl shadow-sm" style={{ borderBottomWidth: 6 }}>
                     <ActivityIndicator size="large" color="#62A9E6" />
                     <Text className="mt-3 font-quicksand-semibold text-sm text-[#9CA3AF]">
-                        Loading student roster...
+                        Loading student list...
                     </Text>
                 </View>
             ) : error ? (
@@ -124,7 +148,9 @@ export default function StudentList({ classId, onBack, onSelectStudent }: Studen
                         <View className="py-12 items-center justify-center">
                             <Feather name="users" size={36} color="#9CA3AF" />
                             <Text className="mt-3 font-quicksand-semibold text-sm text-[#4B5563]">
-                                {students.length === 0 ? 'No students enrolled in this class.' : 'No students matching your search.'}
+                                {students.length === 0 
+                                    ? (classId === 'all' ? 'You have no students.' : 'No students enrolled in this class.') 
+                                    : 'No students matching your search.'}
                             </Text>
                         </View>
                     ) : (
@@ -134,7 +160,11 @@ export default function StudentList({ classId, onBack, onSelectStudent }: Studen
                                 <View className="flex-row bg-[#F9FAFB] border border-[#E5E7EB] rounded-t-xl px-4 py-3">
                                     <Text className="flex-1 font-quicksand-bold text-xs text-[#4B5563]">STUDENT</Text>
                                     <Text className="w-[200px] font-quicksand-bold text-xs text-[#4B5563] px-2">BIO</Text>
-                                    <Text className="w-[150px] font-quicksand-bold text-xs text-[#4B5563] text-right">PENDING FEEDBACKS</Text>
+                                    {classId === 'all' ? (
+                                        <Text className="w-[150px] font-quicksand-bold text-xs text-[#4B5563] text-right">CLASS</Text>
+                                    ) : (
+                                        <Text className="w-[150px] font-quicksand-bold text-xs text-[#4B5563] text-right">PENDING FEEDBACKS</Text>
+                                    )}
                                 </View>
 
                                 {/* Table Rows */}
@@ -180,22 +210,45 @@ export default function StudentList({ classId, onBack, onSelectStudent }: Studen
                                                         {student.bio || 'No bio written.'}
                                                     </Text>
 
-                                                    {/* Pending Feedbacks Column */}
+                                                    {/* Pending Feedbacks or Class Column */}
                                                     <View className="w-[150px] items-end justify-center">
-                                                        {pendingCounts > 0 ? (
-                                                            <View className="bg-[#FFF7ED] border border-[#FDBA74] px-2.5 py-1 rounded-full flex-row items-center gap-1">
-                                                                <View className="w-1.5 h-1.5 rounded-full bg-[#EA580C]" />
-                                                                <Text className="font-quicksand-bold text-[10px] text-[#EA580C]">
-                                                                    {pendingCounts} Pending Feedbacks
-                                                                </Text>
-                                                            </View>
+                                                        {classId === 'all' ? (
+                                                            (() => {
+                                                                const themeName = student.class_theme || 'blue';
+                                                                const colors: Record<string, { bg: string, text: string, border: string }> = {
+                                                                    green: { bg: '#D1FAE5', text: '#059669', border: '#86EFAC' },
+                                                                    orange: { bg: '#FFEDD5', text: '#EA580C', border: '#FDBA74' },
+                                                                    yellow: { bg: '#FEF9C3', text: '#CA8A04', border: '#FDE047' },
+                                                                    blue: { bg: '#DBEAFE', text: '#2563EB', border: '#93C5FD' },
+                                                                };
+                                                                const themeColors = colors[themeName] || colors.blue;
+                                                                return (
+                                                                    <View 
+                                                                        style={{ backgroundColor: themeColors.bg, borderColor: themeColors.border }}
+                                                                        className="px-2.5 py-1 rounded-full border"
+                                                                    >
+                                                                        <Text style={{ color: themeColors.text }} className="font-quicksand-bold text-[10px]">
+                                                                            {student.class_name || 'No Class'}
+                                                                        </Text>
+                                                                    </View>
+                                                                );
+                                                            })()
                                                         ) : (
-                                                            <View className="bg-[#F3F4F6] border border-[#E5E7EB] px-2.5 py-1 rounded-full flex-row items-center gap-1">
-                                                                <View className="w-1.5 h-1.5 rounded-full bg-[#9CA3AF]" />
-                                                                <Text className="font-quicksand-bold text-[10px] text-[#6B7280]">
-                                                                    0 Pending Feedbacks
-                                                                </Text>
-                                                            </View>
+                                                            pendingCounts > 0 ? (
+                                                                <View className="bg-[#FFF7ED] border border-[#FDBA74] px-2.5 py-1 rounded-full flex-row items-center gap-1">
+                                                                    <View className="w-1.5 h-1.5 rounded-full bg-[#EA580C]" />
+                                                                    <Text className="font-quicksand-bold text-[10px] text-[#EA580C]">
+                                                                        {pendingCounts} Pending Feedbacks
+                                                                    </Text>
+                                                                </View>
+                                                            ) : (
+                                                                <View className="bg-[#F3F4F6] border border-[#E5E7EB] px-2.5 py-1 rounded-full flex-row items-center gap-1">
+                                                                    <View className="w-1.5 h-1.5 rounded-full bg-[#9CA3AF]" />
+                                                                    <Text className="font-quicksand-bold text-[10px] text-[#6B7280]">
+                                                                        0 Pending Feedbacks
+                                                                    </Text>
+                                                                </View>
+                                                            )
                                                         )}
                                                     </View>
                                                 </Pressable>
