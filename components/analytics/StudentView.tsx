@@ -7,6 +7,7 @@ interface StudentViewProps {
   currentStudent: StudentInfo | null | undefined;
   studentSessions: SessionRecord[];
   studentMilestones: Milestone[];
+  skillReports?: any;
   currentClass: ClassInfo;
   isTablet: boolean;
   masterDomains: MasterDomain[];

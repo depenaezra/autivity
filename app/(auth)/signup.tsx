@@ -3,8 +3,8 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, Keyboard, Pressable, Text, TextInput, TouchableWithoutFeedback, View, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { register } from '../../src/services/auth';
 import { supabase } from '../../src/lib/supabase';
+import { register } from '../../src/services/auth';
 
 export default function Signup() {
   const router = useRouter();
@@ -199,7 +199,7 @@ export default function Signup() {
               >
                 <TextInput
                   className={`font-quicksand-medium text-[#4B5563] w-full p-0 ${isTablet ? 'text-[24px]' : 'text-[18px]'}`}
-                  placeholder="Learner code (e.g. AUT-0001)"
+                  placeholder="Learner code"
                   placeholderTextColor="#9CA3AF"
                   value={learnerCode}
                   onChangeText={(text) => setLearnerCode(text.toUpperCase())}
