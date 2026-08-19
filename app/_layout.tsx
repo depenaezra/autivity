@@ -26,10 +26,10 @@ import { useEffect } from 'react';
 import 'react-native-reanimated';
 
 
-SplashScreen.preventAutoHideAsync();
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export const unstable_settings = {
-  anchor: '(tabs)',
+  anchor: '(teacher-tabs)',
 };
 
 export default function RootLayout() {
@@ -51,7 +51,7 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (fontsLoaded || fontError) {
-      SplashScreen.hideAsync();
+      SplashScreen.hideAsync().catch(() => {});
     }
   }, [fontsLoaded, fontError]);
 
@@ -62,13 +62,13 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="lesson-materials" />
+        <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
           <Stack.Screen name="(auth)" />
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="class/[classId]" />
+          <Stack.Screen name="(teacher-tabs)" />
+          <Stack.Screen name="(parent-tabs)" />
           <Stack.Screen name="student/[studentId]" />
-          <Stack.Screen name="tracing-demo" />
+          <Stack.Screen name="student-view/[studentId]" />
+          <Stack.Screen name="class-analytics/[classId]" />
         </Stack>
         <StatusBar style="auto" />
       </ThemeProvider>

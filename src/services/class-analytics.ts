@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { ClassPerformanceData } from './analytics-draft';
+import { ClassPerformanceData } from './analytics';
 
 export const getClassPerformanceById = async (classId: string): Promise<ClassPerformanceData> => {
   const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -21,6 +21,8 @@ export const getClassPerformanceById = async (classId: string): Promise<ClassPer
 
   const completed = sessions.length;
   const pending = sessions.filter((s) => s.status === 'pending').length;
+  const evaluated = Math.max(0, completed - pending);
+  const evaluatedPercentage = completed > 0 ? Math.round((evaluated / completed) * 100) : 0;
 
   return {
     id: cls.id,
@@ -31,6 +33,7 @@ export const getClassPerformanceById = async (classId: string): Promise<ClassPer
     studentsCount: students.length,
     completedSessions: completed,
     pendingEvaluations: pending,
+    evaluatedPercentage,
     isArchived: !!cls.is_archived,
   };
 };

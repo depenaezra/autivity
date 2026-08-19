@@ -78,6 +78,8 @@ export default function Login() {
 
     setIsLoading(true);
 
+    let userRole: string | null = null;
+
     try {
       const loginData = await login(email, password);
       const user = loginData.user;
@@ -85,9 +87,13 @@ export default function Login() {
       if (user) {
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
-          .select('is_verified, is_suspended, suspended_until')
+          .select('role, is_verified, is_suspended, suspended_until')
           .eq('id', user.id)
           .single();
+
+        if (profile) {
+          userRole = profile.role;
+        }
 
         if (profileError) {
           await supabase.auth.signOut();
@@ -150,7 +156,11 @@ export default function Login() {
         await AsyncStorage.setItem("remember_me", "false");
       }
 
-      router.replace('/(tabs)');
+      if (userRole === 'parent') {
+        router.replace('/(parent-tabs)' as any);
+      } else {
+        router.replace('/(teacher-tabs)' as any);
+      }
 
     } catch (error: any) {
       Alert.alert('Login Failed', error.message);

@@ -594,7 +594,7 @@ export default function SetManager({
     const seconds = globalTimer % 60;
     if (isInitializing || !currentActivity) {
         return (
-            <SafeAreaView style={{ flex: 1, backgroundColor: '#F5F7FA', justifyContent: 'center', alignItems: 'center' }}>
+            <SafeAreaView style={{ flex: 1, backgroundColor: '#FBFBFB', justifyContent: 'center', alignItems: 'center' }}>
                 <ActivityIndicator size="large" color="#62A9E6" />
                 <Text className="mt-4 font-quicksand-bold text-[#6B7280] text-lg">Initializing Adaptive Activity...</Text>
             </SafeAreaView>
@@ -633,7 +633,7 @@ export default function SetManager({
 
     return (
         <Animated.View style={[{ flex: 1 }, animatedContentStyle]}>
-            <SafeAreaView style={{ flex: 1, backgroundColor: '#F5F7FA' }} edges={['top', 'bottom']}>
+            <SafeAreaView style={{ flex: 1, backgroundColor: '#FBFBFB' }} edges={['top', 'bottom']}>
 
                 {/* Header: X and Title */}
                 <View className="flex-row items-center px-6 pt-4 pb-4">

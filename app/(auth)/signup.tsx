@@ -84,7 +84,7 @@ export default function Signup() {
           .eq('id', signUpResult.user.id);
       }
       router.replace({
-        pathname: '/(tabs)',
+        pathname: (role === 'parent' ? '/(parent-tabs)' : '/(teacher-tabs)') as any,
         params: { firstName: firstName }
       });
     } catch (error: any) {

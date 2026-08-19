@@ -148,7 +148,7 @@ export default function LessonScreen() {
 
     if (isLoading) {
         return (
-            <SafeAreaView style={{ flex: 1, backgroundColor: '#F5F7FA', justifyContent: 'center', alignItems: 'center' }}>
+            <SafeAreaView style={{ flex: 1, backgroundColor: '#FBFBFB', justifyContent: 'center', alignItems: 'center' }}>
                 <ActivityIndicator size="large" color="#62A9E6" />
                 <Text className="mt-4 font-quicksand-bold text-[#6B7280] text-lg">Loading Lesson Activities...</Text>
             </SafeAreaView>
@@ -157,7 +157,7 @@ export default function LessonScreen() {
 
     if (!activityPool || activityPool.length === 0) {
         return (
-            <SafeAreaView style={{ flex: 1, backgroundColor: '#F5F7FA', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+            <SafeAreaView style={{ flex: 1, backgroundColor: '#FBFBFB', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
                 <Feather name="alert-circle" size={48} color="#9CA3AF" />
                 <Text className="mt-4 font-fredoka-one text-[#535B74] text-2xl text-center">No Activities Found</Text>
                 <Text className="mt-2 font-quicksand-medium text-[#6B7280] text-center text-base">There are currently no activities available for this lesson.</Text>

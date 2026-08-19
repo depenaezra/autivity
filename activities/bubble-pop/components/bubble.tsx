@@ -109,15 +109,21 @@ export default function Bubble({
         }
     }, [isPopped]);
 
+    const animatedStyle = useAnimatedStyle(() => {
+        return {
+            top: translateY.value,
+        };
+    });
+
     return (
         <Animated.View
             style={[
                 styles.container,
                 {
                     left: x,
-                    top: translateY,
                     transform: scale ? [{ scale }] : undefined,
                 },
+                animatedStyle,
             ]}
         >
             <Pressable

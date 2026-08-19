@@ -6,12 +6,20 @@ import { ActivityIndicator, Image, Pressable, ScrollView, Text, View, useWindowD
 // Import your student services
 import { getLatestStudentSession } from '../../../../src/services/sessions';
 import { getStudentActivities, getStudentById } from '../../../../src/services/students';
+import { getClassById } from '../../../../src/services/classes';
+
+const themeStyles: Record<string, { stroke: string; font: string; fill: string }> = {
+  green: { stroke: '#CBFAC4', font: '#179D33', fill: '#CBFAC4' },
+  orange: { stroke: '#FFDBD4', font: '#FF8870', fill: '#FFDBD4' },
+  yellow: { stroke: '#FFF3C4', font: '#FFAE02', fill: '#FFF3C4' },
+  blue: { stroke: '#BBE8FB', font: '#62A9E6', fill: '#BBE8FB' },
+};
 
 export default function StudentHome() {
     const router = useRouter();
 
     // 1. EXTRACT CLASS AND TEACHER IDs HERE
-    const { studentId, studentName: initialStudentName, assignedActivities, classId: initialClassId, teacherId: initialTeacherId } = useLocalSearchParams();
+    const { studentId, studentName: initialStudentName, assignedActivities, classId: initialClassId, teacherId: initialTeacherId, themeName: routeThemeName } = useLocalSearchParams();
 
     // Screen width check for responsive scaling
     const { width } = useWindowDimensions();
@@ -25,6 +33,7 @@ export default function StudentHome() {
     const [teacherId, setTeacherId] = useState<string | null>((initialTeacherId as string) || null);
     const [studentName, setStudentName] = useState<string>((initialStudentName as string) || '');
     const [avatar, setAvatar] = useState<string>('');
+    const [themeName, setThemeName] = useState<string>((routeThemeName as string) || 'yellow');
 
     // Fetch the paths when screen loads
     useEffect(() => {
@@ -44,16 +53,30 @@ export default function StudentHome() {
                 let currentName = (initialStudentName as string) || studentName;
 
                 const student = await getStudentById(studentId as string);
+                let activeTheme = (routeThemeName as string) || 'yellow';
                 if (student) {
                     currentClassId = student.class_id;
                     currentTeacherId = student.teacher_id;
                     currentName = student.name;
                     setAvatar(student.avatar || '');
+
+                    // Fetch class theme as a fallback
+                    if (student.class_id) {
+                        try {
+                            const classData = await getClassById(student.class_id);
+                            if (classData && classData.theme_name) {
+                                activeTheme = classData.theme_name;
+                            }
+                        } catch (err) {
+                            console.error("Failed to fetch class theme:", err);
+                        }
+                    }
                 }
 
                 setClassId(currentClassId);
                 setTeacherId(currentTeacherId);
                 setStudentName(currentName);
+                setThemeName(activeTheme);
             } catch (e) {
                 console.error("Error loading student data:", e);
             } finally {
@@ -174,7 +197,16 @@ export default function StudentHome() {
 
                 {/* AVATAR & NAME SECTION */}
                 <View className={`items-center px-6 ${isTablet ? '-mt-[100px]' : '-mt-[70px]'}`}>
-                    <View className={`rounded-full bg-[#E5E7EB] border-white shadow-sm items-center justify-center ${isTablet ? 'w-[180px] h-[180px] border-[8px]' : 'w-[120px] h-[120px] border-[6px]'}`}>
+                    <View 
+                        className={`rounded-full bg-[#E5E7EB] shadow-sm items-center justify-center`}
+                        style={{
+                            borderColor: themeStyles[themeName]?.font || '#FFAE02',
+                            width: isTablet ? 180 : 120,
+                            height: isTablet ? 180 : 120,
+                            borderRadius: isTablet ? 90 : 60,
+                            borderWidth: isTablet ? 8 : 6,
+                        }}
+                    >
                         {avatar ? (
                             <Text style={{ fontSize: isTablet ? 84 : 56 }}>
                                 {avatar}
@@ -183,7 +215,10 @@ export default function StudentHome() {
                             <Ionicons name="person" size={isTablet ? 90 : 60} color="#9CA3AF" />
                         )}
                     </View>
-                    <Text className={`font-fredoka-one text-[#374151] ${isTablet ? 'text-6xl mt-4' : 'text-4xl mt-3'}`}>
+                    <Text 
+                        className={`font-fredoka-one ${isTablet ? 'text-6xl mt-4' : 'text-4xl mt-3'}`}
+                        style={{ color: themeStyles[themeName]?.font || '#FFAE02' }}
+                    >
                         {studentName || 'Monna'}
                     </Text>
                     <Text className={`text-[#9CA3AF] font-quicksand-medium ${isTablet ? 'text-2xl mt-1' : 'text-lg'}`}>

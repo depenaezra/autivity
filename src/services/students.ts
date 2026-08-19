@@ -75,6 +75,30 @@ export const deleteStudent = async (studentId: string) => {
     return true;
 };
 
+// Update student details
+export const updateStudent = async (
+    studentId: string,
+    name: string,
+    avatar: string,
+    spectrumLevel?: string,
+    bio?: string
+) => {
+    const { data, error } = await supabase
+        .from('students')
+        .update({
+            name: name,
+            avatar: avatar,
+            spectrum_level: spectrumLevel || null,
+            bio: bio || null,
+        })
+        .eq('id', studentId)
+        .select()
+        .single();
+
+    if (error) throw new Error(error.message);
+    return data;
+};
+
 // Move student to a new class
 export const moveStudentClass = async (studentId: string, newClassId: string) => {
     const { data, error } = await supabase
@@ -123,6 +147,21 @@ export const updateStudentActivities = async (studentId: string, assignedActivit
 
     if (error) throw new Error(error.message);
     return data;
+};
+
+// Get all students for a teacher
+export const getTeacherStudents = async () => {
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) throw new Error('User not logged in');
+
+    const { data, error } = await supabase
+        .from('students')
+        .select('*')
+        .eq('teacher_id', user.id)
+        .order('name', { ascending: true });
+
+    if (error) throw new Error(error.message);
+    return data || [];
 };
 
 // Get students count

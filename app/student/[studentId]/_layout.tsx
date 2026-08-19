@@ -2,7 +2,7 @@ import { Stack } from 'expo-router';
 
 export default function StudentIdLayout() {
     return (
-        <Stack screenOptions={{ headerShown: false }}>
+        <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
             {/* This automatically pulls in the (student-tabs) folder */}
             <Stack.Screen name="(student-tabs)" />
             <Stack.Screen 

@@ -1,13 +1,12 @@
 import { Feather, Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View, useWindowDimensions } from 'react-native';
-import { ClassPerformanceData } from '../../../src/services/analytics-draft';
+import { ClassPerformanceData } from '../../../src/services/analytics';
 import { getClassPerformanceById } from '../../../src/services/class-analytics';
-import StudentView from '../student/student-view';
 import ClassDevelopmentalSkillsHeatmap from './class-developmental-skills-heatmap';
 import ClassEvaluationTrend from './class-evaluation-trend';
 import OverviewCards from './overview-cards';
-import StudentList from './student-list';
 
 interface ClassViewProps {
   classId: string;
@@ -18,11 +17,10 @@ export default function ClassView({ classId, onBack }: ClassViewProps) {
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
 
+  const router = useRouter();
   const [classData, setClassData] = useState<ClassPerformanceData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [viewingStudents, setViewingStudents] = useState(false);
-  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchDetails() {
@@ -41,24 +39,7 @@ export default function ClassView({ classId, onBack }: ClassViewProps) {
     fetchDetails();
   }, [classId]);
 
-  if (selectedStudentId) {
-    return (
-      <StudentView
-        studentId={selectedStudentId}
-        onBack={() => setSelectedStudentId(null)}
-      />
-    );
-  }
 
-  if (viewingStudents) {
-    return (
-      <StudentList
-        classId={classId}
-        onBack={() => setViewingStudents(false)}
-        onSelectStudent={setSelectedStudentId}
-      />
-    );
-  }
 
   return (
     <View className={`w-full flex-col ${isTablet ? 'px-12 pt-6' : 'px-6 pt-5'}`}>
@@ -143,15 +124,6 @@ export default function ClassView({ classId, onBack }: ClassViewProps) {
                         {classData.studentsCount} {classData.studentsCount === 1 ? 'Student' : 'Students'}
                       </Text>
                     </View>
-                    <Pressable
-                      onPress={() => setViewingStudents(true)}
-                      className="bg-[#EFF6FF] border border-[#93C5FD] px-2 py-1 rounded-lg active:opacity-90 flex-row items-center gap-1"
-                    >
-                      <Feather name="eye" size={12} color="#2563EB" />
-                      <Text className="font-quicksand-bold text-xs text-[#2563EB]">
-                        View List
-                      </Text>
-                    </Pressable>
                   </View>
                 </View>
               </View>
