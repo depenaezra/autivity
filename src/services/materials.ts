@@ -193,6 +193,28 @@ export const deleteMaterial = async (id: string, filePath: string) => {
     if (error) throw new Error(error.message);
 };
 
+// Update existing material metadata in Database
+export const updateMaterial = async (
+    id: string,
+    metadata: { title?: string; category?: string; description?: string; assignedClasses?: string }
+) => {
+    const updateData: any = {};
+    if (metadata.title !== undefined) updateData.title = metadata.title;
+    if (metadata.category !== undefined) updateData.category = metadata.category;
+    if (metadata.description !== undefined) updateData.description = metadata.description;
+    if (metadata.assignedClasses !== undefined) updateData.assigned_classes = metadata.assignedClasses;
+
+    const { data, error } = await supabase
+        .from('lesson_materials')
+        .update(updateData)
+        .eq('id', id)
+        .select()
+        .single();
+
+    if (error) throw new Error(`Database update failed: ${error.message}`);
+    return data;
+};
+
 export const getMaterialCount = async () => {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) return 0;

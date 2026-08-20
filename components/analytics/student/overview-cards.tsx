@@ -23,7 +23,7 @@ interface CardConfig {
 const CARDS: CardConfig[] = [
     {
         key: 'duration',
-        label: 'Average Session Duration',
+        label: 'Average Session',
         sublabel: 'Time spent per session',
         iconName: 'clock',
         accentColor: '#06B6D4', // Cyan 500

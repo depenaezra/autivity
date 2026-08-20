@@ -1,10 +1,62 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View, useWindowDimensions } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { getRecentActivity, RecentActivityData } from '../../../src/services/analytics';
 import EvaluationReviewModal from './evaluation-review-modal';
+import RecentIcon from '../../../assets/images/teacher/analytics/icon-recent.svg';
 
 type FilterType = 'today' | 'week' | 'month';
+
+function RecentActivitySkeletonItem({ isTablet }: { isTablet: boolean }) {
+  const opacity = useSharedValue(0.4);
+
+  useEffect(() => {
+    opacity.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 750 }),
+        withTiming(0.4, { duration: 750 })
+      ),
+      -1,
+      true
+    );
+  }, []);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+  }));
+
+  return (
+    <Animated.View
+      className={`bg-white border-[2px] border-[#F1F1F1] flex-row items-center justify-between overflow-hidden ${
+        isTablet ? 'rounded-[24px] p-5' : 'rounded-[16px] p-3.5'
+      }`}
+      style={[
+        {
+          shadowColor: '#F1F1F1',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 1,
+          shadowRadius: 0,
+          elevation: 2,
+        },
+        animatedStyle,
+      ]}
+    >
+      <View className="w-1.5 self-stretch rounded-full mr-3 bg-[#E5E7EB]" />
+      <View className="flex-1 pr-2">
+        <View className={`bg-[#E5E7EB] rounded-[4px] ${isTablet ? 'h-5 w-40 mb-2' : 'h-4 w-28 mb-1.5'}`} />
+        <View className={`bg-[#E5E7EB] rounded-[4px] ${isTablet ? 'h-4 w-56' : 'h-3.5 w-36'}`} />
+      </View>
+      <View className={`bg-[#E5E7EB] rounded-[6px] ${isTablet ? 'h-7 w-24' : 'h-5 w-16'}`} />
+    </Animated.View>
+  );
+}
 
 export function RecentActivitySection() {
   const { width } = useWindowDimensions();
@@ -82,17 +134,14 @@ export function RecentActivitySection() {
   const visibleActivities = isExpanded ? activities : activities.slice(0, 4);
 
   return (
-    <View className={`w-full ${isTablet ? 'mt-12' : 'mt-8'}`}>
+    <View className={`w-full ${isTablet ? 'mt-10' : 'mt-6'}`}>
       {/* Header section with Title & Filter Buttons */}
       <View className={`flex-row flex-wrap items-center justify-between gap-3 ${isTablet ? 'px-12 mb-6' : 'px-6 mb-4'}`}>
         <View className="flex-row items-center gap-2">
-          <View
-            className={`rounded-[8px] bg-[#BBE8FB] justify-center items-center ${
-              isTablet ? 'w-8 h-8' : 'w-6 h-6'
-            }`}
-          >
-            <Ionicons name="time" size={isTablet ? 20 : 15} color="#62A9E6" />
-          </View>
+          <RecentIcon
+            width={isTablet ? 32 : 22}
+            height={isTablet ? 32 : 22}
+          />
           <Text className={`font-fredoka-one text-[#484A4B] ${isTablet ? 'text-[32px]' : 'text-[22px]'}`}>
             Recent Activity
           </Text>
@@ -109,11 +158,10 @@ export function RecentActivitySection() {
       {/* Activity Timeline List */}
       <View className={`w-full ${isTablet ? 'px-12' : 'px-6'}`}>
         {isLoading ? (
-          <View className="items-center justify-center py-10">
-            <ActivityIndicator size="large" color="#62A9E6" />
-            <Text className="mt-3 font-quicksand-medium text-sm text-[#9CA3AF]">
-              Loading activity logs...
-            </Text>
+          <View className="gap-3">
+            <RecentActivitySkeletonItem isTablet={isTablet} />
+            <RecentActivitySkeletonItem isTablet={isTablet} />
+            <RecentActivitySkeletonItem isTablet={isTablet} />
           </View>
         ) : activities.length === 0 ? (
           <View className="bg-white border-2 border-dashed border-[#E5E7EB] rounded-2xl p-8 items-center justify-center">

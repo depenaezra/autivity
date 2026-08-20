@@ -12,7 +12,6 @@ export interface ClassItem {
   title: string;
   level: string;
   people: number;
-  image?: any;
   themeColor: string;
   shadowColor: string;
   themeName?: string;
@@ -27,12 +26,6 @@ export const themeColors = [
   { name: 'yellow', value: '#FFF3C4', border: '#FFAE02' },
 ];
 
-const classCards: Record<string, any> = {
-  green: require('../assets/images/class-cards/class-frog.png'),
-  orange: require('../assets/images/class-cards/class-hamster.png'),
-  yellow: require('../assets/images/class-cards/class-penguin.png'),
-  blue: require('../assets/images/class-cards/class-whale.png'),
-};
 
 export function useTeacherDashboard() {
   const { firstName: paramFirstName } = useLocalSearchParams();
@@ -103,7 +96,6 @@ export function useTeacherDashboard() {
           level: dbClass.grade || 'Grade 1',
           people: Array.isArray(dbClass.students) ? dbClass.students.length : 0,
           schedule: dbClass.schedule,
-          image: classCards[theme.name] || require('../assets/images/polar-bear.png'),
           themeColor: theme.value,
           shadowColor: theme.border,
           themeName: theme.name,

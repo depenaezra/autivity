@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-nati
 import { Feather, Ionicons } from '@expo/vector-icons';
 import Animated, { useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
 import { ClassCard } from './class-card';
+import { ClassCardSkeleton } from './class-card-skeleton';
 import { ClassItem } from '../../../hooks/use-teacher-dashboard';
 import ClassIcon from '../../../assets/images/teacher/class/icon-class.svg';
 
@@ -82,9 +83,15 @@ export function ClassesSection({
       </View>
 
       {isLoading ? (
-        <View className="items-center justify-center h-[150px]">
-          <ActivityIndicator size="large" color="#62A9E6" />
-        </View>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: isTablet ? 48 : 24, paddingBottom: 8 }}
+        >
+          <ClassCardSkeleton isTablet={isTablet} />
+          <ClassCardSkeleton isTablet={isTablet} />
+          <ClassCardSkeleton isTablet={isTablet} />
+        </ScrollView>
       ) : (
         <ScrollView
           horizontal

@@ -1,6 +1,9 @@
-import React from 'react';
+import { useFocusEffect } from 'expo-router';
+import React, { useCallback, useState } from 'react';
 import { ScrollView, Text, View, useWindowDimensions } from 'react-native';
+import Animated, { FadeInRight } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
 import AnalyticsCards from '../../../components/teacher/analytics/analytics-cards';
 import ClassPerformanceSection from '../../../components/teacher/analytics/class-performance-section';
 import RecentActivitySection from '../../../components/teacher/analytics/recent-activity-section';
@@ -9,33 +12,50 @@ export default function AnalyticsDraftScreen() {
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
 
+  const [focusKey, setFocusKey] = useState(0);
+
+  useFocusEffect(
+    useCallback(() => {
+      setFocusKey((prev) => prev + 1);
+    }, [])
+  );
+
   return (
-    <SafeAreaView className="flex-1 bg-[#F5F8FA]">
+    <SafeAreaView className="flex-1 bg-[#F5F8FA]" edges={['top', 'left', 'right']}>
       <ScrollView
         contentContainerStyle={{ paddingBottom: isTablet ? 24 : 16 }}
         showsVerticalScrollIndicator={false}
         bounces={false}
       >
-        <View className={`w-full ${isTablet ? 'px-12 pt-6' : 'px-6 pt-5'}`}>
-          <View className="mb-6">
-            <Text className={`font-fredoka-one text-[#4B5563] ${isTablet ? 'text-4xl' : 'text-2xl'}`}>
+        <Animated.View 
+          key={`header-${focusKey}`}
+          entering={FadeInRight.delay(50).duration(300)}
+          className={`w-full ${isTablet ? 'px-12 pt-4' : 'px-6 pt-2'}`}
+        >
+          <View className="mb-2">
+            <Text className={`font-fredoka-one text-[#484A4B] ${isTablet ? 'text-[44px]' : 'text-[32px]'}`}>
               Analytics
             </Text>
-            <Text className={`font-quicksand-medium text-[#9CA3AF] mt-1 ${isTablet ? 'text-lg' : 'text-sm'}`}>
-              Track student progress and class activity at a glance
-            </Text>
           </View>
-        </View>
+        </Animated.View>
 
-        {/* Render the redesigned analytics-cards component */}
-        <AnalyticsCards />
+        {/* ANALYTICS CARDS */}
+        <Animated.View key={`cards-${focusKey}`} entering={FadeInRight.delay(100).duration(300)}>
+          <AnalyticsCards />
+        </Animated.View>
 
-        {/* Render the redesigned class performance section */}
-        <ClassPerformanceSection />
+        {/* CLASS PERFORMANCE SECTION */}
+        <Animated.View key={`perf-${focusKey}`} entering={FadeInRight.delay(150).duration(300)}>
+          <ClassPerformanceSection />
+        </Animated.View>
 
-        {/* Render the redesigned recent activity section */}
-        <RecentActivitySection />
+        {/* RECENT ACTIVITY SECTION */}
+        <Animated.View key={`activity-${focusKey}`} entering={FadeInRight.delay(200).duration(300)}>
+          <RecentActivitySection />
+        </Animated.View>
       </ScrollView>
     </SafeAreaView>
   );
 }
+
+

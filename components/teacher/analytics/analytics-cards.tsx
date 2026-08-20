@@ -1,15 +1,26 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Text, View, useWindowDimensions } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { getKpiData as getDraftKpiData, KpiData } from '../../../src/services/analytics';
+import IconPending from '../../../assets/images/teacher/analytics/icon-pending.svg';
+import IconCompleted from '../../../assets/images/teacher/analytics/icon-completed.svg';
 
 interface AnalyticsCardConfig {
   key: keyof KpiData | 'placeholder';
   label: string;
   borderColor: string;
   labelColor: string;
-  iconName: string;
-  iconFamily: 'Feather' | 'Ionicons' | 'MaterialCommunityIcons';
+  iconName?: string;
+  iconFamily?: 'Feather' | 'Ionicons' | 'MaterialCommunityIcons';
+  IconComponent?: React.ComponentType<{ width: number; height: number }>;
+  iconSizeMultiplier?: number;
 }
 
 const CARD_CONFIGS: AnalyticsCardConfig[] = [
@@ -18,16 +29,15 @@ const CARD_CONFIGS: AnalyticsCardConfig[] = [
     label: 'PENDING EVALS',
     borderColor: '#FFDBD4',
     labelColor: '#FF8870',
-    iconName: 'clock',
-    iconFamily: 'Feather',
+    IconComponent: IconPending,
+    iconSizeMultiplier: 0.85,
   },
   {
     key: 'completedSessions',
     label: 'COMPLETED SESSIONS',
     borderColor: '#CBFAC4',
     labelColor: '#179D33',
-    iconName: 'check-circle',
-    iconFamily: 'Feather',
+    IconComponent: IconCompleted,
   },
   {
     key: 'placeholder',
@@ -53,6 +63,50 @@ function renderCardIcon(
     default:
       return <Feather name={name as any} size={size} color={color} />;
   }
+}
+
+function AnalyticsCardSkeletonItem({ card, isTablet }: { card: (typeof CARD_CONFIGS)[0]; isTablet: boolean }) {
+  const opacity = useSharedValue(0.4);
+
+  React.useEffect(() => {
+    opacity.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 750 }),
+        withTiming(0.4, { duration: 750 })
+      ),
+      -1,
+      true
+    );
+  }, []);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+  }));
+
+  return (
+    <Animated.View
+      key={card.key}
+      className={`border-[4px] bg-white justify-center items-center ${
+        isTablet ? 'rounded-[32px] p-4 flex-1 min-w-[160px]' : 'rounded-[20px] p-3 flex-1 min-w-[100px]'
+      }`}
+      style={[
+        {
+          borderColor: '#F1F1F1',
+          shadowColor: '#F1F1F1',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 1,
+          shadowRadius: 0,
+          elevation: 2,
+          ...(!isTablet ? { aspectRatio: 1 } : { height: 155 }),
+        },
+        animatedStyle,
+      ]}
+    >
+      <View className={`bg-[#E5E7EB] rounded-full ${isTablet ? 'w-12 h-12 mb-2' : 'w-8 h-8 mb-1.5'}`} />
+      <View className={`bg-[#E5E7EB] rounded-[4px] ${isTablet ? 'w-16 h-7 mb-2' : 'w-10 h-5 mb-1.5'}`} />
+      <View className={`bg-[#E5E7EB] rounded-[4px] ${isTablet ? 'w-20 h-4' : 'w-14 h-3'}`} />
+    </Animated.View>
+  );
 }
 
 export function AnalyticsCards() {
@@ -85,35 +139,19 @@ export function AnalyticsCards() {
 
   if (isLoading) {
     return (
-      <View className={`w-full flex-row flex-wrap justify-between ${isTablet ? 'px-12 mt-6 gap-4' : 'px-6 mt-4 gap-3'}`}>
+      <View className={`w-full flex-row justify-between ${isTablet ? 'px-12 mt-10 gap-6' : 'px-6 mt-6 gap-3'}`}>
         {CARD_CONFIGS.map((card) => (
-          <View
-            key={card.key}
-            className={`border-[4px] bg-white justify-center items-center ${
-              isTablet ? 'rounded-[32px] p-4 flex-1 min-w-[160px]' : 'rounded-[20px] p-3 flex-1 min-w-[100px]'
-            }`}
-            style={{
-              borderColor: card.borderColor,
-              shadowColor: card.borderColor,
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 1,
-              shadowRadius: 0,
-              elevation: 2,
-              ...(!isTablet ? { aspectRatio: 1 } : { height: 155 }),
-            }}
-          >
-            <ActivityIndicator size="small" color={card.labelColor} />
-          </View>
+          <AnalyticsCardSkeletonItem key={card.key} card={card} isTablet={isTablet} />
         ))}
       </View>
     );
   }
 
   return (
-    <View className={`w-full flex-row flex-wrap justify-between ${isTablet ? 'px-12 mt-6 gap-4' : 'px-6 mt-4 gap-3'}`}>
+    <View className={`w-full flex-row justify-between ${isTablet ? 'px-12 mt-10 gap-6' : 'px-6 mt-6 gap-3'}`}>
       {CARD_CONFIGS.map((card) => {
         const count = card.key === 'placeholder' ? '-' : kpi[card.key as keyof KpiData];
-        const iconSize = isTablet ? 48 : 32;
+        const iconSize = (isTablet ? 48 : 32) * (card.iconSizeMultiplier ?? 1);
 
         return (
           <View
@@ -144,7 +182,11 @@ export function AnalyticsCards() {
 
             {/* Icon */}
             <View className={`justify-center items-center ${isTablet ? 'my-2' : 'my-1.5'}`}>
-              {renderCardIcon(card.iconFamily, card.iconName, iconSize, card.labelColor)}
+              {card.IconComponent ? (
+                <card.IconComponent width={iconSize} height={iconSize} />
+              ) : (
+                renderCardIcon(card.iconFamily!, card.iconName!, iconSize, card.labelColor)
+              )}
             </View>
 
             {/* Count */}

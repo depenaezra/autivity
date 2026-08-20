@@ -1,5 +1,5 @@
-import { useRouter } from 'expo-router';
-import React from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback, useState } from 'react';
 import { ScrollView, useWindowDimensions } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeInRight } from 'react-native-reanimated';
@@ -17,6 +17,14 @@ export default function HomeScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
+
+  const [focusKey, setFocusKey] = useState(0);
+
+  useFocusEffect(
+    useCallback(() => {
+      setFocusKey((prev) => prev + 1);
+    }, [])
+  );
 
   const {
     firstName,
@@ -56,7 +64,7 @@ export default function HomeScreen() {
         contentContainerStyle={{ paddingBottom: isTablet ? 40 : 24 }}
       >
         {/* HEADER SECTION */}
-        <Animated.View entering={FadeInRight.delay(50).duration(300)}>
+        <Animated.View key={`header-${focusKey}`} entering={FadeInRight.delay(50).duration(300)}>
           <DashboardHeader 
             firstName={firstName} 
             isTablet={isTablet} 
@@ -65,7 +73,7 @@ export default function HomeScreen() {
         </Animated.View>
 
         {/* STATS SECTION */}
-        <Animated.View entering={FadeInRight.delay(100).duration(300)}>
+        <Animated.View key={`stats-${focusKey}`} entering={FadeInRight.delay(100).duration(300)}>
           <StatsSection 
             stats={stats} 
             isTablet={isTablet} 
@@ -74,7 +82,7 @@ export default function HomeScreen() {
         </Animated.View>
 
         {/* CLASSES SECTION */}
-        <Animated.View entering={FadeInRight.delay(150).duration(300)}>
+        <Animated.View key={`classes-${focusKey}`} entering={FadeInRight.delay(150).duration(300)}>
           <ClassesSection 
             classesData={classesData}
             archivedCount={archivedClasses.length}
@@ -89,7 +97,7 @@ export default function HomeScreen() {
         </Animated.View>
 
         {/* LESSONS SECTION */}
-        <Animated.View entering={FadeInRight.delay(200).duration(300)}>
+        <Animated.View key={`lessons-${focusKey}`} entering={FadeInRight.delay(200).duration(300)}>
           <LessonsSection 
             lessonCount={stats.lessons} 
             isTablet={isTablet} 
@@ -98,7 +106,7 @@ export default function HomeScreen() {
         </Animated.View>
 
         {/* STUDENTS SECTION */}
-        <Animated.View entering={FadeInRight.delay(250).duration(300)}>
+        <Animated.View key={`students-${focusKey}`} entering={FadeInRight.delay(250).duration(300)}>
           <StudentsSection
             studentsData={studentsData}
             isTablet={isTablet}

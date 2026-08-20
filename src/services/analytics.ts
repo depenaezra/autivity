@@ -65,7 +65,7 @@ export const getClassPerformance = async (includeArchived: boolean = false): Pro
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) throw new Error('User not logged in');
 
-  let classesQuery = supabase.from('classes').select('*').eq('teacher_id', user.id);
+  let classesQuery = supabase.from('classes').select('*').eq('teacher_id', user.id).order('created_at', { ascending: true });
   if (!includeArchived) {
     classesQuery = classesQuery.eq('is_archived', false);
   }

@@ -11,7 +11,7 @@ import { ActivityIndicator, Alert, KeyboardAvoidingView, Linking, Modal, Platfor
 import { ResourcesScreenLayout } from '../../components/teacher/home/resources-screen-layout';
 import { LessonMaterialCard } from '../../components/teacher/home/lesson-material-card';
 import { AddMaterialCard } from '../../components/teacher/home/add-material-card';
-import { deleteMaterial, getMaterials, uploadMaterial } from '../../src/services/materials';
+import { deleteMaterial, getMaterials, uploadMaterial, updateMaterial } from '../../src/services/materials';
 
 export interface LessonMaterial {
   id: string;
@@ -50,6 +50,52 @@ export default function LessonMaterialsScreen() {
 
   const [previewMaterial, setPreviewMaterial] = useState<LessonMaterial | null>(null);
 
+  // Edit Material Modal State
+  const [editingMaterial, setEditingMaterial] = useState<LessonMaterial | null>(null);
+  const [isEditModalVisible, setEditModalVisible] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editCategory, setEditCategory] = useState<'Worksheet' | 'Presentation' | 'Sensory & Visual' | 'Audio & Video'>('Worksheet');
+  const [editDescription, setEditDescription] = useState('');
+  const [editClasses, setEditClasses] = useState('All Classes');
+
+  const openSwipeableRef = React.useRef<any>(null);
+
+  const handleEditPress = (item: LessonMaterial) => {
+    setEditingMaterial(item);
+    setEditTitle(item.title ? item.title.replace(/\.[^/.]+$/, '') : '');
+    setEditCategory((item.category as any) || 'Worksheet');
+    setEditDescription(item.description || '');
+    setEditClasses(item.assignedClasses || 'All Classes');
+    setEditModalVisible(true);
+  };
+
+  const handleConfirmEdit = async () => {
+    if (!editingMaterial || !editTitle.trim()) {
+      Alert.alert('Missing Info', 'Please provide a title.');
+      return;
+    }
+
+    setIsUpdating(true);
+    try {
+      await updateMaterial(editingMaterial.id, {
+        title: editTitle.trim(),
+        category: editCategory,
+        description: editDescription.trim(),
+        assignedClasses: editClasses,
+      });
+
+      await fetchMaterialsFromDB();
+      setEditModalVisible(false);
+      setEditingMaterial(null);
+      Alert.alert('Success', 'Material updated successfully.');
+    } catch (error: any) {
+      Alert.alert('Update Failed', error.message);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   useEffect(() => {
     fetchMaterialsFromDB();
   }, []);
@@ -61,10 +107,11 @@ export default function LessonMaterialsScreen() {
 
       const formatted = dbMaterials.map((mat: any) => {
         const date = new Date(mat.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        const cleanTitle = mat.title ? mat.title.replace(/\.[^/.]+$/, '') : mat.title;
 
         return {
           id: mat.id,
-          title: mat.title,
+          title: cleanTitle,
           type: mat.type,
           category: mat.category,
           size: mat.size,
@@ -102,14 +149,16 @@ export default function LessonMaterialsScreen() {
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const file = result.assets[0];
         const sizeInMb = file.size ? (file.size / 1024 / 1024).toFixed(1) + ' MB' : '1.5 MB';
+        const rawName = file.name || 'New Lesson Material';
+        const cleanName = rawName.replace(/\.[^/.]+$/, '');
 
         setPendingFile({
-          name: file.name || 'New Lesson Material.pdf',
+          name: cleanName,
           size: sizeInMb,
           uri: file.uri,
           mimeType: file.mimeType || 'application/octet-stream',
         });
-        setUploadTitle(file.name || 'New Lesson Material.pdf');
+        setUploadTitle(cleanName);
 
         const lowerName = (file.name || '').toLowerCase();
         if (lowerName.includes('.ppt') || lowerName.includes('presentation')) setUploadCategory('Presentation');
@@ -305,7 +354,14 @@ export default function LessonMaterialsScreen() {
                   item={item}
                   isTablet={isTablet}
                   onPress={() => handleOpenMaterial(item)}
+                  onEdit={() => handleEditPress(item)}
                   onDelete={() => handleDeleteMaterial(item)}
+                  onSwipeableWillOpen={(ref) => {
+                    if (openSwipeableRef.current && openSwipeableRef.current !== ref) {
+                      openSwipeableRef.current.close();
+                    }
+                    openSwipeableRef.current = ref;
+                  }}
                 />
               ))}
 
@@ -354,7 +410,7 @@ export default function LessonMaterialsScreen() {
               value={uploadTitle}
               onChangeText={setUploadTitle}
               editable={!isUploading}
-              placeholder="e.g. Tracing Shapes Worksheet.pdf"
+              placeholder="e.g. Tracing Shapes Worksheet"
               placeholderTextColor="#9CA3AF"
               className="w-full h-12 bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl px-4 font-quicksand-medium text-base text-[#4B5563] mb-4"
             />
@@ -424,6 +480,101 @@ export default function LessonMaterialsScreen() {
                   <ActivityIndicator color="white" />
                 ) : (
                   <Text className="font-quicksand-bold text-white text-base">Add Material</Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* EDIT MATERIAL DETAILS MODAL */}
+      <Modal visible={isEditModalVisible} transparent={true} animationType="fade" onRequestClose={() => !isUpdating && setEditModalVisible(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1 justify-center items-center bg-black/50 px-6">
+          <View className="bg-white w-full max-w-lg rounded-[24px] border-[3px] border-[#D5D0D2] border-b-[6px] p-6 shadow-xl">
+            <View className="flex-row justify-between items-center mb-4 border-b border-[#F3F4F6] pb-3">
+              <Text className="font-fredoka-one text-2xl text-[#4B5563]">Edit Material Details</Text>
+              {!isUpdating && (
+                <Pressable onPress={() => setEditModalVisible(false)} className="p-1">
+                  <Ionicons name="close" size={26} color="#9CA3AF" />
+                </Pressable>
+              )}
+            </View>
+
+            <Text className="font-quicksand-bold text-[#4B5563] text-sm mb-1.5">Material Title</Text>
+            <TextInput
+              value={editTitle}
+              onChangeText={setEditTitle}
+              editable={!isUpdating}
+              placeholder="Material title..."
+              placeholderTextColor="#9CA3AF"
+              className="w-full h-12 bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl px-4 font-quicksand-medium text-base text-[#4B5563] mb-4"
+            />
+
+            <Text className="font-quicksand-bold text-[#4B5563] text-sm mb-1.5">Category</Text>
+            <View className="flex-row flex-wrap gap-2 mb-4">
+              {(['Worksheet', 'Presentation', 'Sensory & Visual', 'Audio & Video'] as const).map((cat) => {
+                const isCatSelected = editCategory === cat;
+                return (
+                  <Pressable
+                    key={cat}
+                    disabled={isUpdating}
+                    onPress={() => setEditCategory(cat)}
+                    className={`px-3.5 py-2 rounded-xl border ${isCatSelected ? 'bg-[#EFF6FF] border-[#62A9E6]' : 'bg-[#F9FAFB] border-[#E5E7EB]'}`}
+                  >
+                    <Text className={`font-quicksand-bold text-xs ${isCatSelected ? 'text-[#5298D4]' : 'text-[#6B7280]'}`}>{cat}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            <Text className="font-quicksand-bold text-[#4B5563] text-sm mb-1.5">Assign to Class</Text>
+            <View className="flex-row flex-wrap gap-2 mb-4">
+              {['All Classes', 'Class 1A', 'Class 2B', 'Class 1C'].map((cls) => {
+                const isClsSelected = editClasses === cls;
+                return (
+                  <Pressable
+                    key={cls}
+                    disabled={isUpdating}
+                    onPress={() => setEditClasses(cls)}
+                    className={`px-3.5 py-2 rounded-xl border ${isClsSelected ? 'bg-[#EFF6FF] border-[#62A9E6]' : 'bg-[#F9FAFB] border-[#E5E7EB]'}`}
+                  >
+                    <Text className={`font-quicksand-bold text-xs ${isClsSelected ? 'text-[#5298D4]' : 'text-[#6B7280]'}`}>{cls}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            <Text className="font-quicksand-bold text-[#4B5563] text-sm mb-1.5">Description (Optional)</Text>
+            <TextInput
+              value={editDescription}
+              onChangeText={setEditDescription}
+              editable={!isUpdating}
+              placeholder="Brief note about how to use this material..."
+              placeholderTextColor="#9CA3AF"
+              multiline
+              numberOfLines={3}
+              className="w-full bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl p-3 font-quicksand-medium text-sm text-[#4B5563] mb-6 h-20"
+              style={{ textAlignVertical: 'top' }}
+            />
+
+            <View className="flex-row gap-3">
+              <Pressable
+                disabled={isUpdating}
+                onPress={() => setEditModalVisible(false)}
+                className={`flex-1 rounded-xl bg-[#F3F4F6] border-b-[3px] border-[#D1D5DB] justify-center items-center ${isTablet ? 'h-16' : 'h-14'} ${isUpdating ? 'opacity-50' : ''}`}
+              >
+                <Text className="font-quicksand-bold text-[#6B7280] text-base">Cancel</Text>
+              </Pressable>
+
+              <Pressable
+                disabled={isUpdating}
+                onPress={handleConfirmEdit}
+                className={`flex-1 rounded-xl bg-[#62A9E6] border-b-[3px] border-[#5298D4] justify-center items-center ${isTablet ? 'h-16' : 'h-14'} ${isUpdating ? 'opacity-70' : ''}`}
+              >
+                {isUpdating ? (
+                  <ActivityIndicator color="white" />
+                ) : (
+                  <Text className="font-quicksand-bold text-white text-base">Save Changes</Text>
                 )}
               </Pressable>
             </View>

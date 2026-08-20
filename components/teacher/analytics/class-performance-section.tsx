@@ -5,7 +5,8 @@ import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from '
 import { useRouter } from 'expo-router';
 
 import { getClassPerformance, ClassPerformanceData } from '../../../src/services/analytics';
-import ClassIcon from '../../../assets/images/teacher/class/icon-class.svg';
+import { ClassCardSkeleton } from '../home/class-card-skeleton';
+import PerformanceIcon from '../../../assets/images/teacher/analytics/icon-performance.svg';
 
 const themeStyles: Record<string, { stroke: string; font: string; fill: string }> = {
   green: {
@@ -163,32 +164,14 @@ function AnalyticsClassCard({ item, isTablet, isActive, onPress }: AnalyticsClas
             >
               <Ionicons
                 name="person"
-                size={isTablet ? 14 : 10}
+                size={isTablet ? 16 : 12}
                 color={badgeFont}
               />
               <Text
-                className={`font-fredoka-one ${isTablet ? 'text-[12px]' : 'text-[10px]'}`}
+                className={`font-fredoka-one ${isTablet ? 'text-[14px]' : 'text-[11px]'}`}
                 style={{ color: badgeFont }}
               >
-                {item.studentsCount} Students
-              </Text>
-            </View>
-
-            {/* Completed Sessions Pill */}
-            <View
-              className="flex-row items-center bg-white border-[2px] rounded-[6px] px-2 py-0.5 gap-1"
-              style={{ borderColor: badgeStroke }}
-            >
-              <Ionicons
-                name="checkmark-circle"
-                size={isTablet ? 14 : 10}
-                color={badgeFont}
-              />
-              <Text
-                className={`font-fredoka-one ${isTablet ? 'text-[12px]' : 'text-[10px]'}`}
-                style={{ color: badgeFont }}
-              >
-                {item.completedSessions} Completed
+                {item.studentsCount}
               </Text>
             </View>
 
@@ -199,11 +182,11 @@ function AnalyticsClassCard({ item, isTablet, isActive, onPress }: AnalyticsClas
             >
               <Ionicons
                 name="time"
-                size={isTablet ? 14 : 10}
+                size={isTablet ? 16 : 12}
                 color={badgeFont}
               />
               <Text
-                className={`font-fredoka-one ${isTablet ? 'text-[12px]' : 'text-[10px]'}`}
+                className={`font-fredoka-one ${isTablet ? 'text-[14px]' : 'text-[11px]'}`}
                 style={{ color: badgeFont }}
               >
                 {item.pendingEvaluations} Pending
@@ -249,7 +232,7 @@ export function ClassPerformanceSection() {
       {/* Header section with ClassIcon & Show Archived Filter Button */}
       <View className={`flex-row items-center justify-between ${isTablet ? 'px-12 mb-6' : 'px-6 mb-4'}`}>
         <View className="flex-row items-center gap-2">
-          <ClassIcon
+          <PerformanceIcon
             width={isTablet ? 32 : 22}
             height={isTablet ? 32 : 22}
           />
@@ -282,9 +265,15 @@ export function ClassPerformanceSection() {
 
       {/* Cards Carousel or Empty/Loading State */}
       {isLoading ? (
-        <View className="items-center justify-center h-[150px]">
-          <ActivityIndicator size="large" color="#62A9E6" />
-        </View>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: isTablet ? 48 : 24, paddingBottom: 8 }}
+        >
+          <ClassCardSkeleton isTablet={isTablet} />
+          <ClassCardSkeleton isTablet={isTablet} />
+          <ClassCardSkeleton isTablet={isTablet} />
+        </ScrollView>
       ) : classes.length === 0 ? (
         <View className={`bg-white border-2 border-dashed border-[#E5E7EB] rounded-2xl p-8 items-center justify-center ${isTablet ? 'mx-12 mt-6' : 'mx-6 mt-4'}`}>
           <Ionicons name="school-outline" size={isTablet ? 48 : 36} color="#9CA3AF" />

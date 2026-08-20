@@ -1,8 +1,6 @@
 import React from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { ScrollView } from 'react-native';
-import ClassView from '../../components/analytics/class/class-view';
+import ClassAnalyticsView from '../../components/teacher/analytics/class-analytics/class-analytics-view';
 
 export default function ClassAnalyticsScreen() {
   const params = useLocalSearchParams();
@@ -10,17 +8,9 @@ export default function ClassAnalyticsScreen() {
   const router = useRouter();
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F5F8FA]" edges={['top', 'left', 'right']}>
-      <ScrollView
-        contentContainerStyle={{ paddingBottom: 30 }}
-        showsVerticalScrollIndicator={false}
-        bounces={false}
-      >
-        <ClassView
-          classId={classId}
-          onBack={() => router.back()}
-        />
-      </ScrollView>
-    </SafeAreaView>
+    <ClassAnalyticsView
+      classId={classId}
+      onBack={() => router.back()}
+    />
   );
 }
