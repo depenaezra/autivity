@@ -1,8 +1,8 @@
 import { Feather } from '@expo/vector-icons';
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
-import { getStudentSessions, SessionRecord } from '../../../src/services/student-analytics';
-import FeedbackModal from '../../feedback-modal';
+import { getStudentSessions, SessionRecord } from '../../../../src/services/student-analytics';
+import FeedbackModal from '../../../feedback-modal';
 
 interface SessionsProps {
     studentId: string;
@@ -102,7 +102,7 @@ export default function Sessions({ studentId, studentName }: SessionsProps) {
                         const isActive = sessionFilter === filterOption;
                         const count =
                             filterOption === 'all'
-                                ? sessions.length
+                                  ? sessions.length
                                 : filterOption === 'unvalidated'
                                     ? sessions.filter((s) => s.status === 'pending').length
                                     : sessions.filter((s) => s.status === 'validated').length;

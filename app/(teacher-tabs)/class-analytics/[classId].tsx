@@ -1,6 +1,6 @@
 import React from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import ClassAnalyticsView from '../../components/teacher/analytics/class-analytics/class-analytics-view';
+import ClassAnalyticsView from '../../../components/teacher/analytics/class-analytics/class-analytics-view';
 
 export default function ClassAnalyticsScreen() {
   const params = useLocalSearchParams();

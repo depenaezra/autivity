@@ -2,7 +2,7 @@ import { Feather } from '@expo/vector-icons';
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, useWindowDimensions, View } from 'react-native';
 import Svg, { Circle, Line, Path, Text as SvgText } from 'react-native-svg';
-import { getStudentValidatedSessionsEvaluations, SessionEvaluation } from '../../../src/services/student-analytics';
+import { getStudentValidatedSessionsEvaluations, SessionEvaluation } from '../../../../src/services/student-analytics';
 
 interface StudentEvaluationTrendProps {
     studentId: string;

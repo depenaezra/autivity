@@ -1,7 +1,7 @@
 import { Feather, Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Modal, Pressable, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from 'react-native';
-import { createStudentMilestone, deleteStudentMilestone, getStudentMilestones, Milestone, updateStudentMilestoneStatus } from '../../../src/services/student-analytics';
+import { createStudentMilestone, deleteStudentMilestone, getStudentMilestones, Milestone, updateStudentMilestoneStatus } from '../../../../src/services/student-analytics';
 
 interface MilestonesProps {
     studentId: string;

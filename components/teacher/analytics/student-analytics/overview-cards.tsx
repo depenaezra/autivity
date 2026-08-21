@@ -1,7 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View, useWindowDimensions } from 'react-native';
-import { StudentSessionStats, getStudentSessionStats } from '../../../src/services/student-analytics';
+import { StudentSessionStats, getStudentSessionStats } from '../../../../src/services/student-analytics';
 
 interface OverviewCardsProps {
     studentId: string;

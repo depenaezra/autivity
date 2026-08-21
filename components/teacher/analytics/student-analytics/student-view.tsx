@@ -1,15 +1,12 @@
 import { Feather, Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, useWindowDimensions, View } from 'react-native';
-import { getStudentHeaderDetails, StudentHeaderDetails } from '../../../src/services/student-analytics';
+import { getStudentHeaderDetails, StudentHeaderDetails } from '../../../../src/services/student-analytics';
 import Milestones from './milestones';
 import OverviewCards from './overview-cards';
 import Sessions from './sessions';
 import StudentDevelopmentalSkillsHeatmap from './student-developmental-skills-heatmap';
 import StudentEvaluationTrend from './student-evaluation-trend';
-
-
-
 
 interface StudentViewProps {
     studentId: string;

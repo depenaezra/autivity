@@ -25,7 +25,7 @@ export function StudentsScreenLayout({
   onAddPress,
   children,
   scrollable = true,
-  stickyHeader = false,
+  stickyHeader = true,
   classes,
   selectedClassId,
   onSelectClass,

@@ -25,7 +25,7 @@ export function ResourcesScreenLayout({
   onAddPress,
   children,
   scrollable = true,
-  stickyHeader = false,
+  stickyHeader = true,
   categories,
   selectedCategory,
   onSelectCategory,
@@ -118,7 +118,7 @@ export function ResourcesScreenLayout({
       scrollable={scrollable}
       stickyHeader={stickyHeader}
     >
-      {children}
+      <View className="mb-12 pb-8">{children}</View>
     </ScreenLayout>
   );
 }

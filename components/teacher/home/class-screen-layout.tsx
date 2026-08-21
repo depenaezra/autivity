@@ -106,7 +106,7 @@ export function ClassScreenLayout({
   onStudentPress,
   onStudentLongPress,
   scrollable = true,
-  stickyHeader = false,
+  stickyHeader = true,
   onAddStudentPress,
 }: ClassScreenLayoutProps) {
   const { width } = useWindowDimensions();

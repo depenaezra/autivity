@@ -1,7 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, useWindowDimensions, View } from 'react-native';
-import { getStudentDevelopmentalSkillsExposure, MasterDomainExposure } from '../../../src/services/student-analytics';
+import { getStudentDevelopmentalSkillsExposure, MasterDomainExposure } from '../../../../src/services/student-analytics';
 
 interface StudentDevelopmentalSkillsHeatmapProps {
     studentId: string;

@@ -10,6 +10,7 @@ interface ScreenLayoutProps {
   headerContent?: React.ReactNode;
   children: React.ReactNode;
   scrollable?: boolean;
+  bounces?: boolean;
   stickyHeader?: boolean;
   contentContainerClassName?: string;
 }
@@ -22,6 +23,7 @@ export function ScreenLayout({
   headerContent,
   children,
   scrollable = true,
+  bounces = true,
   stickyHeader = false,
   contentContainerClassName = '',
 }: ScreenLayoutProps) {
@@ -78,6 +80,7 @@ export function ScreenLayout({
         {scrollable && stickyHeader ? (
           <ScrollView
             showsVerticalScrollIndicator={false}
+            bounces={bounces}
             contentContainerStyle={{ flexGrow: 1 }}
             className={contentContainerClassName}
           >
@@ -120,7 +123,7 @@ export function ScreenLayout({
       <ScrollView
         className="flex-1 z-10"
         showsVerticalScrollIndicator={false}
-        bounces={false}
+        bounces={bounces}
         contentContainerStyle={{ flexGrow: 1 }}
       >
         {renderNavbar()}

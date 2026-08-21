@@ -68,7 +68,6 @@ export default function RootLayout() {
           <Stack.Screen name="(parent-tabs)" />
           <Stack.Screen name="student/[studentId]" />
           <Stack.Screen name="student-view/[studentId]" />
-          <Stack.Screen name="class-analytics/[classId]" />
         </Stack>
         <StatusBar style="auto" />
       </ThemeProvider>
