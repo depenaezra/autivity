@@ -307,7 +307,7 @@ export default function ClassScreen() {
     if (!studentObj) return;
 
     router.push({
-      pathname: '/student/[studentId]',
+      pathname: '/(teacher-tabs)/student/[studentId]' as any,
       params: {
         studentId: studentObj.id,
         studentName: studentObj.name,
@@ -335,7 +335,7 @@ export default function ClassScreen() {
         const studentObj = students.find((s) => s.id === id);
         if (!studentObj) return;
         router.push({
-          pathname: '/student/[studentId]',
+          pathname: '/(teacher-tabs)/student/[studentId]' as any,
           params: {
             studentId: studentObj.id,
             studentName: studentObj.name,

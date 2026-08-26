@@ -47,7 +47,7 @@ export default function StudentTabsLayout() {
       <Tabs.Screen
         name="achievements"
         options={{
-          title: 'Rewards',
+          title: 'Achievements',
           tabBarIcon: ({ color }) => <Ionicons size={28} name="star" color={color} />,
         }}
       />

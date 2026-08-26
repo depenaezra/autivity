@@ -7,26 +7,23 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
-import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { getKpiData as getDraftKpiData, KpiData } from '../../../src/services/analytics';
 import IconPending from '../../../assets/images/teacher/analytics/icon-pending.svg';
 import IconCompleted from '../../../assets/images/teacher/analytics/icon-completed.svg';
 
 interface AnalyticsCardConfig {
-  key: keyof KpiData | 'placeholder';
+  key: keyof KpiData;
   label: string;
   borderColor: string;
   labelColor: string;
-  iconName?: string;
-  iconFamily?: 'Feather' | 'Ionicons' | 'MaterialCommunityIcons';
-  IconComponent?: React.ComponentType<{ width: number; height: number }>;
+  IconComponent: React.ComponentType<{ width: number; height: number }>;
   iconSizeMultiplier?: number;
 }
 
 const CARD_CONFIGS: AnalyticsCardConfig[] = [
   {
     key: 'pendingEvaluations',
-    label: 'PENDING EVALS',
+    label: 'PENDING EVALUATIONS',
     borderColor: '#FFDBD4',
     labelColor: '#FF8870',
     IconComponent: IconPending,
@@ -39,31 +36,7 @@ const CARD_CONFIGS: AnalyticsCardConfig[] = [
     labelColor: '#179D33',
     IconComponent: IconCompleted,
   },
-  {
-    key: 'placeholder',
-    label: 'PLACEHOLDER',
-    borderColor: '#FFF3C4',
-    labelColor: '#FFAE02',
-    iconName: 'help-circle',
-    iconFamily: 'Feather',
-  },
 ];
-
-function renderCardIcon(
-  family: AnalyticsCardConfig['iconFamily'],
-  name: string,
-  size: number,
-  color: string
-) {
-  switch (family) {
-    case 'Ionicons':
-      return <Ionicons name={name as any} size={size} color={color} />;
-    case 'MaterialCommunityIcons':
-      return <MaterialCommunityIcons name={name as any} size={size} color={color} />;
-    default:
-      return <Feather name={name as any} size={size} color={color} />;
-  }
-}
 
 function AnalyticsCardSkeletonItem({ card, isTablet }: { card: (typeof CARD_CONFIGS)[0]; isTablet: boolean }) {
   const opacity = useSharedValue(0.4);
@@ -86,8 +59,8 @@ function AnalyticsCardSkeletonItem({ card, isTablet }: { card: (typeof CARD_CONF
   return (
     <Animated.View
       key={card.key}
-      className={`border-[4px] bg-white justify-center items-center ${
-        isTablet ? 'rounded-[32px] p-4 flex-1 min-w-[160px]' : 'rounded-[20px] p-3 flex-1 min-w-[100px]'
+      className={`border-[4px] bg-white justify-center items-center flex-1 ${
+        isTablet ? 'rounded-[32px] p-4 h-[160px]' : 'rounded-[20px] p-3 h-[130px]'
       }`}
       style={[
         {
@@ -97,7 +70,6 @@ function AnalyticsCardSkeletonItem({ card, isTablet }: { card: (typeof CARD_CONF
           shadowOpacity: 1,
           shadowRadius: 0,
           elevation: 2,
-          ...(!isTablet ? { aspectRatio: 1 } : { height: 155 }),
         },
         animatedStyle,
       ]}
@@ -150,14 +122,14 @@ export function AnalyticsCards() {
   return (
     <View className={`w-full flex-row justify-between ${isTablet ? 'px-12 mt-10 gap-6' : 'px-6 mt-6 gap-3'}`}>
       {CARD_CONFIGS.map((card) => {
-        const count = card.key === 'placeholder' ? '-' : kpi[card.key as keyof KpiData];
+        const count = kpi[card.key];
         const iconSize = (isTablet ? 48 : 32) * (card.iconSizeMultiplier ?? 1);
 
         return (
           <View
             key={card.key}
-            className={`border-[4px] bg-white justify-center items-center ${
-              isTablet ? 'rounded-[32px] p-4 flex-1 min-w-[160px]' : 'rounded-[20px] p-3 flex-1 min-w-[100px]'
+            className={`border-[4px] bg-white justify-center items-center flex-1 ${
+              isTablet ? 'rounded-[32px] p-4 h-[160px]' : 'rounded-[20px] p-3 h-[130px]'
             }`}
             style={{
               borderColor: card.borderColor,
@@ -166,7 +138,6 @@ export function AnalyticsCards() {
               shadowOpacity: 1,
               shadowRadius: 0,
               elevation: 2,
-              ...(!isTablet ? { aspectRatio: 1 } : { height: 155 }),
             }}
           >
             {/* Label */}
@@ -182,11 +153,7 @@ export function AnalyticsCards() {
 
             {/* Icon */}
             <View className={`justify-center items-center ${isTablet ? 'my-2' : 'my-1.5'}`}>
-              {card.IconComponent ? (
-                <card.IconComponent width={iconSize} height={iconSize} />
-              ) : (
-                renderCardIcon(card.iconFamily!, card.iconName!, iconSize, card.labelColor)
-              )}
+              <card.IconComponent width={iconSize} height={iconSize} />
             </View>
 
             {/* Count */}

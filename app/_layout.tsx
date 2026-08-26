@@ -29,7 +29,7 @@ import 'react-native-reanimated';
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export const unstable_settings = {
-  anchor: '(teacher-tabs)',
+  initialRouteName: '(auth)',
 };
 
 export default function RootLayout() {
@@ -67,7 +67,6 @@ export default function RootLayout() {
           <Stack.Screen name="(teacher-tabs)" />
           <Stack.Screen name="(parent-tabs)" />
           <Stack.Screen name="student/[studentId]" />
-          <Stack.Screen name="student-view/[studentId]" />
         </Stack>
         <StatusBar style="auto" />
       </ThemeProvider>

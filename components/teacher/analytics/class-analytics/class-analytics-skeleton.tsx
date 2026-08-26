@@ -42,12 +42,7 @@ export function ClassAnalyticsHeaderSkeleton({ isTablet }: SkeletonProps) {
 }
 
 export function ClassAnalyticsSkeleton({ isTablet }: SkeletonProps) {
-  const { width } = useWindowDimensions();
   const opacity = useSharedValue(0.4);
-
-  const cardWidth = isTablet 
-    ? (width - 96 - 48) / 3 
-    : (width - 48 - 24) / 3;
 
   useEffect(() => {
     opacity.value = withRepeat(
@@ -66,17 +61,41 @@ export function ClassAnalyticsSkeleton({ isTablet }: SkeletonProps) {
 
   return (
     <Animated.View style={animatedStyle} className="flex-col gap-6 w-full">
-      {/* Overview Cards Skeleton */}
-      <View className="flex-col mt-4">
+      {/* Enrolled Students Roster Card Skeleton */}
+      <View className="bg-[#F9FAFB] border border-[#F3F4F6] rounded-2xl overflow-hidden p-4 sm:p-5">
+        <View className="flex-row items-center justify-between">
+          <View className="flex-col gap-1.5">
+            <View className={`bg-[#E5E7EB] rounded-[6px] ${isTablet ? 'h-6 w-44' : 'h-5 w-32'}`} />
+            <View className={`bg-[#E5E7EB] rounded-[6px] ${isTablet ? 'h-4 w-36' : 'h-3 w-24'}`} />
+          </View>
+
+          {/* Overlapping Avatar circles wireframe */}
+          <View className="flex-row items-center gap-2">
+            <View className="flex-row items-center">
+              {[1, 2, 3].map((i) => (
+                <View
+                  key={i}
+                  className={`rounded-full bg-[#E5E7EB] border-2 border-white ${
+                    isTablet ? 'w-10 h-10' : 'w-9 h-9'
+                  } ${i === 1 ? '' : '-ml-2.5'}`}
+                />
+              ))}
+            </View>
+            <View className={`bg-[#E5E7EB] rounded-full ${isTablet ? 'w-5 h-5' : 'w-4 h-4'}`} />
+          </View>
+        </View>
+      </View>
+
+      {/* Class Performance KPI Cards Skeleton */}
+      <View className="flex-col">
         {/* Section Title Wireframe */}
         <View className="flex-row justify-between items-center mb-4">
           <View className="flex-col gap-1.5">
             <View className={`bg-[#E5E7EB] rounded-[6px] ${isTablet ? 'h-6 w-56' : 'h-5 w-44'}`} />
-            <View className={`bg-[#E5E7EB] rounded-[6px] ${isTablet ? 'h-4 w-72' : 'h-3 w-52'}`} />
           </View>
           <View className="flex-row gap-1.5">
             {[1, 2, 3, 4].map((i) => (
-              <View key={i} className={`bg-[#E5E7EB] rounded-full ${isTablet ? 'h-7 w-16' : 'h-6 w-12'}`} />
+              <View key={i} className={`bg-[#E5E7EB] rounded-[8px] ${isTablet ? 'h-8 w-16' : 'h-7 w-12'}`} />
             ))}
           </View>
         </View>

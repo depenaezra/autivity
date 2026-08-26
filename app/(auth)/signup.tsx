@@ -1,8 +1,22 @@
-import { Feather } from '@expo/vector-icons';
+import { Feather, Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, Keyboard, Pressable, Text, TextInput, TouchableWithoutFeedback, View, useWindowDimensions } from "react-native";
+import {
+  ActivityIndicator,
+  Alert,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableWithoutFeedback,
+  View,
+  useWindowDimensions
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { HeaderButton } from "../../components/header-button";
 import { supabase } from '../../src/lib/supabase';
 import { register } from '../../src/services/auth';
 
@@ -22,12 +36,16 @@ export default function Signup() {
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [learnerCode, setLearnerCode] = useState('');
 
   // ui states
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [passwordBlurred, setPasswordBlurred] = useState(false);
+  const [confirmPasswordBlurred, setConfirmPasswordBlurred] = useState(false);
 
   // check if password is strong (regex)
   // checklist: 8+ chars, 1 upper, 1 lower, 1 number
@@ -35,11 +53,19 @@ export default function Signup() {
     return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(password);
   };
 
+  const isPasswordInvalid = passwordBlurred && password.length > 0 && !isStrongPassword(password);
+  const isConfirmPasswordInvalid = confirmPasswordBlurred && confirmPassword.length > 0 && confirmPassword !== password;
+
 
   // registration details -> database
   const handleRegister = async () => {
-    if (!firstName || !lastName || !email || !password) {
+    if (!firstName || !lastName || !email || !password || !confirmPassword) {
       Alert.alert('Missing Information', 'Please fill out all fields to register.');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      Alert.alert('Password Mismatch', 'Password and Confirm Password do not match.');
       return;
     }
 
@@ -98,173 +124,268 @@ export default function Signup() {
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <SafeAreaView className="flex-1 bg-[#F5F8FA]">
-
-        {/* back btn */}
-        <View className={`w-full pt-4 pb-2 ${isTablet ? 'px-8' : 'px-6'}`}>
-          <Pressable onPress={() => router.back()} className="w-10 h-10 justify-center">
-            <Feather name="arrow-left" size={isTablet ? 32 : 24} color="#4B5563" />
-          </Pressable>
-        </View>
-
-        {/* main container */}
-        <View
-          className={`flex-1 flex-col items-center w-full ${isTablet ? 'px-[94px] pb-[78px]' : 'px-6 pb-8'
-            }`}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          className="flex-1"
         >
-          {/* title */}
-          <Text
-            className={`font-fredoka-one text-[#4B5563] text-center ${isTablet ? 'text-5xl mb-10' : 'text-3xl mb-6'
-              }`}
-          >
-            Create an account
-          </Text>
-
-          {/* form container */}
-          <View className="w-full flex-col gap-4">
-
-            {/* first name */}
-            <View
-              className={`w-full border-[2px] justify-center bg-transparent ${isTablet ? 'h-[76px] rounded-[55px] px-8' : 'h-[60px] rounded-full px-6'
-                } ${focusedInput === 'firstName' ? 'border-[#62A9E6]' : 'border-[#E5E7EB]'}`}
-            >
-              <TextInput
-                className={`font-quicksand-medium text-[#4B5563] w-full p-0 ${isTablet ? 'text-[24px]' : 'text-[18px]'}`}
-                placeholder="First name"
-                placeholderTextColor="#9CA3AF"
-                value={firstName}
-                onChangeText={setFirstName}
-                onFocus={() => setFocusedInput('firstName')}
-                onBlur={() => setFocusedInput(null)}
-              />
-            </View>
-
-            {/* last name */}
-            <View
-              className={`w-full border-[2px] justify-center bg-transparent ${isTablet ? 'h-[76px] rounded-[55px] px-8' : 'h-[60px] rounded-full px-6'
-                } ${focusedInput === 'lastName' ? 'border-[#62A9E6]' : 'border-[#E5E7EB]'}`}
-            >
-              <TextInput
-                className={`font-quicksand-medium text-[#4B5563] w-full p-0 ${isTablet ? 'text-[24px]' : 'text-[18px]'}`}
-                placeholder="Last name"
-                placeholderTextColor="#9CA3AF"
-                value={lastName}
-                onChangeText={setLastName}
-                onFocus={() => setFocusedInput('lastName')}
-                onBlur={() => setFocusedInput(null)}
-              />
-            </View>
-
-            {/* email */}
-            <View
-              className={`w-full border-[2px] justify-center bg-transparent ${isTablet ? 'h-[76px] rounded-[55px] px-8' : 'h-[60px] rounded-full px-6'
-                } ${focusedInput === 'email' ? 'border-[#62A9E6]' : 'border-[#E5E7EB]'}`}
-            >
-              <TextInput
-                className={`font-quicksand-medium text-[#4B5563] w-full p-0 ${isTablet ? 'text-[24px]' : 'text-[18px]'}`}
-                placeholder="Email address"
-                placeholderTextColor="#9CA3AF"
-                value={email}
-                onChangeText={setEmail}
-                onFocus={() => setFocusedInput('email')}
-                onBlur={() => setFocusedInput(null)}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-            </View>
-
-            {/* password */}
-            <View
-              className={`w-full border-[2px] flex-row items-center justify-between bg-transparent ${isTablet ? 'h-[76px] rounded-[55px] px-8' : 'h-[60px] rounded-full px-6'
-                } ${focusedInput === 'password' ? 'border-[#62A9E6]' : 'border-[#E5E7EB]'}`}
-            >
-              <TextInput
-                className={`font-quicksand-medium text-[#4B5563] flex-1 p-0 ${isTablet ? 'text-[24px]' : 'text-[18px]'}`}
-                placeholder="Password"
-                placeholderTextColor="#9CA3AF"
-                value={password}
-                onChangeText={setPassword}
-                onFocus={() => setFocusedInput('password')}
-                onBlur={() => setFocusedInput(null)}
-                secureTextEntry={!showPassword}
-              />
-              <Pressable onPress={() => setShowPassword(!showPassword)} className="p-2">
-                <Feather name={showPassword ? "eye" : "eye-off"} size={isTablet ? 24 : 20} color="#9CA3AF" />
-              </Pressable>
-            </View>
-            {/* learner code (parents only) */}
-            {role === 'parent' && (
-              <View
-                className={`w-full border-[2px] justify-center bg-transparent ${isTablet ? 'h-[76px] rounded-[55px] px-8' : 'h-[60px] rounded-full px-6'
-                  } ${focusedInput === 'learnerCode' ? 'border-[#62A9E6]' : 'border-[#E5E7EB]'}`}
-              >
-                <TextInput
-                  className={`font-quicksand-medium text-[#4B5563] w-full p-0 ${isTablet ? 'text-[24px]' : 'text-[18px]'}`}
-                  placeholder="Learner code"
-                  placeholderTextColor="#9CA3AF"
-                  value={learnerCode}
-                  onChangeText={(text) => setLearnerCode(text.toUpperCase())}
-                  onFocus={() => setFocusedInput('learnerCode')}
-                  onBlur={() => setFocusedInput(null)}
-                  autoCapitalize="characters"
-                />
-              </View>
-            )}
+          {/* back btn */}
+          <View className={`w-full pt-4 pb-2 ${isTablet ? 'px-8' : 'px-6'}`}>
+            <HeaderButton
+              onPress={() => router.back()}
+              icon={
+                <View style={{ marginLeft: -3, marginTop: -1 }}>
+                  <Ionicons name="caret-back" size={isTablet ? 30 : 24} color="#62A9E6" />
+                </View>
+              }
+            />
           </View>
 
-          {/* learner code hint (parents only) */}
-          {role === 'parent' && (
-            <Text
-              className={`text-[#9CA3AF] px-2 mt-2 ${isTablet ? "text-base" : "text-xs"}`}
-            >
-              Ask your child's teacher for the learner code shown on their student profile.
-            </Text>
-          )}
-          {/* password reqs */}
-          <Text
-            className={`text-[#9CA3AF] px-2 ${isTablet ? "text-base mt-2" : "text-xs mt-2"
-              }`}
+          <ScrollView
+            className="flex-1"
+            contentContainerStyle={{ flexGrow: 1 }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
           >
-            Must be at least 8 characters with uppercase, lowercase, and number.
-          </Text>
-
-          <Text
-            className={`text-[#62A9E6] px-2 ${isTablet ? "text-base" : "text-xs"
-              }`}
-          >
-            Example: Autivity123
-          </Text>
-
-          {/* register btn */}
-          <View className={`w-full ${isTablet ? 'mt-8' : 'mt-6'}`}>
-            <Pressable
-              onPress={handleRegister}
-              disabled={isLoading}
-              className={`w-full bg-[#62A9E6] flex items-center justify-center border-b-[4px] border-[#5298D4] p-[10px] ${isTablet ? 'h-[84px] rounded-[55px]' : 'h-[60px] rounded-full'} ${isLoading ? 'opacity-70' : 'opacity-100'}`}
+            {/* main container */}
+            <View
+              className={`flex-1 flex-col items-center w-full ${isTablet ? 'px-[94px] pt-12 pb-[78px]' : 'px-6 pt-4 pb-8'
+                }`}
             >
-              {isLoading ? (
-                <ActivityIndicator color="white" />
-              ) : (
-                <Text className={`text-white font-fredoka-regular ${isTablet ? 'text-2xl' : 'text-lg'}`}>
-                  {role === 'teacher' ? 'Next' : 'Register'}
-                </Text>
-              )}
-            </Pressable>
-          </View>
-
-          {/* login link */}
-          <View className="mt-auto pb-4">
-            <Text className={`font-quicksand-regular text-[#9CA3AF] ${isTablet ? 'text-xl' : 'text-base'}`}>
-              Already have an account?{' '}
+              {/* title */}
               <Text
-                onPress={() => router.push('/(auth)/login')}
-                className="text-[#62A9E6] font-quicksand-medium"
+                className={`font-fredoka-one text-[#4B5563] text-center ${isTablet ? 'text-5xl mb-10' : 'text-3xl mb-6'
+                  }`}
               >
-                Log in
+                Create an account
               </Text>
-            </Text>
-          </View>
 
-        </View>
+              {/* form container */}
+              <View className="w-full flex-col gap-4">
+
+                {/* first name */}
+                <View
+                  className={`w-full border-[2px] justify-center bg-[#F1F1F1] ${isTablet ? 'h-[76px] rounded-xl px-8' : 'h-[60px] rounded-xl px-6'
+                    }`}
+                  style={{
+                    borderColor: focusedInput === 'firstName' ? '#62A9E6' : '#F1F1F1',
+                  }}
+                >
+                  <TextInput
+                    className={`font-quicksand-medium text-[#4B5563] w-full h-full py-1 ${isTablet ? 'text-[24px]' : 'text-[18px]'
+                      }`}
+                    placeholder="First name"
+                    placeholderTextColor="#9CA3AF"
+                    value={firstName}
+                    onChangeText={setFirstName}
+                    onFocus={() => setFocusedInput('firstName')}
+                    onBlur={() => setFocusedInput(null)}
+                  />
+                </View>
+
+                {/* last name */}
+                <View
+                  className={`w-full border-[2px] justify-center bg-[#F1F1F1] ${isTablet ? 'h-[76px] rounded-xl px-8' : 'h-[60px] rounded-xl px-6'
+                    }`}
+                  style={{
+                    borderColor: focusedInput === 'lastName' ? '#62A9E6' : '#F1F1F1',
+                  }}
+                >
+                  <TextInput
+                    className={`font-quicksand-medium text-[#4B5563] w-full h-full py-1 ${isTablet ? 'text-[24px]' : 'text-[18px]'
+                      }`}
+                    placeholder="Last name"
+                    placeholderTextColor="#9CA3AF"
+                    value={lastName}
+                    onChangeText={setLastName}
+                    onFocus={() => setFocusedInput('lastName')}
+                    onBlur={() => setFocusedInput(null)}
+                  />
+                </View>
+
+                {/* email */}
+                <View
+                  className={`w-full border-[2px] justify-center bg-[#F1F1F1] ${isTablet ? 'h-[76px] rounded-xl px-8' : 'h-[60px] rounded-xl px-6'
+                    }`}
+                  style={{
+                    borderColor: focusedInput === 'email' ? '#62A9E6' : '#F1F1F1',
+                  }}
+                >
+                  <TextInput
+                    className={`font-quicksand-medium text-[#4B5563] w-full h-full py-1 ${isTablet ? 'text-[24px]' : 'text-[18px]'
+                      }`}
+                    placeholder="Email address"
+                    placeholderTextColor="#9CA3AF"
+                    value={email}
+                    onChangeText={setEmail}
+                    onFocus={() => setFocusedInput('email')}
+                    onBlur={() => setFocusedInput(null)}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                  />
+                </View>
+
+                {/* password */}
+                <View
+                  className={`w-full border-[2px] flex-row items-center justify-between bg-[#F1F1F1] ${isTablet ? 'h-[76px] rounded-xl px-8' : 'h-[60px] rounded-xl px-6'
+                    }`}
+                  style={{
+                    borderColor: focusedInput === 'password'
+                      ? '#62A9E6'
+                      : isPasswordInvalid
+                        ? '#F43F5E'
+                        : '#F1F1F1',
+                  }}
+                >
+                  <TextInput
+                    className={`font-quicksand-medium text-[#4B5563] flex-1 h-full py-1 ${isTablet ? 'text-[24px]' : 'text-[18px]'
+                      }`}
+                    placeholder="Password"
+                    placeholderTextColor="#9CA3AF"
+                    value={password}
+                    onChangeText={setPassword}
+                    onFocus={() => setFocusedInput('password')}
+                    onBlur={() => {
+                      setFocusedInput(null);
+                      if (password.length > 0) {
+                        setPasswordBlurred(true);
+                      }
+                    }}
+                    secureTextEntry={!showPassword}
+                  />
+                  <Pressable onPress={() => setShowPassword(!showPassword)} className="p-2">
+                    <Feather name={showPassword ? "eye" : "eye-off"} size={isTablet ? 24 : 20} color="#9CA3AF" />
+                  </Pressable>
+                </View>
+
+                {/* password reqs - shown directly below password input field if invalid after blur */}
+                {isPasswordInvalid && (
+                  <Text
+                    className={`font-quicksand-medium text-[#F43F5E] text-left px-2 -mt-2 ${isTablet ? "text-base" : "text-xs"
+                      }`}
+                  >
+                    Must be at least 8 characters with uppercase, lowercase, and number.
+                  </Text>
+                )}
+
+                {/* confirm password */}
+                <View
+                  className={`w-full border-[2px] flex-row items-center justify-between bg-[#F1F1F1] ${isTablet ? 'h-[76px] rounded-xl px-8' : 'h-[60px] rounded-xl px-6'
+                    }`}
+                  style={{
+                    borderColor: focusedInput === 'confirmPassword'
+                      ? '#62A9E6'
+                      : isConfirmPasswordInvalid
+                        ? '#F43F5E'
+                        : '#F1F1F1',
+                  }}
+                >
+                  <TextInput
+                    className={`font-quicksand-medium text-[#4B5563] flex-1 h-full py-1 ${isTablet ? 'text-[24px]' : 'text-[18px]'
+                      }`}
+                    placeholder="Confirm password"
+                    placeholderTextColor="#9CA3AF"
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    onFocus={() => setFocusedInput('confirmPassword')}
+                    onBlur={() => {
+                      setFocusedInput(null);
+                      if (confirmPassword.length > 0) {
+                        setConfirmPasswordBlurred(true);
+                      }
+                    }}
+                    secureTextEntry={!showConfirmPassword}
+                  />
+                  <Pressable onPress={() => setShowConfirmPassword(!showConfirmPassword)} className="p-2">
+                    <Feather name={showConfirmPassword ? "eye" : "eye-off"} size={isTablet ? 24 : 20} color="#9CA3AF" />
+                  </Pressable>
+                </View>
+
+                {/* confirm password error - shown directly below confirm password input field if mismatch after blur */}
+                {isConfirmPasswordInvalid && (
+                  <Text
+                    className={`font-quicksand-medium text-[#F43F5E] text-left px-2 -mt-2 ${isTablet ? "text-base" : "text-xs"
+                      }`}
+                  >
+                    Passwords do not match.
+                  </Text>
+                )}
+
+                {/* learner code (parents only) */}
+                {role === 'parent' && (
+                  <View className="w-full flex-col">
+                    <View
+                      className={`w-full border-[2px] justify-center bg-[#F1F1F1] ${isTablet ? 'h-[76px] rounded-xl px-8' : 'h-[60px] rounded-xl px-6'
+                        }`}
+                      style={{
+                        borderColor: focusedInput === 'learnerCode' ? '#62A9E6' : '#F1F1F1',
+                      }}
+                    >
+                      <TextInput
+                        className={`font-quicksand-medium text-[#4B5563] w-full h-full py-1 ${isTablet ? 'text-[24px]' : 'text-[18px]'
+                          }`}
+                        placeholder="Learner code"
+                        placeholderTextColor="#9CA3AF"
+                        value={learnerCode}
+                        onChangeText={(text) => setLearnerCode(text.toUpperCase())}
+                        onFocus={() => setFocusedInput('learnerCode')}
+                        onBlur={() => setFocusedInput(null)}
+                        autoCapitalize="characters"
+                      />
+                    </View>
+                    <Text
+                      className={`w-full font-quicksand-medium text-[#9CA3AF] text-left px-2 mt-1.5 ${isTablet ? "text-base" : "text-xs"}`}
+                    >
+                      Ask your child's teacher for the learner code.
+                    </Text>
+                  </View>
+                )}
+              </View>
+
+              {/* register btn */}
+              <View className={`w-full ${isTablet ? 'mt-8' : 'mt-6'}`}>
+                <Pressable
+                  onPress={handleRegister}
+                  disabled={isLoading}
+                  className={`w-full bg-white border-[2px] rounded-xl items-center justify-center active:scale-95 transition-transform ${isTablet ? 'h-[76px]' : 'h-[60px]'
+                    }`}
+                  style={{
+                    borderColor: '#BBE8FB',
+                    shadowColor: '#BBE8FB',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 1,
+                    shadowRadius: 0,
+                    elevation: 2,
+                    opacity: isLoading ? 0.7 : 1,
+                  }}
+                >
+                  {isLoading ? (
+                    <ActivityIndicator color="#62A9E6" />
+                  ) : (
+                    <Text
+                      className={`font-fredoka-one text-[#62A9E6] uppercase ${isTablet ? 'text-2xl' : 'text-lg'
+                        }`}
+                    >
+                      {role === 'teacher' ? 'NEXT' : 'REGISTER'}
+                    </Text>
+                  )}
+                </Pressable>
+              </View>
+
+              {/* login link */}
+              <View className="mt-auto pb-4">
+                <Text className={`font-quicksand-regular text-[#9CA3AF] ${isTablet ? 'text-xl' : 'text-base'}`}>
+                  Already have an account?{' '}
+                  <Text
+                    onPress={() => router.push('/(auth)/login')}
+                    className="text-[#62A9E6] font-quicksand-medium"
+                  >
+                    Log in
+                  </Text>
+                </Text>
+              </View>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </TouchableWithoutFeedback>
   );

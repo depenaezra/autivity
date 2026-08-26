@@ -77,25 +77,50 @@ export default function Welcome() {
           {/* get started / sign up btn */}
           <Pressable
             onPress={() => router.push('/(auth)/user')}
-            disabled={!isChecked} // disabled if tnc is not checked
-            className={`w-full flex items-center justify-center border-b-[4px] p-[10px] ${isChecked
-              ? 'bg-[#62A9E6] border-[#5298D4]' // blue - if tnc is checked
-              : 'bg-[#D1D5DB] border-[#9CA3AF]' // gray - if tnc not checked yet
-              } ${isTablet ? 'h-[84px] rounded-[55px]' : 'h-[60px] rounded-full'}`}
+            disabled={!isChecked}
+            className="w-full bg-white border-[2px] rounded-xl items-center justify-center active:scale-95 transition-transform"
+            style={{
+              height: isTablet ? 76 : 60,
+              borderColor: isChecked ? '#BBE8FB' : '#F1F1F1',
+              shadowColor: isChecked ? '#BBE8FB' : '#F1F1F1',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 1,
+              shadowRadius: 0,
+              elevation: 2,
+              opacity: isChecked ? 1 : 0.6,
+            }}
           >
-            <Text className={`font-fredoka-regular text-white ${isTablet ? 'text-2xl' : 'text-lg'}`}>
-              Get started
+            <Text
+              className={`font-fredoka-one uppercase ${
+                isTablet ? 'text-2xl' : 'text-lg'
+              }`}
+              style={{
+                color: isChecked ? '#62A9E6' : '#D9D9D9',
+              }}
+            >
+              GET STARTED
             </Text>
           </Pressable>
 
           {/* login btn */}
           <Pressable
             onPress={() => router.push('/(auth)/login')}
-            className={`w-full bg-[#FEF7F7] flex items-center justify-center border-b-[4px] border-[#D5D0D2] p-[10px] ${isTablet ? 'h-[84px] rounded-[55px]' : 'h-[60px] rounded-full'
-              }`}
+            className="w-full bg-white border-[2px] border-[#F1F1F1] rounded-xl items-center justify-center active:scale-95 transition-transform"
+            style={{
+              height: isTablet ? 76 : 60,
+              shadowColor: '#F1F1F1',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 1,
+              shadowRadius: 0,
+              elevation: 2,
+            }}
           >
-            <Text className={`text-[#4B5563] font-fredoka-regular ${isTablet ? 'text-2xl' : 'text-lg'}`}>
-              I already have an account
+            <Text
+              className={`font-fredoka-one text-[#484A4B] uppercase ${
+                isTablet ? 'text-2xl' : 'text-lg'
+              }`}
+            >
+              I ALREADY HAVE AN ACCOUNT
             </Text>
           </Pressable>
 

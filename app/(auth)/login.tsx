@@ -1,9 +1,10 @@
-import { Feather } from '@expo/vector-icons';
+import { Feather, Ionicons } from '@expo/vector-icons';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Keyboard, Pressable, Text, TextInput, TouchableWithoutFeedback, View, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { HeaderButton } from "../../components/header-button";
 import { supabase } from "../../src/lib/supabase";
 import { login } from '../../src/services/auth';
 
@@ -177,15 +178,21 @@ export default function Login() {
 
         {/* header + back btn */}
         <View className={`w-full pt-4 pb-2 ${isTablet ? 'px-8' : 'px-6'}`}>
-          <Pressable onPress={() => router.back()} className="w-10 h-10 justify-center">
-            <Feather name="arrow-left" size={isTablet ? 32 : 24} color="#4B5563" />
-          </Pressable>
+          <HeaderButton
+            onPress={() => router.back()}
+            icon={
+              <View style={{ marginLeft: -3, marginTop: -1 }}>
+                <Ionicons name="caret-back" size={isTablet ? 30 : 24} color="#62A9E6" />
+              </View>
+            }
+          />
         </View>
 
         {/* main container */}
         <View
-          className={`flex-1 flex-col items-center w-full ${isTablet ? 'px-[94px] pb-[78px]' : 'px-6 pb-8'
-            }`}
+          className={`flex-1 flex-col items-center w-full ${
+            isTablet ? 'px-[94px] pt-12 pb-[78px]' : 'px-6 pt-8 pb-8'
+          }`}
         >
 
           {/* title */}
@@ -201,12 +208,19 @@ export default function Login() {
 
             {/* email */}
             <View
-              className={`w-full border-[2px] justify-center bg-transparent ${isTablet ? 'h-[76px] rounded-[55px] px-8' : 'h-[60px] rounded-full px-6'
-                } ${focusedInput === 'email' ? 'border-[#62A9E6]' : 'border-[#E5E7EB]'}`}>
+              className={`w-full border-[2px] justify-center bg-[#F1F1F1] ${
+                isTablet ? 'h-[76px] rounded-xl px-8' : 'h-[60px] rounded-xl px-6'
+              }`}
+              style={{
+                borderColor: focusedInput === 'email' ? '#62A9E6' : '#F1F1F1',
+              }}
+            >
               {/* if clicked / focused = blue border */}
 
               <TextInput
-                className={`font-quicksand-medium text-[#4B5563] w-full p-0 ${isTablet ? 'text-[24px]' : 'text-[18px]'}`}
+                className={`font-quicksand-medium text-[#4B5563] w-full h-full py-1 ${
+                  isTablet ? 'text-[24px]' : 'text-[18px]'
+                }`}
                 placeholder="Email address"
                 placeholderTextColor="#9CA3AF"
                 value={email}
@@ -220,11 +234,17 @@ export default function Login() {
 
             {/* password */}
             <View
-              className={`w-full border-[2px] flex-row items-center justify-between bg-transparent ${isTablet ? 'h-[76px] rounded-[55px] px-8' : 'h-[60px] rounded-full px-6'
-                } ${focusedInput === 'password' ? 'border-[#62A9E6]' : 'border-[#E5E7EB]'}`}
+              className={`w-full border-[2px] flex-row items-center justify-between bg-[#F1F1F1] ${
+                isTablet ? 'h-[76px] rounded-xl px-8' : 'h-[60px] rounded-xl px-6'
+              }`}
+              style={{
+                borderColor: focusedInput === 'password' ? '#62A9E6' : '#F1F1F1',
+              }}
             >
               <TextInput
-                className={`font-quicksand-medium text-[#4B5563] flex-1 p-0 ${isTablet ? 'text-[24px]' : 'text-[18px]'}`}
+                className={`font-quicksand-medium text-[#4B5563] flex-1 h-full py-1 ${
+                  isTablet ? 'text-[24px]' : 'text-[18px]'
+                }`}
                 placeholder="Password"
                 placeholderTextColor="#9CA3AF"
                 value={password}
@@ -275,12 +295,29 @@ export default function Login() {
             <Pressable
               onPress={handleLogin}
               disabled={isLoading}
-              className={`w-full bg-[#62A9E6] flex items-center justify-center border-b-[4px] border-[#5298D4] p-[10px] ${isTablet ? 'h-[84px] rounded-[55px]' : 'h-[60px] rounded-full'} ${isLoading ? 'opacity-70' : 'opacity-100'}`}
+              className={`w-full bg-white border-[2px] rounded-xl items-center justify-center active:scale-95 transition-transform ${
+                isTablet ? 'h-[76px]' : 'h-[60px]'
+              }`}
+              style={{
+                borderColor: '#BBE8FB',
+                shadowColor: '#BBE8FB',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 1,
+                shadowRadius: 0,
+                elevation: 2,
+                opacity: isLoading ? 0.7 : 1,
+              }}
             >
               {isLoading ? (
-                <ActivityIndicator color="white" />
+                <ActivityIndicator color="#62A9E6" />
               ) : (
-                <Text className={`text-white font-fredoka-regular ${isTablet ? 'text-2xl' : 'text-lg'}`}>Log in</Text>
+                <Text
+                  className={`font-fredoka-one text-[#62A9E6] uppercase ${
+                    isTablet ? 'text-2xl' : 'text-lg'
+                  }`}
+                >
+                  LOG IN
+                </Text>
               )}
             </Pressable>
           </View>

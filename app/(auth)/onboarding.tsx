@@ -1,4 +1,4 @@
-import { Feather } from '@expo/vector-icons';
+import { Feather, Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -8,6 +8,7 @@ import {
   useWindowDimensions
 } from 'react-native';
 import { SafeAreaView } from "react-native-safe-area-context";
+import { HeaderButton } from "../../components/header-button";
 
 export default function Onboarding() {
   const router = useRouter();
@@ -54,19 +55,25 @@ export default function Onboarding() {
 
       {/* back btn */}
       <View className={`w-full pt-4 pb-2 ${isTablet ? 'px-8' : 'px-6'}`}>
-        <Pressable onPress={() => router.back()} className="w-10 h-10 justify-center">
-          <Feather name="arrow-left" size={isTablet ? 32 : 24} color="#4B5563" />
-        </Pressable>
+        <HeaderButton
+          onPress={() => router.back()}
+          icon={
+            <View style={{ marginLeft: -3, marginTop: -1 }}>
+              <Ionicons name="caret-back" size={isTablet ? 30 : 24} color="#62A9E6" />
+            </View>
+          }
+        />
       </View>
 
       {/* main container */}
       <View
-        className={`flex-1 flex-col items-center w-full ${isTablet ? 'px-[94px] pb-[78px]' : 'px-6 pb-8'
-          }`}
+        className={`flex-1 flex-col items-center w-full ${
+          isTablet ? 'px-[94px] pt-12 pb-[78px]' : 'px-6 pt-8 pb-8'
+        }`}
       >
 
         {/* title */}
-        <View className="items-center mb-10 w-full">
+        <View className="items-center mb-8 w-full">
           <Text
             className={`font-fredoka-one text-[#4B5563] text-center ${isTablet ? 'text-5xl mb-4' : 'text-3xl mb-2'
               }`}
@@ -90,17 +97,24 @@ export default function Onboarding() {
               <Pressable
                 key={goal}
                 onPress={() => toggleGoal(goal)}
-                className={`w-full flex justify-center ${isTablet
-                  ? 'h-[76px] rounded-[55px] px-10 border-[2px] border-b-[5px]'
-                  : 'h-[60px] rounded-full px-6 border-2 border-b-[4px]'
-                  } ${isActive
-                    ? 'bg-[#EBF5FF] border-[#62A9E6]'
-                    : 'bg-white border-[#E5E7EB] border-b-[#D1D5DB]'
-                  }`}
+                className={`w-full flex justify-center active:scale-95 transition-transform border-[2px] ${
+                  isTablet ? 'h-[76px] rounded-xl px-8' : 'h-[60px] rounded-xl px-6'
+                }`}
+                style={{
+                  backgroundColor: isActive ? '#EBF5FF' : '#FFFFFF',
+                  borderColor: isActive ? '#62A9E6' : '#F1F1F1',
+                  shadowColor: isActive ? '#62A9E6' : '#F1F1F1',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 1,
+                  shadowRadius: 0,
+                  elevation: 2,
+                }}
               >
                 <Text
-                  className={`font-quicksand-medium ${isTablet ? 'text-2xl' : 'text-lg'} ${isActive ? 'text-[#62A9E6]' : 'text-[#6B7280]'
-                    }`}
+                  className={`font-quicksand-medium ${isTablet ? 'text-2xl' : 'text-lg'}`}
+                  style={{
+                    color: isActive ? '#62A9E6' : '#4B5563',
+                  }}
                 >
                   {/* display the goal from goals array */}
                   {goal}
@@ -111,7 +125,7 @@ export default function Onboarding() {
         </View>
 
         {/* continue btn */}
-        <View className="w-full mt-auto">
+        <View className="w-full mt-auto pt-4">
           <Pressable
             disabled={selectedGoals.length === 0}
             onPress={() => {
@@ -123,14 +137,27 @@ export default function Onboarding() {
                 }
               });
             }}
-            className={`w-full flex items-center justify-center border-b-[4px] p-[10px] ${isTablet ? 'h-[84px] rounded-[55px]' : 'h-[60px] rounded-full'
-              } ${selectedGoals.length > 0
-                ? 'bg-[#62A9E6] border-[#5298D4]'
-                : 'bg-[#D1D5DB] border-[#9CA3AF]'
-              }`}
+            className="w-full bg-white border-[2px] rounded-xl items-center justify-center active:scale-95 transition-transform"
+            style={{
+              height: isTablet ? 76 : 60,
+              borderColor: selectedGoals.length > 0 ? '#BBE8FB' : '#F1F1F1',
+              shadowColor: selectedGoals.length > 0 ? '#BBE8FB' : '#F1F1F1',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 1,
+              shadowRadius: 0,
+              elevation: 2,
+              opacity: selectedGoals.length > 0 ? 1 : 0.6,
+            }}
           >
-            <Text className={`text-white font-quicksand-medium ${isTablet ? 'text-2xl' : 'text-lg'}`}>
-              Continue
+            <Text
+              className={`font-fredoka-one uppercase ${
+                isTablet ? 'text-2xl' : 'text-lg'
+              }`}
+              style={{
+                color: selectedGoals.length > 0 ? '#62A9E6' : '#D9D9D9',
+              }}
+            >
+              CONTINUE
             </Text>
           </Pressable>
         </View>

@@ -2,35 +2,54 @@ import { supabase } from '../lib/supabase';
 import { formatActivityTitle } from '../utils/format';
 
 
+export interface ParentInfo {
+  name: string;
+  email?: string;
+}
+
 export interface StudentHeaderDetails {
   id: string;
   name: string;
   learnerCode: string;
   grade: string;
   lastSessionDate: string | null;
+  theme?: string;
+  isLinked?: boolean;
+  avatar?: string;
+  parentInfo?: ParentInfo | null;
 }
 
 export const getStudentHeaderDetails = async (studentId: string): Promise<StudentHeaderDetails> => {
   // 1. Fetch student details
   const { data: student, error: studentError } = await supabase
     .from('students')
-    .select('id, name, learner_code, class_id')
+    .select('id, name, learner_code, class_id, parent_id, avatar')
     .eq('id', studentId)
     .single();
 
   if (studentError) throw new Error(studentError.message);
   if (!student) throw new Error('Student not found');
 
-  // 2. Fetch class grade
+  // 2. Fetch class grade & theme using select('*') to prevent invalid column SQL errors
   let grade = 'Not Specified';
+  let theme = 'blue';
   if (student.class_id) {
     const { data: classData, error: classError } = await supabase
       .from('classes')
-      .select('grade')
+      .select('*')
       .eq('id', student.class_id)
-      .single();
+      .maybeSingle();
+
     if (!classError && classData) {
-      grade = classData.grade;
+      grade = classData.grade || 'Not Specified';
+      const rawTheme = (classData.theme_name || classData.theme || classData.themeColor || 'blue').toLowerCase();
+      if (rawTheme.includes('yellow')) theme = 'yellow';
+      else if (rawTheme.includes('green')) theme = 'green';
+      else if (rawTheme.includes('orange')) theme = 'orange';
+      else if (rawTheme.includes('blue')) theme = 'blue';
+      else theme = rawTheme;
+    } else if (classError) {
+      console.error('getStudentHeaderDetails: error fetching class details', classError);
     }
   }
 
@@ -48,12 +67,36 @@ export const getStudentHeaderDetails = async (studentId: string): Promise<Studen
     lastSessionDate = latestSession.created_at;
   }
 
+  // 4. Fetch parent info if parent_id is present
+  let parentInfo: ParentInfo | null = null;
+  if (student.parent_id) {
+    const { data: parentProfile } = await supabase
+      .from('profiles')
+      .select('first_name, last_name, email')
+      .eq('id', student.parent_id)
+      .maybeSingle();
+
+    if (parentProfile) {
+      const parentName = [parentProfile.first_name, parentProfile.last_name]
+        .filter(Boolean)
+        .join(' ');
+      parentInfo = {
+        name: parentName || 'Parent Account',
+        email: parentProfile.email || '',
+      };
+    }
+  }
+
   return {
     id: student.id,
     name: student.name,
     learnerCode: student.learner_code || '',
     grade,
     lastSessionDate,
+    theme,
+    isLinked: !!student.parent_id,
+    avatar: student.avatar || '',
+    parentInfo,
   };
 };
 
@@ -345,6 +388,13 @@ const formatDate = (dateStr: string) => {
   }
 };
 
+const toISODate = (friendlyDateStr: string): string => {
+  if (!friendlyDateStr) return '';
+  const d = new Date(friendlyDateStr);
+  if (isNaN(d.getTime())) return friendlyDateStr;
+  return d.toISOString().split('T')[0];
+};
+
 export const getStudentMilestones = async (studentId: string): Promise<Milestone[]> => {
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) throw new Error('User not logged in');
@@ -363,7 +413,7 @@ export const getStudentMilestones = async (studentId: string): Promise<Milestone
     studentId: m.student_id,
     title: m.title,
     status: m.status as any,
-    targetDate: m.target_date || '',
+    targetDate: m.target_date ? formatDate(m.target_date) : '',
     startDate: m.created_at ? formatDate(m.created_at) : ''
   }));
 };
@@ -378,7 +428,7 @@ export const createStudentMilestone = async (studentId: string, title: string, t
       student_id: studentId,
       teacher_id: user.id,
       title,
-      target_date: targetDate,
+      target_date: toISODate(targetDate),
       status: 'Target Set'
     }])
     .select()
@@ -391,7 +441,7 @@ export const createStudentMilestone = async (studentId: string, title: string, t
     studentId: data.student_id,
     title: data.title,
     status: data.status,
-    targetDate: data.target_date || '',
+    targetDate: data.target_date ? formatDate(data.target_date) : '',
     startDate: data.created_at ? formatDate(data.created_at) : ''
   };
 };
@@ -411,7 +461,7 @@ export const updateStudentMilestoneStatus = async (milestoneId: string, newStatu
     studentId: data.student_id,
     title: data.title,
     status: data.status,
-    targetDate: data.target_date || '',
+    targetDate: data.target_date ? formatDate(data.target_date) : '',
     startDate: data.created_at ? formatDate(data.created_at) : ''
   };
 };
@@ -423,6 +473,26 @@ export const deleteStudentMilestone = async (milestoneId: string): Promise<void>
     .eq('id', milestoneId);
 
   if (error) throw new Error(error.message);
+};
+
+export const updateStudentMilestone = async (milestoneId: string, title: string, targetDate: string): Promise<Milestone> => {
+  const { data, error } = await supabase
+    .from('student_milestones')
+    .update({ title, target_date: toISODate(targetDate) })
+    .eq('id', milestoneId)
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+  
+  return {
+    id: data.id,
+    studentId: data.student_id,
+    title: data.title,
+    status: data.status,
+    targetDate: data.target_date ? formatDate(data.target_date) : '',
+    startDate: data.created_at ? formatDate(data.created_at) : ''
+  };
 };
 
 export interface SessionRecord {
@@ -518,9 +588,17 @@ export const getStudentSessions = async (studentId: string): Promise<SessionReco
 
         return [];
       })(),
-      date: new Date(s.created_at).toLocaleDateString(),
+      date: s.created_at
+        ? new Date(s.created_at).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+          })
+        : '',
       duration: s.duration_seconds
-        ? `${Math.floor(s.duration_seconds / 60)} mins`
+        ? s.duration_seconds >= 60
+          ? `${Math.floor(s.duration_seconds / 60)} min${Math.floor(s.duration_seconds / 60) === 1 ? '' : 's'}${s.duration_seconds % 60 > 0 ? ` ${s.duration_seconds % 60}s` : ''}`
+          : `${s.duration_seconds}s`
         : '5 mins',
       score: `${Math.round(normalized)}%`,
       status: s.status as 'pending' | 'validated',

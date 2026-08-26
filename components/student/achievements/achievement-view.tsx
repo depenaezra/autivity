@@ -1,0 +1,266 @@
+import { HeaderButton } from '@/components/header-button';
+import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
+import React, { useEffect, useRef } from 'react';
+import { Dimensions, Modal, Pressable, Animated as RNAnimated, Text, View, useWindowDimensions } from 'react-native';
+import Animated, {
+  Easing,
+  interpolate,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+export type BadgeItemData = {
+  id: string;
+  title: string;
+  description: string;
+  icon: any;
+  color: string;
+  bgColor: string;
+  borderColor: string;
+  unlocked: boolean;
+  unlockedDate?: string;
+};
+
+interface AchievementViewProps {
+  badge: BadgeItemData | null;
+  visible: boolean;
+  onClose: () => void;
+}
+
+function FullScreenConfetti() {
+  const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+  const particles = useRef(
+    Array.from({ length: 40 }).map(() => ({
+      yAnim: new RNAnimated.Value(-50),
+      left: Math.random() * screenWidth,
+      rotateAnim: new RNAnimated.Value(0),
+      scaleAnim: new RNAnimated.Value(Math.random() * 0.6 + 0.5),
+      color: ['#FCA5A5', '#FCD34D', '#86EFAC', '#93C5FD', '#C084FC', '#F472B6', '#FACC15', '#62A9E6'][
+        Math.floor(Math.random() * 8)
+      ],
+      delay: Math.random() * 800,
+      shape: Math.random() > 0.5 ? 'circle' : 'square',
+    }))
+  ).current;
+
+  useEffect(() => {
+    particles.forEach((p) => {
+      RNAnimated.loop(
+        RNAnimated.sequence([
+          RNAnimated.delay(p.delay),
+          RNAnimated.parallel([
+            RNAnimated.timing(p.yAnim, {
+              toValue: screenHeight + 60,
+              duration: Math.random() * 2500 + 2500,
+              useNativeDriver: true,
+            }),
+            RNAnimated.timing(p.rotateAnim, {
+              toValue: 360,
+              duration: Math.random() * 2500 + 2500,
+              useNativeDriver: true,
+            }),
+          ]),
+        ])
+      ).start();
+    });
+  }, [particles, screenHeight]);
+
+  return (
+    <View className="absolute inset-0 pointer-events-none z-[9999]">
+      {particles.map((p, idx) => (
+        <RNAnimated.View
+          key={idx}
+          className="absolute w-3.5 h-3.5"
+          style={{
+            top: 0,
+            left: p.left,
+            borderRadius: p.shape === 'circle' ? 7 : 3,
+            backgroundColor: p.color,
+            transform: [
+              { translateY: p.yAnim },
+              {
+                rotate: p.rotateAnim.interpolate({
+                  inputRange: [0, 360],
+                  outputRange: ['0deg', '360deg'],
+                }),
+              },
+              { scale: p.scaleAnim },
+            ],
+          }}
+        />
+      ))}
+    </View>
+  );
+}
+
+export function AchievementView({ badge, visible, onClose }: AchievementViewProps) {
+  const { width } = useWindowDimensions();
+  const isTablet = width >= 600;
+  const insets = useSafeAreaInsets();
+
+  const globalShineProgress = useSharedValue(0);
+
+  const circleSize = isTablet ? 200 : 140;
+  const iconSize = isTablet ? 80 : 56;
+
+  const minX = -(circleSize + 40);
+  const maxX = circleSize + 40;
+
+  const animatedShineStyle = useAnimatedStyle(() => {
+    if (!badge || !badge.unlocked) return { opacity: 0 };
+    const translateX = interpolate(globalShineProgress.value, [0, 1], [minX, maxX]);
+    const opacity = interpolate(
+      globalShineProgress.value,
+      [0, 0.15, 0.85, 1],
+      [0, 0.85, 0.85, 0]
+    );
+    return {
+      opacity,
+      transform: [{ translateX }, { rotate: '25deg' }],
+    };
+  });
+
+  useEffect(() => {
+    if (visible && badge?.unlocked) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => { });
+      globalShineProgress.value = withRepeat(
+        withDelay(
+          400,
+          withTiming(1, { duration: 1600, easing: Easing.inOut(Easing.quad) })
+        ),
+        -1,
+        false
+      );
+    } else {
+      globalShineProgress.value = 0;
+    }
+  }, [visible, badge?.unlocked]);
+
+  if (!badge) return null;
+
+  const strokeColor = badge.unlocked
+    ? (badge.borderColor || badge.color || '#FDE047')
+    : '#D1D5DB';
+
+  const strokeWidth = isTablet ? 8 : 6;
+  const bottomShadowWidth = isTablet ? 16 : 12;
+
+  return (
+    <Modal
+      animationType="fade"
+      transparent={true}
+      visible={visible}
+      onRequestClose={onClose}
+    >
+      <View className="flex-1 bg-black/60 justify-center items-center px-6 relative">
+        {/* Confetti Animation when opened for unlocked badge */}
+        {visible && badge.unlocked && <FullScreenConfetti />}
+
+        {/* Top-Left Close Button matching back button style */}
+        <View
+          style={{ top: Math.max(insets.top, 16) + 10, left: isTablet ? 40 : 24 }}
+          className="absolute z-50"
+        >
+          <HeaderButton
+            onPress={onClose}
+            icon={
+              <Ionicons
+                name="close"
+                size={isTablet ? 32 : 24}
+                color="#62A9E6"
+              />
+            }
+          />
+        </View>
+
+        {/* Modal Card Backdrop Dismiss Area */}
+        <Pressable className="absolute inset-0" onPress={onClose} />
+
+        {/* Center Achievement Details Card */}
+        <View
+          className={`w-full bg-white border-[4px] border-[#F1F1F1] rounded-[36px] items-center relative z-10 ${isTablet ? 'max-w-xl p-12' : 'max-w-md p-8'
+            }`}
+          style={{
+            shadowColor: '#000000',
+            shadowOffset: { width: 0, height: 10 },
+            shadowOpacity: 0.25,
+            shadowRadius: 16,
+            elevation: 10,
+          }}
+        >
+          {/* Large 3D Circular Badge Icon */}
+          <View
+            style={{
+              width: circleSize,
+              height: circleSize,
+              borderRadius: circleSize / 2,
+              backgroundColor: badge.unlocked ? badge.bgColor : '#F3F4F6',
+              borderWidth: strokeWidth,
+              borderBottomWidth: bottomShadowWidth,
+              borderColor: strokeColor,
+              borderBottomColor: strokeColor,
+              shadowColor: '#000000',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.15,
+              shadowRadius: 4,
+              elevation: 4,
+            }}
+            className="items-center justify-center relative overflow-hidden my-6"
+          >
+            {/* Subtle top sheen highlight */}
+            <View className="absolute top-0 left-0 right-0 h-1/2 bg-white/25 rounded-t-full" />
+
+            {/* Sparkle Sweep Animation */}
+            {badge.unlocked && (
+              <Animated.View
+                className="absolute w-12 h-44 bg-white/80 z-10"
+                style={animatedShineStyle}
+              />
+            )}
+
+            {/* Badge Center Icon */}
+            <Ionicons
+              name={badge.icon || 'trophy'}
+              size={iconSize}
+              color={badge.unlocked ? badge.color : '#9CA3AF'}
+            />
+          </View>
+
+          {/* Achievement Name */}
+          <Text
+            className={`font-fredoka-one text-center mt-2 ${badge.unlocked ? 'text-[#374151]' : 'text-[#9CA3AF]'
+              } ${isTablet ? 'text-3xl' : 'text-2xl'}`}
+          >
+            {badge.title}
+          </Text>
+
+          {/* Achievement Description */}
+          {badge.description ? (
+            <Text
+              className={`font-quicksand-medium text-center text-[#6B7280] mt-2 px-2 ${isTablet ? 'text-xl' : 'text-base'
+                }`}
+            >
+              {badge.description}
+            </Text>
+          ) : null}
+
+          {/* Date Unlocked / Status */}
+          <Text
+            className={`font-quicksand-semibold text-center mt-4 ${badge.unlocked ? 'text-[#62A9E6]' : 'text-[#9CA3AF]'
+              } ${isTablet ? 'text-lg' : 'text-base'}`}
+          >
+            {badge.unlocked
+              ? badge.unlockedDate || 'Unlocked'
+              : 'Not unlocked yet'}
+          </Text>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+

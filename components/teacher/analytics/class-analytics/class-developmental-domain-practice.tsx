@@ -139,63 +139,65 @@ export default function ClassDevelopmentalDomainPractice({ classId }: ClassDevel
   return (
     <View className="flex-col mt-6 mb-12 pb-6">
       {/* Header and Filter Selector */}
-      <View className="flex-row flex-wrap items-center justify-between gap-4 mb-4">
-        <View className="flex-1 min-w-[200px]">
-          <View className="flex-row items-center gap-2 flex-wrap">
+      <View className="mb-4">
+        <View className="flex-row flex-wrap items-center justify-between gap-4">
+          <View className="flex-row items-center gap-2">
             <Text className={`font-fredoka-one text-[#484A4B] ${isTablet ? 'text-[32px]' : 'text-[22px]'}`}>
               Developmental Domain Practice
             </Text>
             <Pressable
               onPress={() => setShowInfo(!showInfo)}
-              className="active:opacity-75 mt-1"
+              className="active:opacity-75 p-1"
             >
               <Feather name="info" size={isTablet ? 20 : 16} color="#62A9E6" />
             </Pressable>
           </View>
-          {showInfo && (
-            <Animated.View
-              entering={FadeInUp.duration(200)}
-              exiting={FadeOutUp.duration(150)}
-              className="bg-[#E0F2FE] border border-[#BBE8FB] rounded-xl p-3 mt-2 flex-row items-center gap-2.5 overflow-hidden"
-            >
-              <Feather name="info" size={isTablet ? 22 : 18} color="#62A9E6" />
-              <Text className={`font-quicksand-bold text-[#62A9E6] flex-1 leading-normal ${isTablet ? 'text-sm' : 'text-[11px]'}`}>
-                Total activity practices counted across developmental domain skills for this class.
-              </Text>
-            </Animated.View>
-          )}
+
+          <View className="flex-row items-center gap-1.5 flex-wrap">
+            {filters.map((f) => {
+              const isActive = filter === f.value;
+              return (
+                <Pressable
+                  key={f.value}
+                  onPress={() => setFilter(f.value)}
+                  style={{
+                    borderWidth: 2,
+                    borderRadius: 8,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    paddingHorizontal: isTablet ? 16 : 12,
+                    paddingVertical: isTablet ? 8 : 6,
+                    backgroundColor: isActive ? '#BBE8FB' : '#FFFFFF',
+                    borderColor: isActive ? '#62A9E6' : '#BBE8FB',
+                    shadowColor: isActive ? '#62A9E6' : '#BBE8FB',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 1,
+                    shadowRadius: 0,
+                    elevation: 2,
+                  }}
+                >
+                  <Text className={`font-fredoka-one text-[#62A9E6] uppercase ${isTablet ? 'text-sm' : 'text-[11px]'}`}>
+                    {f.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
         </View>
 
-        <View className="flex-row items-center gap-1.5 flex-wrap">
-          {filters.map((f) => {
-            const isActive = filter === f.value;
-            return (
-              <Pressable
-                key={f.value}
-                onPress={() => setFilter(f.value)}
-                style={{
-                  borderWidth: 2,
-                  borderRadius: 8,
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  paddingHorizontal: isTablet ? 16 : 12,
-                  paddingVertical: isTablet ? 8 : 6,
-                  backgroundColor: isActive ? '#BBE8FB' : '#FFFFFF',
-                  borderColor: isActive ? '#62A9E6' : '#BBE8FB',
-                  shadowColor: isActive ? '#62A9E6' : '#BBE8FB',
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 1,
-                  shadowRadius: 0,
-                  elevation: 2,
-                }}
-              >
-                <Text className={`font-fredoka-one text-[#62A9E6] uppercase ${isTablet ? 'text-sm' : 'text-[11px]'}`}>
-                  {f.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
+        {/* Full-width Info Banner Row below Title & Filters */}
+        {showInfo && (
+          <Animated.View
+            entering={FadeInUp.duration(200)}
+            exiting={FadeOutUp.duration(150)}
+            className="w-full bg-[#E0F2FE] border border-[#BBE8FB] rounded-xl p-3 mt-3 flex-row items-center gap-2.5 overflow-hidden"
+          >
+            <Feather name="info" size={isTablet ? 22 : 18} color="#62A9E6" />
+            <Text className={`font-quicksand-bold text-[#62A9E6] flex-1 leading-normal ${isTablet ? 'text-sm' : 'text-[11px]'}`}>
+              Total activity practices counted across developmental domain skills for this class.
+            </Text>
+          </Animated.View>
+        )}
       </View>
 
       {/* Content Area */}
@@ -236,23 +238,12 @@ export default function ClassDevelopmentalDomainPractice({ classId }: ClassDevel
           </Text>
         </View>
       ) : data.length === 0 ? (
-        <View
-          style={{
-            backgroundColor: '#FFFFFF',
-            borderWidth: 1,
-            borderColor: '#E5E7EB',
-            borderRadius: isTablet ? 32 : 24,
-            padding: isTablet ? 24 : 20,
-            alignItems: 'center',
-            justifyContent: 'center',
-            minHeight: 180,
-          }}
-        >
-          <Feather name="grid" size={36} color="#9CA3AF" />
-          <Text className="font-fredoka-one text-base text-[#4B5563] mt-3 text-center">
+        <View className="bg-white border-2 border-dashed border-[#E5E7EB] rounded-2xl p-8 items-center justify-center">
+          <Feather name="grid" size={isTablet ? 44 : 32} color="#9CA3AF" />
+          <Text className="font-fredoka-one text-lg text-[#4B5563] mt-3 text-center">
             No Practice Data
           </Text>
-          <Text className="font-quicksand-medium text-xs text-[#9CA3AF] mt-1 text-center">
+          <Text className="font-quicksand-medium text-sm text-[#9CA3AF] mt-1 text-center">
             No developmental skills practice recorded for this filter option.
           </Text>
         </View>

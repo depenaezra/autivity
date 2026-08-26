@@ -184,7 +184,7 @@ export default function StudentListScreen() {
 
   const handleStudentPress = (student: Student) => {
     router.push({
-      pathname: '/student/[studentId]',
+      pathname: '/(teacher-tabs)/student/[studentId]' as any,
       params: {
         studentId: student.id,
         studentName: student.name,

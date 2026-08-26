@@ -10,15 +10,15 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
-import { ClassSessionStats, getClassSessionStats } from '../../../../src/services/class-analytics';
+import { StudentSessionStats, getStudentSessionStats } from '../../../../src/services/student-analytics';
 
-interface OverviewCardsProps {
-  classId: string;
+interface StudentPerformanceCardsProps {
+  studentId: string;
 }
 
 type FilterType = 'today' | 'week' | 'month' | 'overall';
 
-function OverviewCardsSkeleton({ isTablet, cardWidth }: { isTablet: boolean; cardWidth: number }) {
+function StudentPerformanceCardsSkeleton({ isTablet }: { isTablet: boolean }) {
   const opacity = useSharedValue(0.4);
 
   useEffect(() => {
@@ -88,19 +88,19 @@ const CARDS: CardConfig[] = [
     label: 'Average Mistakes',
     sublabel: 'Mistakes per session',
     iconName: 'alert-circle',
-    accentColor: '#F43F5E', // Rose 500
-    bgColor: '#FFF1F2',     // Rose 50
-    borderColor: '#FECDD3', // Rose 200
-    iconColor: '#E11D48',   // Rose 600
+    accentColor: '#F43F5E',
+    bgColor: '#FFF1F2',
+    borderColor: '#FECDD3',
+    iconColor: '#E11D48',
   },
 ];
 
-export default function OverviewCards({ classId }: OverviewCardsProps) {
+export default function StudentPerformanceCards({ studentId }: StudentPerformanceCardsProps) {
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
 
   const [filter, setFilter] = useState<FilterType>('overall');
-  const [stats, setStats] = useState<ClassSessionStats | null>(null);
+  const [stats, setStats] = useState<StudentSessionStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showInfo, setShowInfo] = useState(false);
@@ -110,13 +110,13 @@ export default function OverviewCards({ classId }: OverviewCardsProps) {
     async function loadStats() {
       setIsLoading(true);
       try {
-        const data = await getClassSessionStats(classId, filter);
+        const data = await getStudentSessionStats(studentId, filter);
         if (active) {
           setStats(data);
           setError(null);
         }
       } catch (err: any) {
-        console.error('OverviewCards: failed to load stats', err);
+        console.error('StudentPerformanceCards: failed to load stats', err);
         if (active) {
           setError('Failed to load card metrics.');
         }
@@ -130,7 +130,7 @@ export default function OverviewCards({ classId }: OverviewCardsProps) {
     return () => {
       active = false;
     };
-  }, [classId, filter]);
+  }, [studentId, filter]);
 
   const filterButtons: { label: string; value: FilterType }[] = [
     { label: 'Today', value: 'today' },
@@ -154,79 +154,76 @@ export default function OverviewCards({ classId }: OverviewCardsProps) {
 
   const hasNoSessions = !stats || stats.totalSessions === 0;
 
-  const cardWidth = isTablet
-    ? (width - 96 - 48) / 3
-    : (width - 48 - 24) / 3;
-
   if (isLoading) {
     return (
       <View className="flex-col mt-4">
-        <OverviewCardsSkeleton isTablet={isTablet} cardWidth={cardWidth} />
+        <StudentPerformanceCardsSkeleton isTablet={isTablet} />
       </View>
     );
   }
 
-
   return (
     <View className="flex-col mt-4">
       {/* Header and Filter Controls */}
-      <View className="flex-row flex-wrap justify-between items-start mb-4 gap-3">
-        <View className="flex-1 min-w-[200px]">
-          <View className="flex-row items-center gap-2 flex-wrap">
+      <View className="mb-4">
+        <View className="flex-row flex-wrap justify-between items-center gap-3">
+          <View className="flex-row items-center gap-2">
             <Text className={`font-fredoka-one text-[#484A4B] ${isTablet ? 'text-[32px]' : 'text-[22px]'}`}>
-              Class Performance
+              Student Performance
             </Text>
             <Pressable
               onPress={() => setShowInfo(!showInfo)}
-              className="active:opacity-75 mt-1"
+              className="active:opacity-75 p-1"
             >
               <Feather name="info" size={isTablet ? 20 : 16} color="#62A9E6" />
             </Pressable>
           </View>
-          {showInfo && (
-            <Animated.View
-              entering={FadeInUp.duration(200)}
-              exiting={FadeOutUp.duration(150)}
-              className="bg-[#E0F2FE] border border-[#BBE8FB] rounded-xl p-3 mt-2 flex-row items-center gap-2.5 overflow-hidden"
-            >
-              <Feather name="info" size={isTablet ? 22 : 18} color="#62A9E6" />
-              <Text className={`font-quicksand-bold text-[#62A9E6] flex-1 leading-normal ${isTablet ? 'text-sm' : 'text-[11px]'}`}>
-                Key indicators for completed student sessions.
-              </Text>
-            </Animated.View>
-          )}
+
+          <View className="flex-row items-center gap-1.5 flex-wrap">
+            {filterButtons.map((btn) => {
+              const isActive = filter === btn.value;
+              return (
+                <Pressable
+                  key={btn.value}
+                  onPress={() => setFilter(btn.value)}
+                  style={{
+                    borderWidth: 2,
+                    borderRadius: 8,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    paddingHorizontal: isTablet ? 16 : 12,
+                    paddingVertical: isTablet ? 8 : 6,
+                    backgroundColor: isActive ? '#BBE8FB' : '#FFFFFF',
+                    borderColor: isActive ? '#62A9E6' : '#BBE8FB',
+                    shadowColor: isActive ? '#62A9E6' : '#BBE8FB',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 1,
+                    shadowRadius: 0,
+                    elevation: 2,
+                  }}
+                >
+                  <Text className={`font-fredoka-one text-[#62A9E6] uppercase ${isTablet ? 'text-sm' : 'text-[11px]'}`}>
+                    {btn.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
         </View>
 
-        <View className="flex-row items-center gap-1.5 flex-wrap">
-          {filterButtons.map((btn) => {
-            const isActive = filter === btn.value;
-            return (
-              <Pressable
-                key={btn.value}
-                onPress={() => setFilter(btn.value)}
-                style={{
-                  borderWidth: 2,
-                  borderRadius: 8,
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  paddingHorizontal: isTablet ? 16 : 12,
-                  paddingVertical: isTablet ? 8 : 6,
-                  backgroundColor: isActive ? '#BBE8FB' : '#FFFFFF',
-                  borderColor: isActive ? '#62A9E6' : '#BBE8FB',
-                  shadowColor: isActive ? '#62A9E6' : '#BBE8FB',
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 1,
-                  shadowRadius: 0,
-                  elevation: 2,
-                }}
-              >
-                <Text className={`font-fredoka-one text-[#62A9E6] uppercase ${isTablet ? 'text-sm' : 'text-[11px]'}`}>
-                  {btn.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
+        {/* Full-width Info Banner Row below Title & Filters */}
+        {showInfo && (
+          <Animated.View
+            entering={FadeInUp.duration(200)}
+            exiting={FadeOutUp.duration(150)}
+            className="w-full bg-[#E0F2FE] border border-[#BBE8FB] rounded-xl p-3 mt-3 flex-row items-center gap-2.5 overflow-hidden"
+          >
+            <Feather name="info" size={isTablet ? 22 : 18} color="#62A9E6" />
+            <Text className={`font-quicksand-bold text-[#62A9E6] flex-1 leading-normal ${isTablet ? 'text-sm' : 'text-[11px]'}`}>
+              Key indicators for completed sessions of this student.
+            </Text>
+          </Animated.View>
+        )}
       </View>
 
       {error ? (

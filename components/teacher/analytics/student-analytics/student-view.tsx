@@ -1,150 +1,139 @@
-import { Feather, Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, useWindowDimensions, View } from 'react-native';
+import { Text, View, useWindowDimensions } from 'react-native';
+import { Ionicons, Feather } from '@expo/vector-icons';
+
 import { getStudentHeaderDetails, StudentHeaderDetails } from '../../../../src/services/student-analytics';
-import Milestones from './milestones';
-import OverviewCards from './overview-cards';
-import Sessions from './sessions';
-import StudentDevelopmentalSkillsHeatmap from './student-developmental-skills-heatmap';
+import { ScreenLayout } from '../../../screen-layout';
+import { HeaderButton } from '../../../header-button';
+import { StudentAnalyticsHeaderSkeleton, StudentAnalyticsSkeleton } from './student-analytics-skeleton';
+
+import StudentDetailsCard from './student-details-card';
+import StudentPerformanceCards from './student-performance-cards';
 import StudentEvaluationTrend from './student-evaluation-trend';
+import StudentDevelopmentalDomainPractice from './student-developmental-domain-practice';
+import Milestones from './milestones';
+import Sessions from './sessions';
+
+// SVGs for themed headers matching class color
+import HeaderClassBlue from '../../../../assets/images/teacher/class/header-class-blue.svg';
+import HeaderClassGreen from '../../../../assets/images/teacher/class/header-class-green.svg';
+import HeaderClassOrange from '../../../../assets/images/teacher/class/header-class-orange.svg';
+import HeaderClassYellow from '../../../../assets/images/teacher/class/header-class-yellow.svg';
+
+const headerSvgs: Record<string, React.FC<any>> = {
+  blue: HeaderClassBlue,
+  green: HeaderClassGreen,
+  orange: HeaderClassOrange,
+  yellow: HeaderClassYellow,
+};
 
 interface StudentViewProps {
-    studentId: string;
-    onBack: () => void;
+  studentId: string;
+  onBack: () => void;
 }
 
 export default function StudentView({ studentId, onBack }: StudentViewProps) {
-    const { width } = useWindowDimensions();
-    const isTablet = width >= 768;
+  const { width } = useWindowDimensions();
+  const isTablet = width >= 600;
 
-    const [studentData, setStudentData] = useState<StudentHeaderDetails | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+  const [studentData, setStudentData] = useState<StudentHeaderDetails | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-        async function fetchDetails() {
-            setIsLoading(true);
-            try {
-                const data = await getStudentHeaderDetails(studentId);
-                setStudentData(data);
-                setError(null);
-            } catch (err: any) {
-                console.error('StudentView: error loading student details', err);
-                setError('Failed to load student details.');
-            } finally {
-                setIsLoading(false);
-            }
-        }
-        fetchDetails();
-    }, [studentId]);
+  useEffect(() => {
+    async function fetchDetails() {
+      setIsLoading(true);
+      try {
+        const data = await getStudentHeaderDetails(studentId);
+        setStudentData(data);
+        setError(null);
+      } catch (err: any) {
+        console.error('StudentView: error loading student details', err);
+        setError('Failed to load student details.');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchDetails();
+  }, [studentId]);
 
-    const formatDate = (dateStr: string) => {
-        const d = new Date(dateStr);
-        return d.toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-        });
-    };
+  const themeKey = (studentData?.theme || 'blue').toLowerCase();
+  const HeaderBgSvg = headerSvgs[themeKey] || headerSvgs.blue;
+
+  const renderHeaderBackground = () => {
+    if (isLoading || !studentData) {
+      return <View className="flex-1 w-full h-full bg-[#E5E7EB]/50" />;
+    }
 
     return (
-        <View className={`w-full flex-col ${isTablet ? 'px-12 pt-6' : 'px-6 pt-5'}`}>
-            {/* Back Button */}
-            <View className="flex-row mb-4">
-                <Pressable
-                    onPress={onBack}
-                    className="flex-row items-center gap-2 bg-white border border-[#E5E7EB] px-3.5 py-2 rounded-xl active:opacity-90"
-                >
-                    <Feather name="arrow-left" size={18} color="#4B5563" />
-                    <Text className="font-quicksand-bold text-sm text-[#4B5563]">
-                        Back to Student List
-                    </Text>
-                </Pressable>
-            </View>
-
-            {isLoading ? (
-                <View className="w-full justify-center items-center py-20 bg-white border border-[#E5E7EB] rounded-2xl shadow-sm">
-                    <ActivityIndicator size="large" color="#62A9E6" />
-                    <Text className="mt-3 font-quicksand-semibold text-sm text-[#9CA3AF]">
-                        Loading student details...
-                    </Text>
-                </View>
-            ) : error || !studentData ? (
-                <View className="w-full justify-center items-center py-10 bg-white border border-[#E5E7EB] rounded-2xl shadow-sm px-6">
-                    <Feather name="alert-circle" size={36} color="#EF4444" />
-                    <Text className="font-fredoka-one text-lg text-[#4B5563] mt-3 text-center">
-                        Error Loading Data
-                    </Text>
-                    <Text className="font-quicksand-medium text-sm text-[#9CA3AF] mt-1 text-center">
-                        {error || 'Student details not found.'}
-                    </Text>
-                </View>
-            ) : (
-                <>
-                    {/* Header Info Container */}
-                    <View className="bg-white border border-[#E5E7EB] rounded-2xl p-6 shadow-sm">
-                        <View className="flex-row flex-wrap items-center justify-between gap-4">
-                            <View className="flex-1 min-w-[200px]">
-                                <View className="flex-row items-center flex-wrap gap-2.5">
-                                    <Text className={`font-fredoka-one text-[#4B5563] ${isTablet ? 'text-4xl' : 'text-2xl'}`}>
-                                        {studentData.name}
-                                    </Text>
-
-                                    {studentData.learnerCode ? (
-                                        <View className="bg-[#EFF6FF] border border-[#BFDBFE] px-3 py-1 rounded-full flex-row items-center gap-1.5">
-                                            <Text className="font-quicksand-bold text-xs text-[#2563EB]">
-                                                {studentData.learnerCode}
-                                            </Text>
-                                        </View>
-                                    ) : null}
-                                </View>
-
-                                {/* Student Details Meta Info */}
-                                <View className="flex-row flex-wrap items-center gap-x-4 gap-y-2 mt-3">
-                                    <View className="flex-row items-center gap-1.5">
-                                        <Ionicons name="school-outline" size={16} color="#62A9E6" />
-                                        <Text className="font-quicksand-bold text-[#4B5563] text-sm">
-                                            {studentData.grade}
-                                        </Text>
-                                    </View>
-
-                                    <Text className="text-[#D1D5DB]">•</Text>
-
-                                    <View className="flex-row items-center gap-1.5">
-                                        <Feather name="calendar" size={16} color="#62A9E6" />
-                                        <Text className="font-quicksand-medium text-[#4B5563] text-sm">
-                                            Last Session: {studentData.lastSessionDate ? formatDate(studentData.lastSessionDate) : 'No sessions recorded'}
-                                        </Text>
-                                    </View>
-                                </View>
-                            </View>
-                        </View>
-                    </View>
-
-                    {/* Student Overview Cards */}
-                    <OverviewCards studentId={studentId} />
-
-                    {/* Student Evaluation Trend Chart */}
-                    <StudentEvaluationTrend studentId={studentId} />
-
-                    {/* Developmental Skills Exposure Heatmap */}
-                    <View className="mt-6 flex-col">
-                        <Text className="font-fredoka-one text-xl text-[#4B5563]">
-                            Developmental Skills Exposure
-                        </Text>
-                        <Text className="font-quicksand-medium text-sm text-[#9CA3AF] mt-1.5">
-                            Shows how frequently each developmental subskill has been practiced. This represents learning exposure, not mastery.
-                        </Text>
-                        <StudentDevelopmentalSkillsHeatmap studentId={studentId} />
-                    </View>
-
-                    {/* Milestones */}
-                    <Milestones studentId={studentId} />
-
-                    {/* Completed Sessions */}
-                    <Sessions studentId={studentId} studentName={studentData.name} />
-                </>
-            )}
+      <View className="flex-1 w-full h-full relative">
+        <View className="absolute inset-0">
+          <HeaderBgSvg width="100%" height="100%" preserveAspectRatio="xMidYMax slice" />
         </View>
+      </View>
     );
+  };
+
+  const renderHeaderContent = () => {
+    if (isLoading || !studentData) {
+      return <StudentAnalyticsHeaderSkeleton isTablet={isTablet} />;
+    }
+    return null;
+  };
+
+  return (
+    <ScreenLayout
+      headerBackground={renderHeaderBackground()}
+      title={isLoading ? undefined : studentData?.name}
+      leftHeaderButton={
+        <HeaderButton
+          onPress={onBack}
+          icon={
+            <View style={{ marginLeft: -3, marginTop: -1 }}>
+              <Ionicons name="caret-back" size={isTablet ? 30 : 24} color="#62A9E6" />
+            </View>
+          }
+        />
+      }
+      headerContent={renderHeaderContent()}
+      scrollable={true}
+      stickyHeader={true}
+    >
+      <View className={`bg-white ${isTablet ? 'px-12 py-6' : 'px-6 py-4'}`}>
+        {isLoading ? (
+          <StudentAnalyticsSkeleton isTablet={isTablet} />
+        ) : error || !studentData ? (
+          <View className="w-full justify-center items-center py-10 bg-white border border-[#E5E7EB] rounded-2xl px-6">
+            <Feather name="alert-circle" size={36} color="#EF4444" />
+            <Text className="font-fredoka-one text-lg text-[#4B5563] mt-3 text-center">
+              Error Loading Analytics
+            </Text>
+            <Text className="font-quicksand-medium text-xs text-[#9CA3AF] mt-1 text-center">
+              {error || 'Student details not found.'}
+            </Text>
+          </View>
+        ) : (
+          <View className="flex-col gap-4">
+            {/* Student Details Card */}
+            <StudentDetailsCard student={studentData} />
+
+            {/* Student Performance KPI Cards */}
+            <StudentPerformanceCards studentId={studentId} />
+
+            {/* Student Evaluation Trend Chart */}
+            <StudentEvaluationTrend studentId={studentId} />
+
+            {/* Student Developmental Domain Practice */}
+            <StudentDevelopmentalDomainPractice studentId={studentId} />
+
+            {/* Milestones */}
+            <Milestones studentId={studentId} />
+
+            {/* Completed Sessions */}
+            <Sessions studentId={studentId} studentName={studentData.name} />
+          </View>
+        )}
+      </View>
+    </ScreenLayout>
+  );
 }

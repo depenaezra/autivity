@@ -11,6 +11,13 @@ export interface ParentSessionRecord {
     status: 'pending' | 'validated';
     teacherFeedback: string;
     validatedAt: string | null;
+    rubricEvaluation?: {
+        looking_at_objects?: number;
+        concentrating?: number;
+        performing_task?: number;
+        following_instructions?: number;
+        completed_work?: number;
+    } | null;
 }
 
 export interface ParentMilestone {
@@ -29,8 +36,11 @@ export interface MasterDomainInfo {
 
 export interface ParentDashboardData {
     student: any | null;
-    classInfo: { title: string; grade: string } | null;
+    classInfo: { title: string; grade: string; themeName?: string } | null;
     teacherName: string;
+    parentFirstName: string;
+    parentLastName: string;
+    parentEmail: string;
     sessions: ParentSessionRecord[];
     milestones: ParentMilestone[];
     masterDomains: MasterDomainInfo[];
@@ -59,6 +69,19 @@ export const getParentDashboardData = async (): Promise<ParentDashboardData> => 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) throw new Error('User not logged in');
 
+    const { data: parentProfile } = await supabase
+        .from('profiles')
+        .select('first_name, last_name, email')
+        .eq('id', user.id)
+        .maybeSingle();
+
+    const metaFirstName = user.user_metadata?.first_name
+        || (user.user_metadata?.name ? user.user_metadata.name.split(' ')[0] : '')
+        || (user.user_metadata?.full_name ? user.user_metadata.full_name.split(' ')[0] : '');
+
+    const resolvedParentFirstName = parentProfile?.first_name || metaFirstName || '';
+    const resolvedParentLastName = parentProfile?.last_name || user.user_metadata?.last_name || '';
+
     const { data: student, error: studentError } = await supabase
         .from('students')
         .select('*')
@@ -72,6 +95,9 @@ export const getParentDashboardData = async (): Promise<ParentDashboardData> => 
             student: null,
             classInfo: null,
             teacherName: '',
+            parentFirstName: resolvedParentFirstName,
+            parentLastName: resolvedParentLastName,
+            parentEmail: parentProfile?.email || user.email || '',
             sessions: [],
             milestones: [],
             masterDomains: [],
@@ -79,7 +105,7 @@ export const getParentDashboardData = async (): Promise<ParentDashboardData> => 
     }
 
     const [classRes, teacherRes, sessionsRes, milestonesRes, domainsRes] = await Promise.all([
-        supabase.from('classes').select('title, grade').eq('id', student.class_id).maybeSingle(),
+        supabase.from('classes').select('title, grade, theme_name').eq('id', student.class_id).maybeSingle(),
         supabase.from('profiles').select('first_name, last_name').eq('id', student.teacher_id).maybeSingle(),
         supabase.from('student_sessions').select('*').eq('student_id', student.id).order('created_at', { ascending: true }),
         supabase.from('student_milestones').select('*').eq('student_id', student.id),
@@ -99,6 +125,7 @@ export const getParentDashboardData = async (): Promise<ParentDashboardData> => 
         status: s.status as 'pending' | 'validated',
         teacherFeedback: s.teacher_feedback || '',
         validatedAt: s.validated_at || null,
+        rubricEvaluation: s.rubric_evaluation || null,
     }));
 
     const milestones: ParentMilestone[] = (milestonesRes.data || []).map((m: any) => ({
@@ -117,8 +144,11 @@ export const getParentDashboardData = async (): Promise<ParentDashboardData> => 
 
     return {
         student,
-        classInfo: classRes.data || null,
+        classInfo: classRes.data ? { title: classRes.data.title, grade: classRes.data.grade, themeName: classRes.data.theme_name } : null,
         teacherName: teacherRes.data ? `${teacherRes.data.first_name || ''} ${teacherRes.data.last_name || ''}`.trim() : 'Unknown Teacher',
+        parentFirstName: resolvedParentFirstName,
+        parentLastName: resolvedParentLastName,
+        parentEmail: parentProfile?.email || user.email || '',
         sessions,
         milestones,
         masterDomains,
