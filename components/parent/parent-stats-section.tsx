@@ -5,10 +5,23 @@ import { Ionicons } from '@expo/vector-icons';
 interface ParentStatsSectionProps {
   stats: {
     overallPerformance: number;
-    avgSessionMinutes: number;
+    avgSessionMinutes?: number;
+    avgSessionSeconds?: number;
     totalSessions: number;
   };
   isTablet: boolean;
+}
+
+function formatSessionDuration(stats: ParentStatsSectionProps['stats']): string {
+  if (stats.avgSessionSeconds !== undefined) {
+    const mins = Math.floor(stats.avgSessionSeconds / 60);
+    const secs = Math.round(stats.avgSessionSeconds % 60);
+    if (mins > 0) {
+      return `${mins}m ${secs}s`;
+    }
+    return `${secs}s`;
+  }
+  return `${stats.avgSessionMinutes ?? 0}m`;
 }
 
 const cardConfigs = [
@@ -23,7 +36,7 @@ const cardConfigs = [
   {
     key: 'avgSession',
     label: 'AVG SESSION',
-    value: (stats: ParentStatsSectionProps['stats']) => `${stats.avgSessionMinutes}m`,
+    value: (stats: ParentStatsSectionProps['stats']) => formatSessionDuration(stats),
     borderColor: '#CBFAC4',
     labelColor: '#179D33',
     iconName: 'time' as const,
@@ -85,6 +98,8 @@ export function ParentStatsSection({ stats, isTablet }: ParentStatsSectionProps)
               className={`font-fredoka-one text-[#484A4B] text-center ${
                 isTablet ? 'text-3xl mb-1' : 'text-[22px] mb-1'
               }`}
+              numberOfLines={1}
+              adjustsFontSizeToFit
             >
               {value(stats)}
             </Text>

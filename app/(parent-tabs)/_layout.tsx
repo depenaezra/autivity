@@ -50,6 +50,15 @@ export default function ParentTabLayout() {
         }}
       />
 
+      {/* analytics screen */}
+      <Tabs.Screen
+        name="analytics"
+        options={{
+          title: 'Analytics',
+          tabBarIcon: ({ color }) => <FontAwesome6 size={24} name="chart-line" color={color} />,
+        }}
+      />
+
       {/* profile screen */}
       <Tabs.Screen
         name="profile"

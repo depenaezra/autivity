@@ -3,7 +3,8 @@ import * as Haptics from 'expo-haptics';
 import React, { useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Animated, Pressable, Text, View } from 'react-native';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
-import { exportSingleFeedbackPdf } from '../../src/services/exportReport';
+import { exportAllFeedbacksPdf, exportSingleFeedbackPdf } from '../../src/services/exportReport';
+import { FilterPeriod, getFilterLabel } from '../../src/utils/dashboardFilters';
 import ParentEvaluationReviewModal from './parent-evaluation-review-modal';
 
 export interface ParentFeedbackItem {
@@ -20,6 +21,8 @@ interface ParentTeacherFeedbackProps {
   teacherName?: string;
   isTablet: boolean;
   onSelectFeedback?: (sessionId: string) => void;
+  globalFilter?: FilterPeriod;
+  onOpenFilterModal?: () => void;
 }
 
 function FeedbackRowItem({
@@ -86,9 +89,8 @@ function FeedbackRowItem({
               )}
             </View>
             <Text
-              className={`font-fredoka-one text-[#62A9E6] text-center w-full px-1 ${
-                isTablet ? 'text-[12px] mt-2' : 'text-[10px] mt-1.5'
-              }`}
+              className={`font-fredoka-one text-[#62A9E6] text-center w-full px-1 ${isTablet ? 'text-[12px] mt-2' : 'text-[10px] mt-1.5'
+                }`}
               numberOfLines={1}
               adjustsFontSizeToFit
             >
@@ -114,9 +116,8 @@ function FeedbackRowItem({
     >
       <Pressable onPress={onPress} className="active:scale-[0.98] transition-transform">
         <View
-          className={`bg-white border-[2px] border-[#F1F1F1] flex-row items-center justify-between ${
-            isTablet ? 'rounded-[24px] p-5' : 'rounded-[16px] p-3.5'
-          }`}
+          className={`bg-white border-[2px] border-[#F1F1F1] flex-row items-center justify-between ${isTablet ? 'rounded-[24px] p-5' : 'rounded-[16px] p-3.5'
+            }`}
           style={{
             shadowColor: '#F1F1F1',
             shadowOffset: { width: 0, height: 2 },
@@ -163,9 +164,12 @@ export function ParentTeacherFeedback({
   teacherName = 'Teacher',
   isTablet,
   onSelectFeedback,
+  globalFilter,
+  onOpenFilterModal,
 }: ParentTeacherFeedbackProps) {
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isExportingAll, setIsExportingAll] = useState(false);
   const openSwipeableRef = useRef<any>(null);
 
   const handleFeedbackPress = (sessionId: string) => {
@@ -180,16 +184,80 @@ export function ParentTeacherFeedback({
     openSwipeableRef.current = ref;
   };
 
+  const handleDownloadAll = async () => {
+    if (!feedbackList || feedbackList.length === 0) return;
+    setIsExportingAll(true);
+    try {
+      await exportAllFeedbacksPdf(studentName || 'Learner', teacherName, feedbackList);
+    } catch (err: any) {
+      Alert.alert('Export Error', err.message || 'Could not export feedbacks PDF');
+    } finally {
+      setIsExportingAll(false);
+    }
+  };
+
   const visibleFeedbacks = isExpanded ? feedbackList : feedbackList.slice(0, 4);
 
   return (
     <View className="flex-col mt-6 mb-12 pb-6">
-      {/* Header with Title */}
+      {/* Header with Title & Action Buttons (Range Filter + Download All) */}
       <View className="mb-4">
-        <View className="flex-row items-center justify-between">
+        <View className="flex-row flex-wrap items-center justify-between gap-2">
           <Text className={`font-fredoka-one text-[#484A4B] ${isTablet ? 'text-[28px]' : 'text-[20px]'}`}>
-            Teacher Feedback
+            Teacher Feedbacks
           </Text>
+
+          <View className="flex-row items-center gap-2 flex-wrap">
+            {/* Range Filter Selector Button */}
+            {onOpenFilterModal && (
+              <Pressable
+                onPress={onOpenFilterModal}
+                className="flex-row items-center justify-center gap-1.5 bg-white border-[2px] border-[#BBE8FB] px-3 h-[36px] rounded-xl active:scale-95 transition-transform"
+                style={{
+                  borderColor: '#BBE8FB',
+                  shadowColor: '#BBE8FB',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 1,
+                  shadowRadius: 0,
+                  elevation: 2,
+                }}
+              >
+                <Feather name="calendar" size={13} color="#62A9E6" />
+                <Text className="font-fredoka-one text-[#62A9E6] text-[11px] uppercase" numberOfLines={1}>
+                  RANGE: {getFilterLabel(globalFilter || 'overall').toUpperCase()}
+                </Text>
+                <Feather name="chevron-down" size={13} color="#62A9E6" />
+              </Pressable>
+            )}
+
+            {/* Download All Reports Button */}
+            {feedbackList.length > 0 && (
+              <Pressable
+                onPress={handleDownloadAll}
+                disabled={isExportingAll}
+                className="flex-row items-center justify-center gap-1.5 bg-white border-[2px] border-[#BBE8FB] px-3 h-[36px] rounded-xl active:scale-95 transition-transform"
+                style={{
+                  borderColor: '#BBE8FB',
+                  shadowColor: '#BBE8FB',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 1,
+                  shadowRadius: 0,
+                  elevation: 2,
+                }}
+              >
+                {isExportingAll ? (
+                  <ActivityIndicator size="small" color="#62A9E6" style={{ height: 16 }} />
+                ) : (
+                  <>
+                    <Feather name="download" size={13} color="#62A9E6" />
+                    <Text className="font-fredoka-one text-[#62A9E6] text-[11px] uppercase">
+                      DOWNLOAD ALL
+                    </Text>
+                  </>
+                )}
+              </Pressable>
+            )}
+          </View>
         </View>
       </View>
 
@@ -222,9 +290,8 @@ export function ParentTeacherFeedback({
           {feedbackList.length > 4 && (
             <Pressable
               onPress={() => setIsExpanded(!isExpanded)}
-              className={`mt-2 self-center flex-row items-center justify-center gap-1.5 border-[2px] rounded-[12px] bg-white active:scale-95 transition-transform ${
-                isTablet ? 'px-5 py-2.5' : 'px-4 py-2'
-              }`}
+              className={`mt-2 self-center flex-row items-center justify-center gap-1.5 border-[2px] rounded-[12px] bg-white active:scale-95 transition-transform ${isTablet ? 'px-5 py-2.5' : 'px-4 py-2'
+                }`}
               style={{
                 borderColor: '#BBE8FB',
                 shadowColor: '#BBE8FB',

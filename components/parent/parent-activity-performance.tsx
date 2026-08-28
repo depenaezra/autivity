@@ -56,7 +56,7 @@ export function ParentActivityPerformance({ sessions = [], data: initialData, gl
           (r.following_instructions || 0) +
           (r.completed_work || 0);
         scorePct = Math.round((sum / 25) * 100);
-      } else if (s.score != null) {
+      } else if (s.status === 'validated' && s.score != null) {
         scorePct = s.score;
       }
       if (scorePct == null) return;
@@ -74,7 +74,7 @@ export function ParentActivityPerformance({ sessions = [], data: initialData, gl
   }, [filteredSessions, initialData, sessions.length]);
 
   return (
-    <View className="flex-col mt-6 flex-1">
+    <View className="flex-col mt-6 w-full">
       {/* Header and Filter Selector */}
       <View className="mb-4">
         <View className="flex-row flex-wrap items-center justify-between gap-4">

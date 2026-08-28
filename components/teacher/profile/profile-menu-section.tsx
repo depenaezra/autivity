@@ -43,8 +43,8 @@ export function ProfileMenuSection({
   classCount,
   onChangePassword,
 }: ProfileMenuSectionProps) {
-  // Accordion expanded states (default Personal Info open when editing)
-  const [personalExpanded, setPersonalExpanded] = useState(true);
+  // Accordion expanded states (default all sections closed)
+  const [personalExpanded, setPersonalExpanded] = useState(false);
   const [classroomExpanded, setClassroomExpanded] = useState(false);
   const [accountExpanded, setAccountExpanded] = useState(false);
 

@@ -107,10 +107,11 @@ export default function ParentHomeScreen() {
     }
 
     const withDuration = filteredSessionsForStats.filter((s) => s.durationSeconds > 0);
-    const avgSessionMinutes = withDuration.length
-      ? Math.round(withDuration.reduce((sum, s) => sum + s.durationSeconds, 0) / withDuration.length / 60)
+    const avgSessionSeconds = withDuration.length
+      ? Math.round(withDuration.reduce((sum, s) => sum + s.durationSeconds, 0) / withDuration.length)
       : 0;
-    return { overallPerformance, avgSessionMinutes, totalSessions: filteredSessionsForStats.length };
+    const avgSessionMinutes = Math.round(avgSessionSeconds / 60);
+    return { overallPerformance, avgSessionMinutes, avgSessionSeconds, totalSessions: filteredSessionsForStats.length };
   }, [filteredSessionsForStats]);
 
   const radarData = useMemo(() => {
@@ -150,6 +151,7 @@ export default function ParentHomeScreen() {
         {
           overallPerformance: stats.overallPerformance,
           avgSessionMinutes: stats.avgSessionMinutes,
+          avgSessionSeconds: stats.avgSessionSeconds,
           totalSessions: stats.totalSessions,
           skillBreakdown: radarData,
         },
@@ -166,7 +168,7 @@ export default function ParentHomeScreen() {
   };
 
   if (isLoading) {
-    return <ParentDashboardSkeleton />;
+    return <ParentDashboardSkeleton variant="home" />;
   }
 
   const student = dashboard?.student;
@@ -211,85 +213,15 @@ export default function ParentHomeScreen() {
               />
             </Animated.View>
 
-            {/* TOP CONTROL BAR: RANGE SELECTOR + DOWNLOAD REPORT */}
-            <View className="flex-row items-center justify-between mt-2 mb-1 gap-2.5">
-              {/* Range Filter Selector */}
-              <Pressable
-                onPress={() => setFilterModalVisible(true)}
-                className="flex-1 flex-row items-center justify-center gap-1.5 bg-white border-[2px] border-[#BBE8FB] px-3 py-2 rounded-xl active:scale-95 transition-transform"
-                style={{
-                  shadowColor: '#BBE8FB',
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 1,
-                  shadowRadius: 0,
-                  elevation: 2,
-                }}
-              >
-                <Feather name="calendar" size={13} color="#62A9E6" />
-                <Text className="font-fredoka-one text-[#62A9E6] text-[11px] uppercase" numberOfLines={1}>
-                  RANGE: {getFilterLabel(globalFilter).toUpperCase()}
-                </Text>
-                <Feather name="chevron-down" size={13} color="#62A9E6" />
-              </Pressable>
-
-              {/* Master Download Report Button */}
-              <Pressable
-                onPress={handleExportPdf}
-                disabled={isExporting}
-                className="flex-1 flex-row items-center justify-center gap-1.5 bg-white border-[2px] border-[#BBE8FB] px-3 py-2 rounded-xl active:scale-95 transition-transform"
-                style={{
-                  shadowColor: '#BBE8FB',
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 1,
-                  shadowRadius: 0,
-                  elevation: 2,
-                }}
-              >
-                {isExporting ? (
-                  <ActivityIndicator size="small" color="#62A9E6" />
-                ) : (
-                  <>
-                    <Feather name="download" size={13} color="#62A9E6" />
-                    <Text className="font-fredoka-one text-[#62A9E6] text-[11px] uppercase" numberOfLines={1}>
-                      DOWNLOAD REPORT
-                    </Text>
-                  </>
-                )}
-              </Pressable>
-            </View>
-
-            {/* STAT CARDS */}
-            <Animated.View key={`stats-${focusKey}`} entering={FadeInRight.delay(100).duration(300)}>
-              <ParentStatsSection stats={stats} isTablet={isTablet} />
-            </Animated.View>
-
-            {/* DAILY PROGRESS TREND */}
-            <Animated.View key={`trend-${focusKey}`} entering={FadeInRight.delay(150).duration(300)}>
-              <ParentProgressTrend sessions={sessions} globalFilter={globalFilter} isTablet={isTablet} />
-            </Animated.View>
-
-            {/* ACTIVITY PERFORMANCE */}
-            <Animated.View key={`activity-${focusKey}`} entering={FadeInRight.delay(200).duration(300)}>
-              <ParentActivityPerformance sessions={sessions} globalFilter={globalFilter} isTablet={isTablet} />
-            </Animated.View>
-
-            {/* SKILL PERFORMANCE */}
-            <Animated.View key={`skill-${focusKey}`} entering={FadeInRight.delay(250).duration(300)}>
-              <ParentSkillPerformance
-                sessions={sessions}
-                masterDomains={dashboard?.masterDomains}
-                globalFilter={globalFilter}
-                isTablet={isTablet}
-              />
-            </Animated.View>
-
-            {/* TEACHER FEEDBACK */}
-            <Animated.View key={`feedback-${focusKey}`} entering={FadeInRight.delay(300).duration(300)}>
+            {/* TEACHER FEEDBACK FEED */}
+            <Animated.View key={`feedback-${focusKey}`} entering={FadeInRight.delay(100).duration(300)} className="w-full">
               <ParentTeacherFeedback
                 feedbackList={recentFeedback}
                 studentName={student?.name}
                 teacherName={dashboard?.teacherName}
                 isTablet={isTablet}
+                globalFilter={globalFilter}
+                onOpenFilterModal={() => setFilterModalVisible(true)}
               />
             </Animated.View>
           </View>

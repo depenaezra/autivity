@@ -43,9 +43,9 @@ export function ParentProfileMenuSection({
   onLinkChild,
   onChangePassword,
 }: ParentProfileMenuSectionProps) {
-  // Accordion expanded states (default Personal Info open when editing)
-  const [personalExpanded, setPersonalExpanded] = useState(true);
-  const [learnerExpanded, setLearnerExpanded] = useState(true);
+  // Accordion expanded states (default all sections closed)
+  const [personalExpanded, setPersonalExpanded] = useState(false);
+  const [learnerExpanded, setLearnerExpanded] = useState(false);
   const [accountExpanded, setAccountExpanded] = useState(false);
 
   // Auto-expand Personal Info when edit is triggered from header

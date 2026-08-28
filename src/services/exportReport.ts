@@ -4,7 +4,8 @@ import { ParentDashboardData, ParentSessionRecord } from './parentDashboard';
 
 interface ReportStats {
   overallPerformance: number;
-  avgSessionMinutes: number;
+  avgSessionMinutes?: number;
+  avgSessionSeconds?: number;
   totalSessions: number;
   skillBreakdown: { label: string; value: number }[];
 }
@@ -40,7 +41,7 @@ const generateTrendChartSvg = (sessions: ParentSessionRecord[]) => {
 
   sorted.forEach((s) => {
     let scorePct: number | null = null;
-    if (s.rubricEvaluation) {
+    if (s.status === 'validated' && s.rubricEvaluation) {
       const r = s.rubricEvaluation;
       const sum =
         (r.looking_at_objects || 0) +
@@ -49,8 +50,6 @@ const generateTrendChartSvg = (sessions: ParentSessionRecord[]) => {
         (r.following_instructions || 0) +
         (r.completed_work || 0);
       scorePct = Math.round((sum / 25) * 100);
-    } else if (s.score != null) {
-      scorePct = s.score;
     }
     if (scorePct != null) {
       const d = new Date(s.date);
@@ -69,6 +68,13 @@ const generateTrendChartSvg = (sessions: ParentSessionRecord[]) => {
   if (chartData.length === 0) {
     return `<div style="background:#FFFFFF; border:2px solid #E2E8F0; border-radius:12px; padding:20px; text-align:center; color:#94A3B8; font-size:13px; font-weight:600;">No scored sessions available for this timeframe.</div>`;
   }
+
+  const trendDiff = chartData.length >= 2 ? Math.round((chartData[chartData.length - 1].score - chartData[0].score) * 10) / 10 : null;
+  const trendBadgeHtml = trendDiff !== null ? `
+    <span style="display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:12px; font-size:11px; font-weight:700; background:${trendDiff >= 0 ? '#E8F5E9' : '#FEE2E2'}; color:${trendDiff >= 0 ? '#179D33' : '#EF4444'}; border:1px solid ${trendDiff >= 0 ? '#86EFAC' : '#FCA5A5'}; margin-left:8px;">
+      ${trendDiff >= 0 ? '▲' : '▼'} ${trendDiff > 0 ? '+' : ''}${trendDiff}%
+    </span>
+  ` : '';
 
   const svgWidth = 600;
   const svgHeight = 180;
@@ -118,7 +124,10 @@ const generateTrendChartSvg = (sessions: ParentSessionRecord[]) => {
 
   return `
     <div style="background:#FFFFFF; border:2px solid #E2E8F0; border-radius:16px; padding:18px; margin-bottom:20px; page-break-inside:avoid;">
-      <div style="font-weight:700; font-size:13px; color:#1E293B; margin-bottom:12px; text-transform:uppercase; letter-spacing:0.5px;">Progress Trend Over Time</div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <div style="font-weight:700; font-size:13px; color:#1E293B; text-transform:uppercase; letter-spacing:0.5px;">Progress Trend Over Time</div>
+        ${trendBadgeHtml}
+      </div>
       <svg viewBox="0 0 ${svgWidth} ${svgHeight}" style="width:100%; height:auto; overflow:visible;">
         <defs>
           <linearGradient id="trendGrad" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -143,7 +152,7 @@ const generateActivityPerformanceSvg = (sessions: ParentSessionRecord[]) => {
   const byCategory: Record<string, number[]> = {};
   sessions.forEach((s) => {
     let scorePct: number | null = null;
-    if (s.rubricEvaluation) {
+    if (s.status === 'validated' && s.rubricEvaluation) {
       const r = s.rubricEvaluation;
       const sum =
         (r.looking_at_objects || 0) +
@@ -152,8 +161,6 @@ const generateActivityPerformanceSvg = (sessions: ParentSessionRecord[]) => {
         (r.following_instructions || 0) +
         (r.completed_work || 0);
       scorePct = Math.round((sum / 25) * 100);
-    } else if (s.score != null) {
-      scorePct = s.score;
     }
     if (scorePct == null) return;
     if (!byCategory[s.category]) byCategory[s.category] = [];
@@ -172,7 +179,7 @@ const generateActivityPerformanceSvg = (sessions: ParentSessionRecord[]) => {
     return `<div style="background:#FFFFFF; border:2px solid #E2E8F0; border-radius:12px; padding:20px; text-align:center; color:#94A3B8; font-size:13px; font-weight:600;">No activity performance data available.</div>`;
   }
 
-  const barsHtml = activityData.map((item) => {
+  const barsHtml = activityData.map((item, idx) => {
     const val = Math.min(100, Math.max(0, item.value));
     return `
       <div style="margin-bottom:12px;">
@@ -180,9 +187,16 @@ const generateActivityPerformanceSvg = (sessions: ParentSessionRecord[]) => {
           <span style="font-weight:700; font-size:13px; color:#334155;">${escapeHtml(item.label)}</span>
           <span style="font-weight:800; font-size:13px; color:#0284C7;">${val}%</span>
         </div>
-        <div style="background:#F1F5F9; border-radius:8px; height:12px; width:100%; overflow:hidden; border:1px solid #E2E8F0;">
-          <div style="background:linear-gradient(90deg, #38BDF8 0%, #0284C7 100%); height:100%; width:${val}%; border-radius:8px;"></div>
-        </div>
+        <svg width="100%" height="12" viewBox="0 0 100 12" preserveAspectRatio="none" style="display:block; border-radius:6px; overflow:hidden;">
+          <defs>
+            <linearGradient id="actGrad-${idx}" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#38BDF8" />
+              <stop offset="100%" stop-color="#0284C7" />
+            </linearGradient>
+          </defs>
+          <rect width="100" height="12" rx="6" ry="6" fill="#F1F5F9" stroke="#E2E8F0" stroke-width="1" />
+          ${val > 0 ? `<rect width="${val}" height="12" rx="6" ry="6" fill="url(#actGrad-${idx})" />` : ''}
+        </svg>
       </div>
     `;
   }).join('');
@@ -208,14 +222,15 @@ const generateSkillRadarSvg = (skillBreakdown: { label: string; value: number }[
       <div style="margin-bottom:12px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
           <div style="display:flex; align-items:center; gap:6px;">
-            <span style="background:${domainColor}; width:10px; height:10px; border-radius:50%; display:inline-block;"></span>
+            <svg width="10" height="10" style="display:inline-block; vertical-align:middle;"><circle cx="5" cy="5" r="5" fill="${domainColor}" /></svg>
             <span style="font-weight:700; font-size:13px; color:#334155;">${escapeHtml(s.label)}</span>
           </div>
           <span style="font-weight:800; font-size:13px; color:${domainColor};">${val}%</span>
         </div>
-        <div style="background:#F1F5F9; border-radius:8px; height:12px; width:100%; overflow:hidden; border:1px solid #E2E8F0;">
-          <div style="background:${domainColor}; height:100%; width:${val}%; border-radius:8px;"></div>
-        </div>
+        <svg width="100%" height="12" viewBox="0 0 100 12" preserveAspectRatio="none" style="display:block; border-radius:6px; overflow:hidden;">
+          <rect width="100" height="12" rx="6" ry="6" fill="#F1F5F9" stroke="#E2E8F0" stroke-width="1" />
+          ${val > 0 ? `<rect width="${val}" height="12" rx="6" ry="6" fill="${domainColor}" />` : ''}
+        </svg>
       </div>
     `;
   }).join('');
@@ -376,6 +391,10 @@ const buildReportHtml = (data: ParentDashboardData, stats: ReportStats, timefram
     <head>
       <meta charset="utf-8" />
       <style>
+        * {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #1E293B; padding: 24px; background: #F8FAFC; }
         h1 { color: #0284C7; font-size: 24px; font-weight: 800; margin-bottom: 4px; }
         h2 { font-size: 16px; font-weight: 700; color: #1E293B; margin-top: 24px; margin-bottom: 12px; }
@@ -401,7 +420,13 @@ const buildReportHtml = (data: ParentDashboardData, stats: ReportStats, timefram
           <div class="stat-label">Overall Performance</div>
         </div>
         <div class="stat-box">
-          <div class="stat-value">${stats.avgSessionMinutes}m</div>
+          <div class="stat-value">${
+            stats.avgSessionSeconds !== undefined
+              ? (Math.floor(stats.avgSessionSeconds / 60) > 0
+                  ? `${Math.floor(stats.avgSessionSeconds / 60)}m ${Math.round(stats.avgSessionSeconds % 60)}s`
+                  : `${Math.round(stats.avgSessionSeconds % 60)}s`)
+              : `${stats.avgSessionMinutes ?? 0}m`
+          }</div>
           <div class="stat-label">Avg Session Duration</div>
         </div>
         <div class="stat-box">
@@ -486,6 +511,63 @@ export const exportSingleFeedbackPdf = async (
     await Sharing.shareAsync(uri, {
       mimeType: 'application/pdf',
       dialogTitle: `${studentName || 'Learner'} Feedback - ${feedback.category}`,
+    });
+  }
+
+  return uri;
+};
+
+// Generates a combined PDF report for all teacher feedbacks and opens native share sheet.
+export const exportAllFeedbacksPdf = async (
+  studentName: string,
+  teacherName: string,
+  feedbackList: { category: string; date: Date; teacherFeedback: string; rubricEvaluation?: any }[]
+) => {
+  const generatedOn = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  const itemsHtml = feedbackList
+    .map((item) =>
+      formatFeedbackHtml({
+        id: item.category,
+        studentId: '',
+        category: item.category,
+        skill_domain: [],
+        date: item.date,
+        durationSeconds: 0,
+        score: null,
+        status: 'validated',
+        teacherFeedback: item.teacherFeedback,
+        validatedAt: null,
+        rubricEvaluation: item.rubricEvaluation || null,
+      })
+    )
+    .join('<div style="height: 16px;"></div>');
+
+  const html = `
+  <html>
+    <head>
+      <meta charset="utf-8" />
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #1E293B; padding: 24px; background: #F8FAFC; }
+        .header-title { color: #0284C7; font-size: 24px; font-weight: 800; margin-bottom: 4px; }
+        .meta { font-size: 13px; color: #475569; font-weight: 500; margin-bottom: 24px; }
+      </style>
+    </head>
+    <body>
+      <div class="header-title">${escapeHtml(studentName || 'Learner')} — All Teacher Feedbacks</div>
+      <div class="meta">
+        Teacher: ${escapeHtml(teacherName || 'Teacher')} &nbsp;•&nbsp; Total Feedback Reports: ${feedbackList.length} &nbsp;•&nbsp; Exported: ${generatedOn}
+      </div>
+
+      ${itemsHtml}
+    </body>
+  </html>`;
+
+  const { uri } = await Print.printToFileAsync({ html });
+
+  if (await Sharing.isAvailableAsync()) {
+    await Sharing.shareAsync(uri, {
+      mimeType: 'application/pdf',
+      dialogTitle: `${studentName || 'Learner'} All Teacher Feedbacks`,
     });
   }
 
