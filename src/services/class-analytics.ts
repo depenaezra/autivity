@@ -40,6 +40,7 @@ export const getClassPerformanceById = async (classId: string): Promise<ClassPer
 
 export interface SessionEvaluation {
   id: string;
+  student_id?: string;
   created_at: string;
   rubric_evaluation: any;
 }
@@ -50,7 +51,7 @@ export const getValidatedSessionsEvaluations = async (classId: string): Promise<
 
   const { data, error } = await supabase
     .from('student_sessions')
-    .select('id, created_at, rubric_evaluation')
+    .select('id, student_id, created_at, rubric_evaluation')
     .eq('class_id', classId)
     .eq('status', 'validated')
     .order('created_at', { ascending: true });

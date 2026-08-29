@@ -11,12 +11,14 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { getStudentSessions, SessionRecord } from '../../../../src/services/student-analytics';
+import { filterSessionsByPeriod } from '../../../../src/utils/dashboardFilters';
 import FeedbackModal from '../../../feedback-modal';
 import EvaluationReviewModal from '../evaluation-review-modal';
 
 interface SessionsProps {
   studentId: string;
   studentName: string;
+  filter?: string;
 }
 
 type SessionFilterType = 'all' | 'unvalidated' | 'validated';
@@ -65,7 +67,7 @@ function SessionSkeletonItem({ isTablet }: { isTablet: boolean }) {
   );
 }
 
-export default function Sessions({ studentId, studentName }: SessionsProps) {
+export default function Sessions({ studentId, studentName, filter }: SessionsProps) {
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
 
@@ -129,12 +131,21 @@ export default function Sessions({ studentId, studentName }: SessionsProps) {
   };
 
   const filteredSessions = useMemo(() => {
-    return sessions.filter((s) => {
+    let list = sessions;
+    if (filter) {
+      const records = sessions.map((s) => ({ ...s, rawDate: s.date, date: new Date(s.date) }));
+      const filtered = filterSessionsByPeriod(records as any, filter) as any[];
+      list = filtered.map((r) => ({
+        ...r,
+        date: r.rawDate || (r.date instanceof Date ? r.date.toLocaleDateString() : String(r.date || '')),
+      }));
+    }
+    return list.filter((s) => {
       if (sessionFilter === 'unvalidated') return s.status === 'pending';
       if (sessionFilter === 'validated') return s.status === 'validated';
       return true;
     });
-  }, [sessions, sessionFilter]);
+  }, [sessions, sessionFilter, filter]);
 
   const filterOptions: { label: string; value: SessionFilterType; count: number }[] = [
     { label: 'ALL', value: 'all', count: sessions.length },
@@ -276,7 +287,9 @@ export default function Sessions({ studentId, studentName }: SessionsProps) {
                             <Feather name="calendar" size={isTablet ? 12 : 10} color="#9CA3AF" />
                           </View>
                           <Text className={`font-quicksand-medium text-[#9CA3AF] ${isTablet ? 'text-sm' : 'text-xs'}`}>
-                            {session.date}
+                            {typeof session.date === 'object' && session.date !== null && 'toLocaleDateString' in session.date
+                              ? (session.date as Date).toLocaleDateString()
+                              : String(session.date || '')}
                           </Text>
                         </View>
                       ) : null}

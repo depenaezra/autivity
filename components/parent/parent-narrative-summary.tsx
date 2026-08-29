@@ -10,16 +10,18 @@ interface ParentNarrativeSummaryProps {
 }
 
 export function ParentNarrativeSummary({ highlights, isTablet }: ParentNarrativeSummaryProps) {
-  if (!highlights || highlights.length === 0) return null;
-
   // Initialize all highlight cards as expanded by default
   const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {};
-    highlights.forEach((h) => {
-      initial[h.id] = true;
-    });
+    if (highlights) {
+      highlights.forEach((h) => {
+        initial[h.id] = true;
+      });
+    }
     return initial;
   });
+
+  if (!highlights || highlights.length === 0) return null;
 
   const toggleExpand = (id: string) => {
     setExpandedIds((prev) => ({
@@ -136,7 +138,7 @@ export function ParentNarrativeSummary({ highlights, isTablet }: ParentNarrative
                   >
                     <Text
                       className={`font-quicksand-medium text-[#64748B] leading-relaxed ${
-                        isTablet ? 'text-sm' : 'text-xs'
+                        isTablet ? 'text-base' : 'text-sm'
                       }`}
                     >
                       {h.description}

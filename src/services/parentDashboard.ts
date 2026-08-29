@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { MasterDomainExposure } from './class-analytics';
 
 export interface ParentSessionRecord {
     id: string;
@@ -44,6 +45,7 @@ export interface ParentDashboardData {
     sessions: ParentSessionRecord[];
     milestones: ParentMilestone[];
     masterDomains: MasterDomainInfo[];
+    domainExposure?: MasterDomainExposure[];
 }
 
 // Parses the same flexible skill_domain shape used elsewhere in the app

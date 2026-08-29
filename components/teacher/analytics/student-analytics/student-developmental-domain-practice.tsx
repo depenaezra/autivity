@@ -7,6 +7,7 @@ import { getStudentDevelopmentalSkillsExposure, MasterDomainExposure } from '../
 
 interface StudentDevelopmentalDomainPracticeProps {
   studentId: string;
+  filter?: string;
 }
 
 type FilterType = 'today' | 'week' | 'month' | 'overall';
@@ -78,16 +79,22 @@ function calculateAxisTicks(maxVal: number) {
   return { ticks, maxScale };
 }
 
-export default function StudentDevelopmentalDomainPractice({ studentId }: StudentDevelopmentalDomainPracticeProps) {
+export default function StudentDevelopmentalDomainPractice({ studentId, filter: externalFilter }: StudentDevelopmentalDomainPracticeProps) {
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
 
   const [data, setData] = useState<MasterDomainExposure[]>([]);
-  const [filter, setFilter] = useState<FilterType>('overall');
+  const [filter, setFilter] = useState<FilterType>((externalFilter as any) || 'overall');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showInfo, setShowInfo] = useState(false);
   const [expandedDomains, setExpandedDomains] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (externalFilter) {
+      setFilter(externalFilter as any);
+    }
+  }, [externalFilter]);
 
   useEffect(() => {
     async function loadData() {
@@ -121,6 +128,17 @@ export default function StudentDevelopmentalDomainPractice({ studentId }: Studen
 
   // Calculate dynamic X-axis numeric ticks and scale bound
   const { ticks, maxScale } = useMemo(() => calculateAxisTicks(maxCount), [maxCount]);
+
+  // Find domain with lowest practice exposures for focus badge highlight
+  const lowestExposureDomainName = useMemo(() => {
+    if (data.length <= 1) return null;
+    const sorted = [...data].sort((a, b) => {
+      const sumA = a.skills.reduce((acc, s) => acc + s.count, 0);
+      const sumB = b.skills.reduce((acc, s) => acc + s.count, 0);
+      return sumA - sumB;
+    });
+    return sorted[0]?.masterDomain || null;
+  }, [data]);
 
   const toggleDomain = (domainName: string) => {
     setExpandedDomains((prev) => ({
@@ -276,18 +294,35 @@ export default function StudentDevelopmentalDomainPractice({ studentId }: Studen
                   {/* Master Domain Clickable Header */}
                   <Pressable
                     onPress={() => toggleDomain(domain.masterDomain)}
-                    className="flex-row items-center justify-between py-1 active:opacity-75"
+                    className="flex-col py-1 active:opacity-75"
                   >
-                    <View className="flex-row items-center gap-2.5 flex-1 pr-2">
-                      <View
-                        className="w-3.5 h-3.5 rounded-full"
-                        style={{ backgroundColor: theme.endColor }}
+                    {/* Row 1: Colored Dot + Master Domain Title + Chevron Icon */}
+                    <View className="flex-row items-center justify-between">
+                      <View className="flex-row items-center gap-2.5 flex-1 pr-2">
+                        <View
+                          className="w-3.5 h-3.5 rounded-full shrink-0"
+                          style={{ backgroundColor: theme.endColor }}
+                        />
+                        <Text className="font-fredoka-one text-base text-[#374151] flex-1">
+                          {domain.masterDomain}
+                        </Text>
+                      </View>
+                      <Feather
+                        name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                        size={20}
+                        color="#9CA3AF"
                       />
-                      <Text className="font-fredoka-one text-base text-[#374151]">
-                        {domain.masterDomain}
-                      </Text>
                     </View>
-                    <View className="flex-row items-center gap-2">
+
+                    {/* Row 2: Sub-row containing Focus Badge & Practices Count Pill */}
+                    <View className="flex-row items-center gap-2 mt-2.5 ml-6 flex-wrap">
+                      {domain.masterDomain === lowestExposureDomainName && (
+                        <View className="bg-[#FFF3C4] border border-[#FFAE02] px-2.5 py-0.5 rounded-full">
+                          <Text className="font-fredoka-one text-[10px] text-[#D97706] uppercase tracking-wider">
+                            FOCUS NEEDED
+                          </Text>
+                        </View>
+                      )}
                       <View
                         style={{
                           backgroundColor: theme.pillBg,
@@ -305,11 +340,6 @@ export default function StudentDevelopmentalDomainPractice({ studentId }: Studen
                           {totalDomainExposures} Practices
                         </Text>
                       </View>
-                      <Feather
-                        name={isExpanded ? 'chevron-up' : 'chevron-down'}
-                        size={20}
-                        color="#9CA3AF"
-                      />
                     </View>
                   </Pressable>
 

@@ -14,6 +14,7 @@ import { ClassSessionStats, getClassSessionStats } from '../../../../src/service
 
 interface ClassPerformanceCardsProps {
   classId: string;
+  filter?: string;
 }
 
 type FilterType = 'today' | 'week' | 'month' | 'overall';
@@ -95,15 +96,21 @@ const CARDS: CardConfig[] = [
   },
 ];
 
-export default function ClassPerformanceCards({ classId }: ClassPerformanceCardsProps) {
+export default function ClassPerformanceCards({ classId, filter: externalFilter }: ClassPerformanceCardsProps) {
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
 
-  const [filter, setFilter] = useState<FilterType>('overall');
+  const [filter, setFilter] = useState<FilterType>((externalFilter as any) || 'overall');
   const [stats, setStats] = useState<ClassSessionStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showInfo, setShowInfo] = useState(false);
+
+  useEffect(() => {
+    if (externalFilter) {
+      setFilter(externalFilter as any);
+    }
+  }, [externalFilter]);
 
   useEffect(() => {
     let active = true;

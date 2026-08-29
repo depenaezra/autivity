@@ -203,7 +203,12 @@ export default function ParentAnalyticsScreen() {
                 }}
               >
                 {isExporting ? (
-                  <ActivityIndicator size="small" color="#62A9E6" style={{ height: 16 }} />
+                  <>
+                    <ActivityIndicator size="small" color="#62A9E6" style={{ height: 16 }} />
+                    <Text className="font-fredoka-one text-[#62A9E6] text-[11px] uppercase" numberOfLines={1}>
+                      EXPORTING...
+                    </Text>
+                  </>
                 ) : (
                   <>
                     <Feather name="download" size={13} color="#62A9E6" />

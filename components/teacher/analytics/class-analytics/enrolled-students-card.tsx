@@ -4,10 +4,13 @@ import { Feather } from '@expo/vector-icons';
 import Animated, { FadeInUp, FadeOutUp } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 
-interface Student {
+export interface Student {
   id: string;
   name: string;
   avatar?: string;
+  needsIntervention?: boolean;
+  needs_intervention?: boolean;
+  averageScore?: number;
 }
 
 interface EnrolledStudentsCardProps {
@@ -22,6 +25,14 @@ export default function EnrolledStudentsCard({ students }: EnrolledStudentsCardP
 
   if (!students || students.length === 0) return null;
 
+  const checkNeedsIntervention = (st: Student) => {
+    if (st.needsIntervention === true || st.needs_intervention === true) return true;
+    if (typeof st.averageScore === 'number' && st.averageScore > 0 && st.averageScore < 3.0) return true;
+    return false;
+  };
+
+  const interventionCount = students.filter(checkNeedsIntervention).length;
+
   return (
     <View className="bg-[#F9FAFB] border border-[#F3F4F6] rounded-2xl overflow-hidden mb-1">
       {/* Clickable Header Row */}
@@ -29,13 +40,23 @@ export default function EnrolledStudentsCard({ students }: EnrolledStudentsCardP
         onPress={() => setIsRosterExpanded(!isRosterExpanded)}
         className="flex-row items-center justify-between p-4 sm:p-5 active:opacity-90"
       >
-        <View className="flex-col">
+        <View className="flex-col flex-1 pr-2">
           <Text className="font-fredoka-one text-base sm:text-lg text-[#484A4B]">
             Enrolled Students
           </Text>
-          <Text className="font-quicksand-medium text-sm sm:text-base text-[#9CA3AF] mt-0.5">
-            {students.length} {students.length === 1 ? 'student' : 'students'} in this class
-          </Text>
+          <View className="flex-row items-center gap-2 mt-0.5 flex-wrap">
+            <Text className="font-quicksand-medium text-sm sm:text-base text-[#9CA3AF]">
+              {students.length} {students.length === 1 ? 'student' : 'students'}
+            </Text>
+            {interventionCount > 0 && (
+              <View className="bg-[#FFF7ED] border border-[#FFDBD4] px-2 py-0.5 rounded-full flex-row items-center gap-1">
+                <View className="w-1.5 h-1.5 rounded-full bg-[#FF8870]" />
+                <Text className="font-fredoka-one text-[10px] text-[#C2410C] uppercase">
+                  {interventionCount} NEED HELP
+                </Text>
+              </View>
+            )}
+          </View>
         </View>
 
         {/* Right Cluster: Overlapping Avatars (max 3) + 4th avatar with dark overlay "+N" */}
@@ -43,6 +64,7 @@ export default function EnrolledStudentsCard({ students }: EnrolledStudentsCardP
           <View className="flex-row items-center">
             {students.slice(0, 3).map((st, idx) => {
               const isUrl = st.avatar?.startsWith('http') || st.avatar?.startsWith('file');
+
               return (
                 <View
                   key={st.id || idx}
@@ -114,6 +136,7 @@ export default function EnrolledStudentsCard({ students }: EnrolledStudentsCardP
             {students.map((student) => {
               const firstName = student.name ? student.name.split(' ')[0] : 'Student';
               const isUrl = student.avatar?.startsWith('http') || student.avatar?.startsWith('file');
+              const needsHelp = checkNeedsIntervention(student);
 
               return (
                 <Pressable
@@ -126,14 +149,27 @@ export default function EnrolledStudentsCard({ students }: EnrolledStudentsCardP
                     } as any);
                   }}
                 >
-                  {/* Outer circle with grey border */}
+                  {/* Outer circle with grey or red border */}
                   <View
-                    className={`items-center justify-center border-[#D9D9D9] border-[2px] ${
+                    className={`items-center justify-center border-[2px] relative ${
+                      needsHelp ? 'border-[#FF8870]' : 'border-[#D9D9D9]'
+                    } ${
                       isTablet
                         ? 'w-[84px] h-[84px] rounded-[42px]'
                         : 'w-[64px] h-[64px] rounded-[32px]'
                     }`}
                   >
+                    {/* Intervention badge icon */}
+                    {needsHelp && (
+                      <View
+                        className={`absolute -top-1 -right-1 bg-[#EF4444] rounded-full border-2 border-white items-center justify-center z-10 ${
+                          isTablet ? 'w-6 h-6' : 'w-5 h-5'
+                        }`}
+                      >
+                        <Feather name="alert-circle" size={isTablet ? 12 : 9} color="#FFFFFF" />
+                      </View>
+                    )}
+
                     {/* Inner circle with thick white border */}
                     <View
                       className="w-full h-full items-center justify-center bg-[#E5E7EB] border-white overflow-hidden"
@@ -151,6 +187,7 @@ export default function EnrolledStudentsCard({ students }: EnrolledStudentsCardP
                       )}
                     </View>
                   </View>
+
                   {/* First Name */}
                   <Text
                     className={`font-fredoka-one text-[#484A4B] mt-1.5 text-center ${
@@ -159,6 +196,15 @@ export default function EnrolledStudentsCard({ students }: EnrolledStudentsCardP
                   >
                     {firstName}
                   </Text>
+
+                  {/* Needs Help Badge Pill */}
+                  {needsHelp && (
+                    <View className="bg-[#FFF7ED] border border-[#FFDBD4] px-2 py-0.5 rounded-full mt-1">
+                      <Text className="font-fredoka-one text-[9px] text-[#C2410C] uppercase">
+                        NEEDS HELP
+                      </Text>
+                    </View>
+                  )}
                 </Pressable>
               );
             })}

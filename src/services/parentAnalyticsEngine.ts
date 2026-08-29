@@ -213,15 +213,20 @@ export function generateProgressForecast(
   );
 
   sorted.forEach((s) => {
-    if (!s.rubricEvaluation) return;
-    const r = s.rubricEvaluation;
-    const sum =
-      (r.looking_at_objects || 0) +
-      (r.concentrating || 0) +
-      (r.performing_task || 0) +
-      (r.following_instructions || 0) +
-      (r.completed_work || 0);
-    const scorePct = Math.round((sum / 25) * 100);
+    let scorePct: number | null = null;
+    if (s.rubricEvaluation) {
+      const r = s.rubricEvaluation;
+      const sum =
+        (r.looking_at_objects || 0) +
+        (r.concentrating || 0) +
+        (r.performing_task || 0) +
+        (r.following_instructions || 0) +
+        (r.completed_work || 0);
+      scorePct = Math.round((sum / 25) * 100);
+    } else if (s.status === 'validated' && s.score != null) {
+      scorePct = s.score;
+    }
+    if (scorePct == null) return;
 
     const dateKey = new Date(s.date).toISOString().split('T')[0];
     if (!groups[dateKey]) groups[dateKey] = [];

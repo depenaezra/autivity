@@ -14,6 +14,7 @@ import { StudentSessionStats, getStudentSessionStats } from '../../../../src/ser
 
 interface StudentPerformanceCardsProps {
   studentId: string;
+  filter?: string;
 }
 
 type FilterType = 'today' | 'week' | 'month' | 'overall';
@@ -95,15 +96,21 @@ const CARDS: CardConfig[] = [
   },
 ];
 
-export default function StudentPerformanceCards({ studentId }: StudentPerformanceCardsProps) {
+export default function StudentPerformanceCards({ studentId, filter: externalFilter }: StudentPerformanceCardsProps) {
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
 
-  const [filter, setFilter] = useState<FilterType>('overall');
+  const [filter, setFilter] = useState<FilterType>((externalFilter as any) || 'overall');
   const [stats, setStats] = useState<StudentSessionStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showInfo, setShowInfo] = useState(false);
+
+  useEffect(() => {
+    if (externalFilter) {
+      setFilter(externalFilter as any);
+    }
+  }, [externalFilter]);
 
   useEffect(() => {
     let active = true;

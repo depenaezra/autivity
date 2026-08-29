@@ -6,9 +6,10 @@ import { StudentHeaderDetails } from '../../../../src/services/student-analytics
 
 interface StudentDetailsCardProps {
   student: StudentHeaderDetails;
+  needsIntervention?: boolean;
 }
 
-export default function StudentDetailsCard({ student }: StudentDetailsCardProps) {
+export default function StudentDetailsCard({ student, needsIntervention }: StudentDetailsCardProps) {
   const { width } = useWindowDimensions();
   const isTablet = width >= 600;
   const [isParentInfoExpanded, setIsParentInfoExpanded] = useState(false);

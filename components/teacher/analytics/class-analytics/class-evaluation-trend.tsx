@@ -4,27 +4,36 @@ import { Pressable, Text, useWindowDimensions, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp, FadeOutDown, FadeOutUp } from 'react-native-reanimated';
 import Svg, { Circle, Defs, Line, LinearGradient, Path, Rect, Stop, Text as SvgText } from 'react-native-svg';
 import { getValidatedSessionsEvaluations, SessionEvaluation } from '../../../../src/services/class-analytics';
+import { calculateClassProgressForecast } from '../../../../src/services/classAnalyticsEngine';
 
 interface ClassEvaluationTrendProps {
   classId: string;
+  filter?: string;
 }
 
 type FilterType = 'today' | 'week' | 'month' | 'overall';
 
-export default function ClassEvaluationTrend({ classId }: ClassEvaluationTrendProps) {
+export default function ClassEvaluationTrend({ classId, filter: externalFilter }: ClassEvaluationTrendProps) {
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
 
   const [sessions, setSessions] = useState<SessionEvaluation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<FilterType>('overall');
+  const [filter, setFilter] = useState<FilterType>((externalFilter as any) || 'overall');
   const [showInfo, setShowInfo] = useState(false);
   const [selectedPointIdx, setSelectedPointIdx] = useState<number | null>(null);
+  const [showForecastOverlay, setShowForecastOverlay] = useState(true);
+
+  useEffect(() => {
+    if (externalFilter) {
+      setFilter(externalFilter as any);
+    }
+  }, [externalFilter]);
 
   useEffect(() => {
     setSelectedPointIdx(null);
-  }, [filter]);
+  }, [filter, showForecastOverlay]);
 
   useEffect(() => {
     async function loadData() {
@@ -134,6 +143,10 @@ export default function ClassEvaluationTrend({ classId }: ClassEvaluationTrendPr
     return ((last - first) / first) * 100;
   }, [chartData]);
 
+  const forecastResult = useMemo(() => {
+    return calculateClassProgressForecast(sessions, filter);
+  }, [sessions, filter]);
+
   const filters: { label: string; value: FilterType }[] = [
     { label: 'Today', value: 'today' },
     { label: 'This Week', value: 'week' },
@@ -154,30 +167,34 @@ export default function ClassEvaluationTrend({ classId }: ClassEvaluationTrendPr
   const baselineY = paddingTop + graphHeight;
 
   // Generate SVG Points & Smooth Bezier Curves
-  const { linePath, areaPath, points } = useMemo(() => {
-    if (chartData.length === 0) return { linePath: '', areaPath: '', points: [] };
+  const { linePath, areaPath, forecastPath, points, forecastPts } = useMemo(() => {
+    if (chartData.length === 0) return { linePath: '', areaPath: '', forecastPath: '', points: [], forecastPts: [] };
+
+    const hasForecast = showForecastOverlay && forecastResult.points.length > chartData.length;
+    const futurePtsData = hasForecast ? forecastResult.points.filter((p) => p.isForecast) : [];
+    const totalPlotPoints = chartData.length + futurePtsData.length;
 
     const pts = chartData.map((d, i) => {
       const x =
-        chartData.length === 1
+        totalPlotPoints === 1
           ? paddingLeft + graphWidth / 2
-          : paddingLeft + (i / (chartData.length - 1)) * graphWidth;
+          : paddingLeft + (i / (totalPlotPoints - 1)) * graphWidth;
 
-      // Score ranges 0 to 4
       const clampedScore = Math.max(0, Math.min(4, d.score));
       const y = paddingTop + graphHeight - (clampedScore / 4) * graphHeight;
 
-      return { x, y, score: d.score, label: d.label };
+      return { x, y, score: d.score, label: d.label, isForecast: false };
     });
 
-    if (pts.length === 1) {
-      const p = pts[0];
-      const lPath = `M ${p.x - 20} ${p.y} L ${p.x + 20} ${p.y}`;
-      const aPath = `M ${p.x - 20} ${p.y} L ${p.x + 20} ${p.y} L ${p.x + 20} ${baselineY} L ${p.x - 20} ${baselineY} Z`;
-      return { linePath: lPath, areaPath: aPath, points: pts };
-    }
+    const fPts = futurePtsData.map((d, i) => {
+      const idx = chartData.length + i;
+      const x = paddingLeft + (idx / (totalPlotPoints - 1)) * graphWidth;
+      const clampedScore = Math.max(0, Math.min(4, d.forecastScore ?? 0));
+      const y = paddingTop + graphHeight - (clampedScore / 4) * graphHeight;
 
-    // Smooth Bezier Curve interpolation
+      return { x, y, score: d.forecastScore ?? 0, label: d.label, isForecast: true };
+    });
+
     let lPath = `M ${pts[0].x} ${pts[0].y}`;
     for (let i = 0; i < pts.length - 1; i++) {
       const curr = pts[i];
@@ -193,8 +210,17 @@ export default function ClassEvaluationTrend({ classId }: ClassEvaluationTrendPr
     const last = pts[pts.length - 1];
     const aPath = `${lPath} L ${last.x} ${baselineY} L ${first.x} ${baselineY} Z`;
 
-    return { linePath: lPath, areaPath: aPath, points: pts };
-  }, [chartData, graphWidth, graphHeight, paddingLeft, paddingTop, baselineY]);
+    let fPath = '';
+    if (fPts.length > 0) {
+      const startPt = pts[pts.length - 1];
+      fPath = `M ${startPt.x} ${startPt.y}`;
+      fPts.forEach((fp) => {
+        fPath += ` L ${fp.x} ${fp.y}`;
+      });
+    }
+
+    return { linePath: lPath, areaPath: aPath, forecastPath: fPath, points: pts, forecastPts: fPts };
+  }, [chartData, forecastResult, showForecastOverlay, graphWidth, graphHeight, paddingLeft, paddingTop, baselineY]);
 
   const lastPoint = points.length > 0 ? points[points.length - 1] : null;
 
@@ -216,6 +242,33 @@ export default function ClassEvaluationTrend({ classId }: ClassEvaluationTrendPr
           </View>
 
           <View className="flex-row items-center gap-1.5 flex-wrap">
+            <Pressable
+              onPress={() => setShowForecastOverlay(!showForecastOverlay)}
+              style={{
+                borderWidth: 2,
+                borderRadius: 8,
+                justifyContent: 'center',
+                alignItems: 'center',
+                paddingHorizontal: isTablet ? 14 : 10,
+                paddingVertical: isTablet ? 8 : 6,
+                backgroundColor: showForecastOverlay ? '#ECFDF5' : '#FFFFFF',
+                borderColor: showForecastOverlay ? '#34D399' : '#E5E7EB',
+                shadowColor: showForecastOverlay ? '#34D399' : '#E5E7EB',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 1,
+                shadowRadius: 0,
+                elevation: 2,
+              }}
+            >
+              <Text
+                className={`font-fredoka-one uppercase ${
+                  showForecastOverlay ? 'text-[#059669]' : 'text-[#9CA3AF]'
+                } ${isTablet ? 'text-sm' : 'text-[11px]'}`}
+              >
+                FORECAST: {showForecastOverlay ? 'ON' : 'OFF'}
+              </Text>
+            </Pressable>
+
             {filters.map((f) => {
               const isActive = filter === f.value;
               return (
@@ -328,29 +381,48 @@ export default function ClassEvaluationTrend({ classId }: ClassEvaluationTrendPr
           (isLoading || error || chartData.length === 0) && { display: 'none' },
         ]}
       >
-        {/* Metric Header (Big Score + Trend Badge + Description) */}
-        <View className="flex-col mb-1 px-2">
-          <View className="flex-row items-center gap-3">
-            <Text className="font-fredoka-one text-[36px] text-[#484A4B] leading-tight">
-              {averageScore}
+        {/* Metric Header (Big Score + Trend Badge + 2-Week Outlook Green Card) */}
+        <View className="flex-row items-center justify-between mb-2 px-2 flex-wrap gap-2">
+          <View className="flex-col">
+            <View className="flex-row items-center gap-3">
+              <Text className="font-fredoka-one text-[36px] text-[#484A4B] leading-tight">
+                {averageScore}
+              </Text>
+              {trendPercentage !== null && (
+                <View className={`px-3 py-1 rounded-full flex-row items-center gap-1.5 ${trendPercentage >= 0 ? 'bg-[#E0F2FE]' : 'bg-[#FEE2E2]'}`}>
+                  <Feather
+                    name={trendPercentage >= 0 ? 'trending-up' : 'trending-down'}
+                    size={16}
+                    color={trendPercentage >= 0 ? '#62A9E6' : '#EF4444'}
+                    strokeWidth={2.5}
+                  />
+                  <Text className={`font-quicksand-bold text-sm ${trendPercentage >= 0 ? 'text-[#62A9E6]' : 'text-[#EF4444]'}`}>
+                    {`${Math.abs(trendPercentage).toFixed(1)}%`}
+                  </Text>
+                </View>
+              )}
+            </View>
+            <Text className="font-fredoka-one text-[11px] text-[#9CA3AF] uppercase tracking-[0.06em] mt-0.5">
+              AVERAGE EVALUATION SCORE
             </Text>
-            {trendPercentage !== null && (
-              <View className={`px-3 py-1 rounded-full flex-row items-center gap-1.5 ${trendPercentage >= 0 ? 'bg-[#E0F2FE]' : 'bg-[#FEE2E2]'}`}>
-                <Feather
-                  name={trendPercentage >= 0 ? 'trending-up' : 'trending-down'}
-                  size={16}
-                  color={trendPercentage >= 0 ? '#62A9E6' : '#EF4444'}
-                  strokeWidth={2.5}
-                />
-                <Text className={`font-quicksand-bold text-sm ${trendPercentage >= 0 ? 'text-[#62A9E6]' : 'text-[#EF4444]'}`}>
-                  {`${Math.abs(trendPercentage).toFixed(1)}%`}
-                </Text>
-              </View>
-            )}
           </View>
-          <Text className="font-fredoka-one text-[11px] text-[#9CA3AF] uppercase tracking-[0.06em] mt-0.5">
-            AVERAGE EVALUATION SCORE
-          </Text>
+
+          {/* Green 2-Week Outlook Forecast Badge Card when Forecast is ON */}
+          {showForecastOverlay && forecastResult.projected14DayScore !== null && (
+            <View className="bg-[#ECFDF5] border border-[#86EFAC] rounded-xl px-3 py-2 items-end">
+              <Text className="font-fredoka-one text-[10px] text-[#059669] uppercase tracking-wide">
+                2-WEEK OUTLOOK
+              </Text>
+              <Text className="font-fredoka-one text-sm text-[#065F46] mt-0.5">
+                ~{forecastResult.projected14DayScore} / 4.0 Predicted
+              </Text>
+              <Text className="font-quicksand-bold text-[10px] text-[#059669] mt-0.5">
+                {forecastResult.estimatedDaysToMastery
+                  ? `~${forecastResult.estimatedDaysToMastery} days to ${forecastResult.targetBenchmark} benchmark`
+                  : 'Based on current trajectory'}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* SVG Chart Area — always mounted to prevent css-interop crash */}
@@ -409,6 +481,19 @@ export default function ClassEvaluationTrend({ classId }: ClassEvaluationTrendPr
               />
             )}
 
+            {/* Dashed Forecast Projection Line */}
+            {showForecastOverlay && forecastPath !== '' && (
+              <Path
+                d={forecastPath}
+                stroke="#34D399"
+                strokeWidth="2.5"
+                strokeDasharray="5,5"
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            )}
+
             {/* Interactive Data Points */}
             {points.map((pt, idx) => {
               const isSelected = selectedPointIdx === idx;
@@ -441,18 +526,49 @@ export default function ClassEvaluationTrend({ classId }: ClassEvaluationTrendPr
               );
             })}
 
+            {/* Forecast Data Point Markers */}
+            {showForecastOverlay && forecastPts.map((fp, i) => {
+              const fIdx = points.length + i;
+              const isSelected = selectedPointIdx === fIdx;
+              return (
+                <React.Fragment key={`fpoint-${i}`}>
+                  {isSelected && (
+                    <Circle cx={fp.x} cy={fp.y} r="10" fill="#34D399" fillOpacity="0.25" />
+                  )}
+                  <Circle
+                    cx={fp.x}
+                    cy={fp.y}
+                    r={isSelected ? 5.5 : 4}
+                    fill="#FFFFFF"
+                    stroke="#34D399"
+                    strokeWidth={isSelected ? 2.5 : 2}
+                  />
+                  <Circle
+                    cx={fp.x}
+                    cy={fp.y}
+                    r="18"
+                    fill="transparent"
+                    onPress={() => setSelectedPointIdx(isSelected ? null : fIdx)}
+                  />
+                </React.Fragment>
+              );
+            })}
+
             {/* Selected Point Vertical Guide Line */}
-            {selectedPointIdx !== null && points[selectedPointIdx] && (
-              <Line
-                x1={points[selectedPointIdx].x}
-                y1={points[selectedPointIdx].y + 6}
-                x2={points[selectedPointIdx].x}
-                y2={baselineY}
-                stroke="#BBE8FB"
-                strokeDasharray="3,3"
-                strokeWidth="1.5"
-              />
-            )}
+            {selectedPointIdx !== null && (points[selectedPointIdx] || forecastPts[selectedPointIdx - points.length]) && (() => {
+              const activePt = points[selectedPointIdx] || forecastPts[selectedPointIdx - points.length];
+              return (
+                <Line
+                  x1={activePt.x}
+                  y1={activePt.y + 6}
+                  x2={activePt.x}
+                  y2={baselineY}
+                  stroke={selectedPointIdx < points.length ? "#BBE8FB" : "#86EFAC"}
+                  strokeDasharray="3,3"
+                  strokeWidth="1.5"
+                />
+              );
+            })()}
 
             {/* X-Axis Date Increment Legends (Start, Mid, End) */}
             {points.length > 0 && (() => {
@@ -499,9 +615,10 @@ export default function ClassEvaluationTrend({ classId }: ClassEvaluationTrendPr
           </Svg>
 
           {/* Microanimated Floating Tooltip Bubble */}
-          {selectedPointIdx !== null && points[selectedPointIdx] && (() => {
-            const activePt = points[selectedPointIdx];
-            const tooltipWidth = 80;
+          {selectedPointIdx !== null && (points[selectedPointIdx] || forecastPts[selectedPointIdx - points.length]) && (() => {
+            const activePt = points[selectedPointIdx] || forecastPts[selectedPointIdx - points.length];
+            const isForecast = selectedPointIdx >= points.length;
+            const tooltipWidth = isForecast ? 100 : 80;
             const rawLeft = activePt.x - tooltipWidth / 2;
             const clampedLeft = Math.max(8, Math.min(rawLeft, svgWidth - tooltipWidth - 8));
             const topPos = Math.max(activePt.y - 36, 2);
@@ -517,16 +634,18 @@ export default function ClassEvaluationTrend({ classId }: ClassEvaluationTrendPr
                   top: topPos,
                   width: tooltipWidth,
                   zIndex: 20,
-                  shadowColor: '#62A9E6',
+                  shadowColor: isForecast ? '#34D399' : '#62A9E6',
                   shadowOffset: { width: 0, height: 2 },
                   shadowOpacity: 0.15,
                   shadowRadius: 4,
                   elevation: 3,
                 }}
-                className="bg-white border border-[#BBE8FB] rounded-full py-1 px-2 items-center justify-center pointer-events-none"
+                className={`border rounded-full py-1 px-2 items-center justify-center pointer-events-none ${
+                  isForecast ? 'bg-[#ECFDF5] border-[#86EFAC]' : 'bg-white border-[#BBE8FB]'
+                }`}
               >
                 <Text className="font-quicksand-bold text-[11px] text-[#475569]">
-                  {activePt.label}: <Text className="font-fredoka-one text-[#62A9E6]">{activePt.score}</Text>
+                  {activePt.label}: <Text className={`font-fredoka-one ${isForecast ? 'text-[#059669]' : 'text-[#62A9E6]'}`}>{isForecast ? `~${activePt.score}` : activePt.score}</Text>
                 </Text>
               </Animated.View>
             );

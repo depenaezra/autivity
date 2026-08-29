@@ -59,20 +59,36 @@ All interactive buttons utilize a playful, tactile "3D click" design using a sol
 *   **Font**: `font-fredoka-one text-sm` or `text-base`.
 *   **Pressed State**: Scaled down slightly (`active:scale-95 transition-transform`).
 
-### 2. Large Action/Submit Button (e.g. Save Modal Buttons)
-*   **Height**: Standard auto height with padding (`py-4`).
-*   **Font Color**: Active states use the dynamic font accent color (e.g. `#62A9E6` on white background with `#BBE8FB` border/shadow). Inactive states use `#D9D9D9` text with `#F1F1F1` borders.
+### 3. Back Button Standard Specification
+All screen layout back buttons must strictly use the standard `<HeaderButton>` component from `components/header-button.tsx`.
+*   **Icon**: `<Ionicons name="caret-back" size={isTablet ? 30 : 24} color="#62A9E6" />` wrapped in a `<View style={{ marginLeft: -3, marginTop: -1 }}>` for precise caret centering.
+*   **Container**: `w-[44px] h-[44px] rounded-xl bg-white border-[2px] border-[#BBE8FB]`.
+*   **Tactile Shadow**:
+    ```js
+    shadowColor: '#BBE8FB',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    elevation: 2,
+    ```
+*   **Interaction**: `active:scale-95 transition-transform` and triggers `router.back()` (or custom `onBackPress`).
 
----
-
-## 📝 Input Fields & Forms
-
-*   **Background**: `#F1F1F1` (light gray background fill)
-*   **Shape**: Rounded corners (`rounded-xl` or `rounded-[16px]`)
-*   **Height**: Compact padded block (`px-4 py-3`)
-*   **Typography**: `font-quicksand-medium` with text color `#4B5563`
-*   **Placeholder Color**: `#9CA3AF`
-*   **Border**: Default none (outline changes depending on active focus state).
+### 4. Modal Cancel Button Specification
+Modal cancel buttons (e.g., in `BaseModal`, `AddClassModal`, `ExportFormatModal`) use the tactile neutral outline design:
+*   **Background**: `#FFFFFF`
+*   **Border**: `border-[2px] border-[#F1F1F1]`
+*   **Corner Radius**: `rounded-[8px]`
+*   **Padding**: `py-4` (vertical padding)
+*   **Tactile Shadow**:
+    ```js
+    shadowColor: '#F1F1F1',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    elevation: 2,
+    ```
+*   **Font & Color**: `font-fredoka-one text-[#9CA3AF] text-base uppercase`
+*   **Pressed State**: `active:scale-95 transition-transform`
 
 ---
 
@@ -91,9 +107,62 @@ All interactive buttons utilize a playful, tactile "3D click" design using a sol
 *   **Border**: Thick outline `border-[4px] border-[#F1F1F1]`.
 *   **Paddings**: Generous padding (`px-6 pt-2 pb-6 mx-6 mb-6`).
 
+### 3. Swipe Action Menu Specification (Swipable Cards)
+Any swipable list item (e.g., Student List, Lesson Materials, Notifications) must follow this exact design and animation specification (matching the Student List action menu):
+
+*   **No Outer Box/Pill Around Actions**: Action items are rendered as bare icons with text underneath directly on the row background (no background cards, borders, or pills around individual action buttons).
+*   **Component**: `Swipeable` from `react-native-gesture-handler/Swipeable` (`friction={2}`, `overshootRight={false}`).
+*   **Action Menu Row**: `<View className="flex-row items-center justify-end pl-4 pr-1 bg-transparent" style={{ height: '100%' }}>`.
+*   **Button Container**: `<Pressable className="flex-col items-center justify-center active:scale-95 transition-transform" style={{ width: isTablet ? 72 : 56 }}>`.
+*   **Icons**: Bare SVG icon (e.g., `DeleteIcon` from `assets/images/teacher/class/icon-button-delete.svg`, `EditIcon`, `AssignIcon`, `MoveIcon`, or Ionicons size `22` / tablet `26`) wrapped in `<View className="items-center justify-center" style={{ height: isTablet ? 32 : 26 }}>`.
+*   **Typography**: Bold UPPERCASE `font-fredoka-one text-center w-full px-1` (`text-[10px] mt-1.5` on Mobile | `text-[12px] mt-2` on Tablet) with `numberOfLines={1}` and `adjustsFontSizeToFit`.
+*   **Colors**:
+    *   **Primary / Edit / Assign / Move / Read Action**: `#62A9E6` (Blue icon & text)
+    *   **Destructive / Delete Action**: `#FF3B3F` (Red icon & text)
+*   **Single-Open Ref Management**: Track active open swipeable with `openSwipeableRef` and close previous card inside `onSwipeableWillOpen`.
+*   **Staggered Animation Settings**:
+    Actions inside `renderRightActions(progress)` use staggered springy interpolation for scale, opacity, and X-translation:
+    ```js
+    // Action 1 (Primary / Read / Edit)
+    const action1Scale = progress.interpolate({
+      inputRange: [0, 0.4, 1],
+      outputRange: [0.5, 1.1, 1],
+      extrapolate: 'clamp',
+    });
+    const action1Opacity = progress.interpolate({
+      inputRange: [0, 0.3, 1],
+      outputRange: [0, 0.8, 1],
+      extrapolate: 'clamp',
+    });
+    const action1TransX = progress.interpolate({
+      inputRange: [0, 1],
+      outputRange: [15, 0],
+      extrapolate: 'clamp',
+    });
+
+    // Action 2 (Delete / Secondary)
+    const deleteScale = progress.interpolate({
+      inputRange: [0.2, 0.6, 1],
+      outputRange: [0.5, 1.1, 1],
+      extrapolate: 'clamp',
+    });
+    const deleteOpacity = progress.interpolate({
+      inputRange: [0.2, 0.5, 1],
+      outputRange: [0, 0.8, 1],
+      extrapolate: 'clamp',
+    });
+    const deleteTransX = progress.interpolate({
+      inputRange: [0, 1],
+      outputRange: [5, 0],
+      extrapolate: 'clamp',
+    });
+    ```
+
 ---
 
 ## 🔄 Interaction States & Animations
 
 *   **Micro-interactions**: Always add `active:scale-95 transition-transform` on Pressables for responsive tactile feedback.
 *   **Springs & Timings**: Use React Native Reanimated `withTiming` with custom Easing (like `Easing.out(Easing.ease)` or `Easing.quad`) for UI transitions such as press scale or modal entrance slides.
+*   **Haptics**: Always trigger `Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)` (or `Medium` for delete) on swipe action button releases.
+

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Image, Pressable, Text, View } from 'react-native';
 import { Ionicons, Feather } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -14,6 +15,7 @@ interface ParentHeaderProps {
   parentLastName?: string;
   isTablet: boolean;
   onProfilePress: () => void;
+  hasUnreadNotifications?: boolean;
   // Parent & Learner Info
   student?: {
     name?: string;
@@ -62,12 +64,14 @@ export function ParentHeader({
   parentLastName = '',
   isTablet,
   onProfilePress,
+  hasUnreadNotifications = false,
   student,
   classInfo,
   teacherName,
   onChildPress,
   onGoalsPress,
 }: ParentHeaderProps) {
+  const router = useRouter();
   const bellRotation = useSharedValue(0);
 
   const getGreeting = () => {
@@ -80,11 +84,14 @@ export function ParentHeader({
   const triggerBellSwing = () => {
     bellRotation.value = 0;
     bellRotation.value = withSequence(
-      withTiming(-12, { duration: 80 }),
-      withSpring(12, { damping: 4, stiffness: 250 }),
-      withSpring(-6, { damping: 6, stiffness: 200 }),
-      withSpring(0, { damping: 8 })
+      withTiming(-15, { duration: 70 }),
+      withTiming(15, { duration: 90 }),
+      withTiming(-9, { duration: 80 }),
+      withTiming(9, { duration: 80 }),
+      withTiming(-4, { duration: 70 }),
+      withTiming(0, { duration: 60 })
     );
+    router.push('/notifications' as any);
   };
 
   const animatedBellStyle = useAnimatedStyle(() => ({
@@ -130,7 +137,7 @@ export function ParentHeader({
 
         <Pressable 
           onPress={triggerBellSwing}
-          className="active:scale-95 transition-transform p-1"
+          className="active:scale-95 transition-transform p-1 relative"
         >
           <AnimatedIonicons 
             name="notifications" 
@@ -138,6 +145,9 @@ export function ParentHeader({
             color="#62A9E6" 
             style={animatedBellStyle}
           />
+          {hasUnreadNotifications && (
+            <View className={`absolute top-0.5 right-0.5 rounded-full bg-[#FF3B3F] ${isTablet ? 'w-3.5 h-3.5' : 'w-2.5 h-2.5'}`} />
+          )}
         </Pressable>
       </View>
 

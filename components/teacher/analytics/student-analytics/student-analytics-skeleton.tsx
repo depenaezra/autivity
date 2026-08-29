@@ -61,29 +61,28 @@ export function StudentAnalyticsSkeleton({ isTablet }: SkeletonProps) {
 
   return (
     <Animated.View style={animatedStyle} className="flex-col gap-4 w-full">
+      {/* Control Row Skeleton (Range Filter & Download Report) */}
+      <View className="flex-row items-center justify-end gap-2 mb-1">
+        <View className="bg-[#E5E7EB] rounded-xl h-[36px] w-28" />
+        <View className="bg-[#E5E7EB] rounded-xl h-[36px] w-36" />
+      </View>
+
       {/* 1. Student Details Card Skeleton */}
-      <View className="bg-white border-[2px] border-[#F1F1F1] rounded-[24px] p-5 shadow-sm">
-        <View className="flex-row items-center justify-between flex-wrap gap-4">
-          <View className="flex-row items-center gap-4">
-            <View className={`rounded-full bg-[#E5E7EB] ${isTablet ? 'w-16 h-16' : 'w-12 h-12'}`} />
-            <View className="flex-col gap-2">
-              <View className={`bg-[#E5E7EB] rounded-[6px] ${isTablet ? 'h-6 w-44' : 'h-5 w-32'}`} />
-              <View className={`bg-[#E5E7EB] rounded-[6px] ${isTablet ? 'h-4 w-32' : 'h-3 w-24'}`} />
-            </View>
-          </View>
-          <View className={`bg-[#E5E7EB] rounded-[8px] ${isTablet ? 'h-8 w-28' : 'h-7 w-20'}`} />
+      <View className="bg-[#F9FAFB] border border-[#F3F4F6] rounded-2xl p-4 sm:p-5">
+        <View className="flex-row items-center justify-between flex-wrap gap-2">
+          <View className={`bg-[#E5E7EB] rounded-[6px] ${isTablet ? 'h-6 w-36' : 'h-5 w-28'}`} />
+          <View className={`bg-[#E5E7EB] rounded-[6px] ${isTablet ? 'h-6 w-28' : 'h-5 w-20'}`} />
+        </View>
+        <View className="flex-row items-center gap-2 mt-3 pt-3 border-t border-[#E5E7EB]">
+          <View className="bg-[#E5E7EB] rounded-[6px] h-6 w-20" />
+          <View className="bg-[#E5E7EB] rounded-[6px] h-6 w-16" />
         </View>
       </View>
 
       {/* 2. Student Performance KPI Cards Skeleton */}
-      <View className="flex-col mt-4">
+      <View className="flex-col mt-2">
         <View className="flex-row justify-between items-center mb-4">
           <View className={`bg-[#E5E7EB] rounded-[6px] ${isTablet ? 'h-6 w-56' : 'h-5 w-40'}`} />
-          <View className="flex-row gap-1.5">
-            {[1, 2, 3, 4].map((i) => (
-              <View key={i} className={`bg-[#E5E7EB] rounded-[8px] ${isTablet ? 'h-8 w-16' : 'h-7 w-12'}`} />
-            ))}
-          </View>
         </View>
         <View className="flex-row gap-4">
           {[1, 2].map((cardIdx) => (
@@ -108,11 +107,34 @@ export function StudentAnalyticsSkeleton({ isTablet }: SkeletonProps) {
         </View>
       </View>
 
-      {/* 3. Evaluation Trend Chart Skeleton */}
-      <View className="flex-col mt-6">
-        <View className="flex-row justify-between items-center mb-4">
+      {/* 3. Actionable Recommendations Skeleton */}
+      <View className="bg-[#F9FAFB] border border-[#F3F4F6] rounded-2xl p-4 sm:p-5 flex-col gap-3 mt-2">
+        <View className="flex-row items-center justify-between">
+          <View className={`bg-[#E5E7EB] rounded-[6px] ${isTablet ? 'h-6 w-56' : 'h-5 w-44'}`} />
+          <View className="w-5 h-5 rounded-full bg-[#E5E7EB]" />
+        </View>
+        <View className="flex-col gap-2.5 mt-1">
+          {[1, 2].map((i) => (
+            <View key={i} className="bg-white border border-[#E5E7EB] rounded-xl p-3.5 flex-col gap-2">
+              <View className="flex-row items-center justify-between">
+                <View className="flex-row items-center gap-2">
+                  <View className="w-2.5 h-2.5 rounded-full bg-[#E5E7EB]" />
+                  <View className={`bg-[#E5E7EB] rounded-[4px] ${isTablet ? 'h-5 w-48' : 'h-4 w-36'}`} />
+                </View>
+                <View className="bg-[#E5E7EB] rounded-full h-5 w-20" />
+              </View>
+              <View className="bg-[#E5E7EB] rounded-[4px] h-3 w-full" />
+            </View>
+          ))}
+        </View>
+      </View>
+
+      {/* 4. Evaluation Trend Chart Skeleton */}
+      <View className="flex-col mt-4">
+        <View className="flex-row justify-between items-center mb-4 flex-wrap gap-2">
           <View className={`bg-[#E5E7EB] rounded-[6px] ${isTablet ? 'h-6 w-52' : 'h-5 w-36'}`} />
-          <View className="flex-row gap-1.5">
+          <View className="flex-row items-center gap-1.5">
+            <View className="bg-[#E5E7EB] rounded-lg h-7 w-24" />
             {[1, 2, 3, 4].map((i) => (
               <View key={i} className={`bg-[#E5E7EB] rounded-[8px] ${isTablet ? 'h-8 w-16' : 'h-7 w-12'}`} />
             ))}
@@ -125,9 +147,9 @@ export function StudentAnalyticsSkeleton({ isTablet }: SkeletonProps) {
         </View>
       </View>
 
-      {/* 4. Developmental Domain Practice Skeleton */}
-      <View className="flex-col mt-6">
-        <View className="flex-row justify-between items-center mb-4">
+      {/* 5. Developmental Domain Practice Skeleton */}
+      <View className="flex-col mt-4">
+        <View className="flex-row justify-between items-center mb-4 flex-wrap gap-2">
           <View className={`bg-[#E5E7EB] rounded-[6px] ${isTablet ? 'h-6 w-64' : 'h-5 w-48'}`} />
           <View className="flex-row gap-1.5">
             {[1, 2, 3, 4].map((i) => (
@@ -138,11 +160,17 @@ export function StudentAnalyticsSkeleton({ isTablet }: SkeletonProps) {
         <View className="flex-col gap-3">
           {[1, 2, 3].map((domainIdx) => (
             <View key={domainIdx} className="bg-[#F9FAFB] border border-[#F3F4F6] rounded-2xl p-4 flex-col gap-3">
-              <View className="flex-row items-center gap-2">
-                <View className="w-3 h-3 rounded-full bg-[#E5E7EB]" />
-                <View className="h-4 w-36 bg-[#E5E7EB] rounded-[4px]" />
+              <View className="flex-row items-center justify-between">
+                <View className="flex-row items-center gap-2">
+                  <View className="w-3.5 h-3.5 rounded-full bg-[#E5E7EB]" />
+                  <View className="h-4 w-36 bg-[#E5E7EB] rounded-[4px]" />
+                </View>
+                <View className="h-4 w-4 bg-[#E5E7EB] rounded-full" />
               </View>
-              <View className="w-full h-3 bg-[#E5E7EB] rounded-full" />
+              <View className="flex-row items-center gap-2 ml-6">
+                <View className="h-4 w-24 bg-[#E5E7EB] rounded-full" />
+                <View className="h-4 w-20 bg-[#E5E7EB] rounded-full" />
+              </View>
             </View>
           ))}
         </View>
