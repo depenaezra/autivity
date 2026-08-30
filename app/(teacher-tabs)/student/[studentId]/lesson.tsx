@@ -69,9 +69,23 @@ export default function LessonScreen() {
                         return !isDragDrop && !isBubble;
                     });
                 } else if (activityType === 'matching') {
+                    const hasColorSub = subcategories.some(s => s.toLowerCase().includes('color'));
+                    const hasFruitSub = subcategories.some(s => s.toLowerCase().includes('fruit'));
+
                     pool = pool.filter(a => {
-                        const path = a.path || '';
-                        return path.includes('drag-drop') || a.category?.toLowerCase().includes('drag');
+                        const path = (a.path || '').toLowerCase();
+                        const cat = (a.category || '').toLowerCase();
+                        const sub = (a.sub_category || '').toLowerCase();
+                        const isDragDrop = path.includes('drag-drop') || cat.includes('drag');
+                        if (!isDragDrop) return false;
+
+                        if (hasColorSub && !hasFruitSub) {
+                            return sub.includes('color') || path.includes('color');
+                        }
+                        if (hasFruitSub && !hasColorSub) {
+                            return sub.includes('fruit') || path.includes('fruit');
+                        }
+                        return true;
                     });
                 } else if (activityType === 'bubble' || activityType === 'bubble-pop') {
                     const hasColorSub = subcategories.some(s => s.toLowerCase().includes('color') || s.toLowerCase().includes('red') || s.toLowerCase().includes('blue') || s.toLowerCase().includes('green'));

@@ -56,8 +56,6 @@ export function ParentActivityPerformance({ sessions = [], data: initialData, gl
           (r.following_instructions || 0) +
           (r.completed_work || 0);
         scorePct = Math.round((sum / 25) * 100);
-      } else if (s.status === 'validated' && s.score != null) {
-        scorePct = s.score;
       }
       if (scorePct == null) return;
       if (!byCategory[s.category]) byCategory[s.category] = [];

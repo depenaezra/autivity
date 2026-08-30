@@ -119,14 +119,23 @@ export default function ParentHomeScreen() {
     return domains.map((domain) => {
       const relevant = filteredSessionsForStats.filter(
         (s) =>
-          s.score != null &&
+          Boolean(s.rubricEvaluation) &&
           s.skill_domain.some((tag) =>
             domain.subSkills.some((sub) => sub.trim().toLowerCase() === tag.trim().toLowerCase())
           )
       );
-      const value = relevant.length
-        ? Math.round(relevant.reduce((sum, s) => sum + (s.score || 0), 0) / relevant.length)
-        : 0;
+      const totalPct = relevant.reduce((acc, s) => {
+        const r = s.rubricEvaluation;
+        if (!r) return acc;
+        const rSum =
+          (r.looking_at_objects || 0) +
+          (r.concentrating || 0) +
+          (r.performing_task || 0) +
+          (r.following_instructions || 0) +
+          (r.completed_work || 0);
+        return acc + Math.round((rSum / 25) * 100);
+      }, 0);
+      const value = relevant.length ? Math.round(totalPct / relevant.length) : 0;
       return { label: domain.name, value };
     });
   }, [filteredSessionsForStats, dashboard]);

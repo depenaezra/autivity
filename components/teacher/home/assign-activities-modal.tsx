@@ -12,6 +12,7 @@ export const ALL_TRACING_CATEGORIES = [
 
 export const ALL_MATCHING_CATEGORIES = [
   { id: 'Matching Fruits', title: 'Fruits Matching', icon: 'nutrition-outline' },
+  { id: 'Matching Colors', title: 'Color Matching', icon: 'color-palette-outline' },
 ];
 
 export const ALL_BUBBLE_POP_CATEGORIES = [

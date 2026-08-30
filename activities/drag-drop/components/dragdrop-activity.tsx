@@ -18,11 +18,38 @@ interface DynamicActivityProps {
 }
 
 const MATCHING_GUIDING_MESSAGES = [
-    "Not quite! Try matching with another item!",
-    "Give it another go! Find where this belongs!",
-    "Almost! Try placing it in a different spot!",
-    "Let's try again! Can you find the matching pair?",
+    "Not quite! Try dragging it to its matching color!",
+    "Give it another go! Find the corresponding color!",
+    "Almost! Check the color of this item and try again!",
+    "Let's try again! Can you find the matching color target?",
 ];
+
+const COLOR_THEME_MAP: Record<string, { bg: string; border: string; font: string; circle: string }> = {
+    Red: {
+        bg: '#FFDBD4',
+        border: '#FF8870',
+        font: '#FF8870',
+        circle: '#FF8870',
+    },
+    Green: {
+        bg: '#CBFAC4',
+        border: '#179D33',
+        font: '#179D33',
+        circle: '#179D33',
+    },
+    Blue: {
+        bg: '#BBE8FB',
+        border: '#62A9E6',
+        font: '#62A9E6',
+        circle: '#62A9E6',
+    },
+    Yellow: {
+        bg: '#FFF3C4',
+        border: '#FFAE02',
+        font: '#FFAE02',
+        circle: '#FFAE02',
+    },
+};
 
 export default function DragDropActivity({ contentData, onComplete, onFeedback, onIncorrectAttempt }: DynamicActivityProps) {
     const { width } = useWindowDimensions();
@@ -62,6 +89,10 @@ export default function DragDropActivity({ contentData, onComplete, onFeedback, 
         setPlacedItems({});
         mistakesRef.current = 0;
         startTimeRef.current = Date.now();
+
+        if (layoutMix.instruction) {
+            onFeedback?.(layoutMix.instruction);
+        }
     };
 
     useEffect(() => {
@@ -105,20 +136,23 @@ export default function DragDropActivity({ contentData, onComplete, onFeedback, 
 
             // Set timeout to revert the message after 3.5 seconds
             feedbackTimeoutRef.current = setTimeout(() => {
-                onFeedback?.(contentData.instruction || "Let's play!");
+                onFeedback?.(activityLayout.instruction || contentData.instruction || "Let's play!");
             }, 3500);
         }
     };
 
     if (!activityLayout) return null;
 
-    const isComplete = Object.keys(placedItems).length === activityLayout.targets.length;
+    if (!activityLayout) return null;
+
+    const itemCount = activityLayout.targets.length;
+    const cardSizes = getDynamicCardSizes(itemCount, isTablet);
 
     return (
         <DraxProvider>
             <View style={styles.container}>
                 {/* COMPONENT DRAGGABLE SOURCE TRAY */}
-                <View style={[styles.row, isTablet && styles.rowTablet]}>
+                <View style={[styles.row, { gap: cardSizes.gap }]}>
                     {activityLayout.items.map((item) => {
                         const isPlaced = placedItems[item.type];
 
@@ -126,7 +160,10 @@ export default function DragDropActivity({ contentData, onComplete, onFeedback, 
                             return (
                                 <View
                                     key={`space-${item.id}`}
-                                    style={[styles.placeholderSpace, isTablet && styles.placeholderSpaceTablet]}
+                                    style={{
+                                        width: cardSizes.cardSize,
+                                        height: cardSizes.cardSize,
+                                    }}
                                 />
                             );
                         }
@@ -136,24 +173,38 @@ export default function DragDropActivity({ contentData, onComplete, onFeedback, 
                                 key={`drag-${item.id}`}
                                 item={item}
                                 incorrectTrigger={incorrectTrigger}
-                                isTablet={isTablet}
+                                cardSizes={cardSizes}
                             />
                         );
                     })}
                 </View>
 
                 {/* RECEPTIVE CUTOUT TARGETS */}
-                <View style={[styles.row, isTablet && styles.rowTablet]}>
+                <View style={[styles.row, { gap: cardSizes.gap }]}>
                     {activityLayout.targets.map((target) => {
                         const isPlaced = placedItems[target.type];
+                        const theme = COLOR_THEME_MAP[target.type] || {
+                            bg: '#F3F4F6',
+                            border: '#E5E7EB',
+                            font: '#535B74',
+                            circle: target.color || '#9CA3AF',
+                        };
 
                         return (
                             <DraxView
                                 key={`target-${target.id}`}
                                 style={[
-                                    styles.receiverBox,
-                                    isTablet && styles.receiverBoxTablet,
-                                    isPlaced && styles.receiverPlaced
+                                    styles.receiverCard,
+                                    {
+                                        width: cardSizes.cardSize,
+                                        height: cardSizes.cardSize,
+                                        borderRadius: cardSizes.borderRadius,
+                                        backgroundColor: theme.bg,
+                                        borderColor: theme.border,
+                                        borderBottomColor: theme.border,
+                                        borderBottomWidth: isPlaced ? 2 : cardSizes.borderBottomWidth,
+                                        borderStyle: isPlaced ? 'solid' : 'dashed',
+                                    },
                                 ]}
                                 receivingStyle={styles.receivingActive}
                                 onReceiveDragDrop={(event) => {
@@ -161,22 +212,59 @@ export default function DragDropActivity({ contentData, onComplete, onFeedback, 
                                     handleDrop(payload, target.type);
                                 }}
                             >
-                                {isPlaced ? (
-                                    <Image
-                                        key={`filled-${target.id}`}
-                                        source={target.imageSource}
-                                        style={[styles.fruitImage, isTablet && styles.fruitImageTablet]}
-                                    />
+                                {target.imageSource ? (
+                                    isPlaced ? (
+                                        <Image
+                                            key={`filled-${target.id}`}
+                                            source={target.imageSource}
+                                            style={{
+                                                width: cardSizes.imageSize,
+                                                height: cardSizes.imageSize,
+                                                resizeMode: 'contain',
+                                            }}
+                                        />
+                                    ) : (
+                                        <Image
+                                            key={`silhouette-${target.id}`}
+                                            source={target.imageSource}
+                                            style={[
+                                                {
+                                                    width: cardSizes.imageSize,
+                                                    height: cardSizes.imageSize,
+                                                    resizeMode: 'contain',
+                                                },
+                                                styles.silhouetteMask
+                                            ]}
+                                        />
+                                    )
                                 ) : (
-                                    <Image
-                                        key={`silhouette-${target.id}`}
-                                        source={target.imageSource}
-                                        style={[
-                                            styles.fruitImage,
-                                            isTablet && styles.fruitImageTablet,
-                                            styles.silhouetteMask
-                                        ]}
-                                    />
+                                    <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+                                        <View style={{
+                                            width: cardSizes.circleSize,
+                                            height: cardSizes.circleSize,
+                                            borderRadius: 999,
+                                            backgroundColor: isPlaced ? theme.border : theme.circle,
+                                            justifyContent: 'center',
+                                            alignItems: 'center',
+                                        }}>
+                                            {isPlaced && (
+                                                <Text style={{ color: '#FFFFFF', fontSize: cardSizes.checkFontSize, fontWeight: 'bold' }}>✓</Text>
+                                            )}
+                                        </View>
+                                        <Text
+                                            style={{
+                                                fontFamily: 'FredokaOne_400Regular',
+                                                color: theme.font,
+                                                fontSize: cardSizes.labelFontSize,
+                                                marginTop: 4,
+                                                fontWeight: 'bold',
+                                                textTransform: 'uppercase',
+                                                letterSpacing: 0.5,
+                                            }}
+                                        >
+                                            {target.type}
+                                        </Text>
+                                    </View>
                                 )}
                             </DraxView>
                         );
@@ -187,14 +275,89 @@ export default function DragDropActivity({ contentData, onComplete, onFeedback, 
     );
 }
 
+function getDynamicCardSizes(count: number, isTablet: boolean) {
+    if (isTablet) {
+        if (count >= 5) {
+            return {
+                cardSize: 125,
+                imageSize: 90,
+                gap: 16,
+                circleSize: 46,
+                checkFontSize: 22,
+                labelFontSize: 13,
+                borderRadius: 22,
+                borderBottomWidth: 6,
+            };
+        }
+        if (count === 4) {
+            return {
+                cardSize: 140,
+                imageSize: 105,
+                gap: 20,
+                circleSize: 52,
+                checkFontSize: 24,
+                labelFontSize: 14,
+                borderRadius: 26,
+                borderBottomWidth: 6,
+            };
+        }
+        return {
+            cardSize: 155,
+            imageSize: 120,
+            gap: 24,
+            circleSize: 56,
+            checkFontSize: 24,
+            labelFontSize: 14,
+            borderRadius: 28,
+            borderBottomWidth: 6,
+        };
+    }
+
+    // Mobile sizing - Spacious cards with generous gaps
+    if (count >= 5) {
+        return {
+            cardSize: 84,
+            imageSize: 58,
+            gap: 10,
+            circleSize: 32,
+            checkFontSize: 15,
+            labelFontSize: 9.5,
+            borderRadius: 18,
+            borderBottomWidth: 4,
+        };
+    }
+    if (count === 4) {
+        return {
+            cardSize: 92,
+            imageSize: 64,
+            gap: 12,
+            circleSize: 36,
+            checkFontSize: 17,
+            labelFontSize: 10.5,
+            borderRadius: 18,
+            borderBottomWidth: 4,
+        };
+    }
+    return {
+        cardSize: 100,
+        imageSize: 72,
+        gap: 14,
+        circleSize: 38,
+        checkFontSize: 18,
+        labelFontSize: 11,
+        borderRadius: 20,
+        borderBottomWidth: 4,
+    };
+}
+
 function DraggableItem({
     item,
     incorrectTrigger,
-    isTablet,
+    cardSizes,
 }: {
     item: any;
     incorrectTrigger: { type: string; timestamp: number } | null;
-    isTablet: boolean;
+    cardSizes: any;
 }) {
     const shakeOffset = useSharedValue(0);
 
@@ -223,18 +386,35 @@ function DraggableItem({
             <DraxView
                 style={[
                     styles.draggableCard,
-                    { borderColor: item.color },
-                    isTablet && styles.draggableCardTablet
+                    {
+                        width: cardSizes.cardSize,
+                        height: cardSizes.cardSize,
+                        borderRadius: cardSizes.borderRadius,
+                        borderBottomWidth: cardSizes.borderBottomWidth,
+                    }
                 ]}
                 draggingStyle={styles.dragging}
                 dragReleasedStyle={styles.dragging}
                 dragPayload={item.type}
                 longPressDelay={0}
             >
-                <Image
-                    source={item.imageSource}
-                    style={[styles.fruitImage, isTablet && styles.fruitImageTablet]}
-                />
+                {item.imageSource ? (
+                    <Image
+                        source={item.imageSource}
+                        style={{
+                            width: cardSizes.imageSize,
+                            height: cardSizes.imageSize,
+                            resizeMode: 'contain',
+                        }}
+                    />
+                ) : (
+                    <View style={{
+                        width: cardSizes.imageSize,
+                        height: cardSizes.imageSize,
+                        borderRadius: 999,
+                        backgroundColor: item.color,
+                    }} />
+                )}
             </DraxView>
         </Animated.View>
     );
@@ -242,18 +422,10 @@ function DraggableItem({
 
 const styles = StyleSheet.create({
     container: { flex: 1, justifyContent: 'space-evenly', width: '100%' },
-    row: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', width: '100%', flexWrap: 'wrap', gap: 12 },
-    rowTablet: { gap: 24 },
-    draggableCard: { width: 100, height: 100, borderRadius: 20, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center', borderWidth: 3, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 6, shadowOffset: { width: 0, height: 4 }, elevation: 3 },
-    draggableCardTablet: { width: 155, height: 155, borderRadius: 28, borderWidth: 4 },
-    placeholderSpace: { width: 100, height: 100 },
-    placeholderSpaceTablet: { width: 155, height: 155 },
-    fruitImage: { width: 76, height: 76, borderRadius: 12, resizeMode: 'contain' },
-    fruitImageTablet: { width: 120, height: 120, borderRadius: 18 },
+    row: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', width: '100%', flexWrap: 'wrap' },
+    draggableCard: { backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#E2E8F0', borderBottomColor: '#CBD5E1' },
     silhouetteMask: { tintColor: '#9CA3AF', opacity: 0.6 },
     dragging: { opacity: 0.15 },
-    receiverBox: { width: 110, height: 110, backgroundColor: '#F3F4F6', borderRadius: 24, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#D1D5DB', borderStyle: 'dashed' },
-    receiverBoxTablet: { width: 170, height: 170, borderRadius: 32, borderWidth: 3 },
-    receivingActive: { borderColor: '#3B82F6', backgroundColor: '#EFF6FF', borderStyle: 'solid' },
-    receiverPlaced: { backgroundColor: 'transparent', borderColor: 'transparent', borderStyle: 'solid' },
+    receiverCard: { justifyContent: 'center', alignItems: 'center', borderWidth: 2 },
+    receivingActive: { opacity: 0.7, transform: [{ scale: 1.04 }] },
 });

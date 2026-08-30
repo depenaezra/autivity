@@ -19,10 +19,9 @@ export function RecentActivityCard({
 
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr);
-    return d.toLocaleDateString('en-US', {
+    return d.toLocaleDateString([], {
       month: 'short',
       day: 'numeric',
-      year: 'numeric',
     });
   };
 
@@ -67,9 +66,9 @@ export function RecentActivityCard({
 
             {/* Completed Date Pill on the right */}
             {latestSession.created_at && (
-              <View className="flex-row items-center gap-1.5 bg-white border border-[#E2E8F0] px-2.5 py-1 rounded-lg">
-                <Ionicons name="calendar" size={isTablet ? 16 : 14} color="#4B5563" />
-                <Text className="font-quicksand-semibold text-xs sm:text-sm text-[#4B5563]">
+              <View className="flex-row items-center bg-white border-[2px] border-[#BBE8FB] rounded-[6px] px-2 py-0.5 gap-1 shrink-0">
+                <Ionicons name="calendar" size={isTablet ? 16 : 12} color="#62A9E6" />
+                <Text className={`font-fredoka-one text-[#62A9E6] uppercase ${isTablet ? 'text-[14px]' : 'text-[11px]'}`}>
                   {formatDate(latestSession.created_at)}
                 </Text>
               </View>

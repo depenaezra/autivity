@@ -63,10 +63,11 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
         <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
+          <Stack.Screen name="index" />
+          <Stack.Screen name="lottie-test" />
           <Stack.Screen name="(auth)" />
           <Stack.Screen name="(teacher-tabs)" />
           <Stack.Screen name="(parent-tabs)" />
-          <Stack.Screen name="student/[studentId]" />
         </Stack>
         <StatusBar style="auto" />
       </ThemeProvider>

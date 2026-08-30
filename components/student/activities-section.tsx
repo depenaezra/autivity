@@ -164,7 +164,8 @@ export function ActivitiesSection({
   };
 
   const isMatchingPath = (path: string) => {
-    return path.toLowerCase() === 'matching fruits' || path.includes('drag-drop');
+    const lower = path.toLowerCase();
+    return lower === 'matching fruits' || lower === 'matching colors' || lower.includes('drag-drop') || lower.includes('matching') || lower.includes('drag');
   };
 
   const isBubblePath = (path: string) => {

@@ -1,0 +1,225 @@
+export interface ColorMatchingItem {
+    id: string;
+    category: 'toys' | 'school_supplies' | 'clothing' | 'household_items';
+    type: 'Red' | 'Green' | 'Blue' | 'Yellow';
+    asset_key: string;
+    color: string;
+    label: string;
+}
+
+export const COLOR_MATCHING_POOL: ColorMatchingItem[] = [
+    // RED ITEMS (#EF4444)
+    {
+        id: 'red-bowling',
+        category: 'toys',
+        type: 'Red',
+        asset_key: 'red_bowling',
+        color: '#EF4444',
+        label: 'Red Bowling Pins',
+    },
+    {
+        id: 'red-toy',
+        category: 'toys',
+        type: 'Red',
+        asset_key: 'red_toy',
+        color: '#EF4444',
+        label: 'Red Toy',
+    },
+    {
+        id: 'red-scissors',
+        category: 'school_supplies',
+        type: 'Red',
+        asset_key: 'red_scissors',
+        color: '#EF4444',
+        label: 'Red Scissors',
+    },
+    {
+        id: 'red-book',
+        category: 'school_supplies',
+        type: 'Red',
+        asset_key: 'red_book',
+        color: '#EF4444',
+        label: 'Red Book',
+    },
+    {
+        id: 'red-comb',
+        category: 'clothing',
+        type: 'Red',
+        asset_key: 'red_comb',
+        color: '#EF4444',
+        label: 'Red Comb',
+    },
+    {
+        id: 'red-scarf',
+        category: 'clothing',
+        type: 'Red',
+        asset_key: 'red_scarf',
+        color: '#EF4444',
+        label: 'Red Scarf',
+    },
+    {
+        id: 'red-pillow',
+        category: 'household_items',
+        type: 'Red',
+        asset_key: 'red_pillow',
+        color: '#EF4444',
+        label: 'Red Pillow',
+    },
+
+    // GREEN ITEMS (#10B981)
+    {
+        id: 'green-spray-bottle',
+        category: 'household_items',
+        type: 'Green',
+        asset_key: 'green_spray_bottle',
+        color: '#10B981',
+        label: 'Green Spray Bottle',
+    },
+    {
+        id: 'green-balloon-dog',
+        category: 'toys',
+        type: 'Green',
+        asset_key: 'green_balloon_dog',
+        color: '#10B981',
+        label: 'Green Balloon Dog',
+    },
+    {
+        id: 'green-dinosaur',
+        category: 'toys',
+        type: 'Green',
+        asset_key: 'green_dinosaur',
+        color: '#10B981',
+        label: 'Green Dinosaur',
+    },
+    {
+        id: 'green-backpack',
+        category: 'school_supplies',
+        type: 'Green',
+        asset_key: 'green_backpack',
+        color: '#10B981',
+        label: 'Green Backpack',
+    },
+    {
+        id: 'green-headband',
+        category: 'clothing',
+        type: 'Green',
+        asset_key: 'green_headband',
+        color: '#10B981',
+        label: 'Green Headband',
+    },
+    {
+        id: 'green-slippers',
+        category: 'clothing',
+        type: 'Green',
+        asset_key: 'green_slippers',
+        color: '#10B981',
+        label: 'Green Slippers',
+    },
+
+    // BLUE ITEMS (#3B82F6)
+    {
+        id: 'blue-cap',
+        category: 'clothing',
+        type: 'Blue',
+        asset_key: 'blue_cap',
+        color: '#3B82F6',
+        label: 'Blue Cap',
+    },
+    {
+        id: 'blue-yoyo',
+        category: 'toys',
+        type: 'Blue',
+        asset_key: 'blue_yoyo',
+        color: '#3B82F6',
+        label: 'Blue Yo-Yo',
+    },
+    {
+        id: 'blue-notebook',
+        category: 'school_supplies',
+        type: 'Blue',
+        asset_key: 'blue_notebook',
+        color: '#3B82F6',
+        label: 'Blue Notebook',
+    },
+    {
+        id: 'blue-crayon',
+        category: 'school_supplies',
+        type: 'Blue',
+        asset_key: 'blue_crayon',
+        color: '#3B82F6',
+        label: 'Blue Crayon',
+    },
+    {
+        id: 'blue-sofa',
+        category: 'household_items',
+        type: 'Blue',
+        asset_key: 'blue_sofa',
+        color: '#3B82F6',
+        label: 'Blue Sofa',
+    },
+    {
+        id: 'blue-bucket',
+        category: 'household_items',
+        type: 'Blue',
+        asset_key: 'blue_bucket',
+        color: '#3B82F6',
+        label: 'Blue Bucket',
+    },
+
+    // YELLOW ITEMS (#FACC15)
+    {
+        id: 'yellow-sponge',
+        category: 'household_items',
+        type: 'Yellow',
+        asset_key: 'yellow_sponge',
+        color: '#FACC15',
+        label: 'Yellow Sponge',
+    },
+    {
+        id: 'yellow-broom',
+        category: 'household_items',
+        type: 'Yellow',
+        asset_key: 'yellow_broom',
+        color: '#FACC15',
+        label: 'Yellow Broom',
+    },
+    {
+        id: 'yellow-sock',
+        category: 'clothing',
+        type: 'Yellow',
+        asset_key: 'yellow_sock',
+        color: '#FACC15',
+        label: 'Yellow Sock',
+    },
+    {
+        id: 'yellow-glue',
+        category: 'school_supplies',
+        type: 'Yellow',
+        asset_key: 'yellow_glue',
+        color: '#FACC15',
+        label: 'Yellow Glue',
+    },
+    {
+        id: 'yellow-pencil',
+        category: 'school_supplies',
+        type: 'Yellow',
+        asset_key: 'yellow_pencil',
+        color: '#FACC15',
+        label: 'Yellow Pencil',
+    },
+    {
+        id: 'yellow-puzzle',
+        category: 'toys',
+        type: 'Yellow',
+        asset_key: 'yellow_puzzle',
+        color: '#FACC15',
+        label: 'Yellow Puzzle',
+    },
+];
+
+export const COLOR_TARGET_DEFS: Record<string, { color: string; label: string }> = {
+    Red: { color: '#EF4444', label: 'RED' },
+    Green: { color: '#10B981', label: 'GREEN' },
+    Blue: { color: '#3B82F6', label: 'BLUE' },
+    Yellow: { color: '#FACC15', label: 'YELLOW' },
+};

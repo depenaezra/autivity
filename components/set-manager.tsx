@@ -1,9 +1,118 @@
 import ActivityBear from '@/assets/images/activity-bear.svg';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import * as Haptics from 'expo-haptics';
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated as RNAnimated, Dimensions, Pressable, Text, View, ActivityIndicator } from 'react-native';
-import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
+import { Animated as RNAnimated, Dimensions, Pressable, Text, View, ActivityIndicator, useWindowDimensions } from 'react-native';
+import Svg, { Circle } from 'react-native-svg';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
+
+// Hold-to-exit button component with progress ring animation
+function HoldToExitButton({ onExit }: { onExit: () => void }) {
+    const [progress, setProgress] = useState(0);
+    const [showHint, setShowHint] = useState(false);
+    const holdTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const startTimeRef = useRef<number>(0);
+    const HOLD_DURATION = 2500; // 2.5 seconds hold duration
+
+    const startHolding = () => {
+        try {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        } catch { }
+        setShowHint(false);
+        startTimeRef.current = Date.now();
+        setProgress(0);
+
+        progressIntervalRef.current = setInterval(() => {
+            const elapsed = Date.now() - startTimeRef.current;
+            const pct = Math.min(100, (elapsed / HOLD_DURATION) * 100);
+            setProgress(pct);
+        }, 16);
+
+        holdTimerRef.current = setTimeout(() => {
+            if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
+            setProgress(100);
+            try {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            } catch { }
+            onExit();
+        }, HOLD_DURATION);
+    };
+
+    const stopHolding = () => {
+        if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
+        if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
+
+        const elapsed = Date.now() - startTimeRef.current;
+        if (elapsed < HOLD_DURATION) {
+            setProgress(0);
+            if (elapsed > 30) {
+                setShowHint(true);
+                setTimeout(() => setShowHint(false), 2500);
+            }
+        }
+    };
+
+    useEffect(() => {
+        return () => {
+            if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
+            if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
+        };
+    }, []);
+
+    const size = 36;
+    const strokeWidth = 3;
+    const center = size / 2;
+    const radius = (size - strokeWidth) / 2;
+    const circumference = 2 * Math.PI * radius;
+    const strokeDashoffset = circumference - (circumference * progress) / 100;
+
+    return (
+        <View className="relative items-center justify-center mr-4 z-50">
+            <Pressable
+                onPressIn={startHolding}
+                onPressOut={stopHolding}
+                className="w-9 h-9 items-center justify-center active:scale-95 transition-transform relative"
+                style={{ width: size, height: size }}
+            >
+                {/* SVG Progress Ring - Only visible while holding */}
+                {progress > 0 && (
+                    <Svg width={size} height={size} style={{ position: 'absolute', top: 0, left: 0, transform: [{ rotate: '-90deg' }] }}>
+                        <Circle
+                            cx={center}
+                            cy={center}
+                            r={radius}
+                            stroke="#E2E8F0"
+                            strokeWidth={strokeWidth}
+                            fill="transparent"
+                        />
+                        <Circle
+                            cx={center}
+                            cy={center}
+                            r={radius}
+                            stroke="#62A9E6"
+                            strokeWidth={strokeWidth}
+                            strokeDasharray={`${circumference} ${circumference}`}
+                            strokeDashoffset={strokeDashoffset}
+                            strokeLinecap="round"
+                            fill="transparent"
+                        />
+                    </Svg>
+                )}
+                <Feather name="x" size={28} color={progress > 0 ? '#62A9E6' : '#535B74'} />
+            </Pressable>
+
+            {/* Floating Tooltip Hint */}
+            {showHint && (
+                <View className="absolute left-12 bg-[#334155] px-3 py-1.5 rounded-xl shadow-lg z-[999] flex-row items-center gap-1.5" style={{ width: 145 }}>
+                    <Feather name="info" size={13} color="#FFFFFF" />
+                    <Text className="text-white font-quicksand-bold text-[11px]">Hold longer to exit.</Text>
+                </View>
+            )}
+        </View>
+    );
+}
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import AchievementUnlockScreen, { UnlockedBadge } from '@/components/achievement-unlock-screen';
@@ -109,6 +218,9 @@ export default function SetManager({
     teacherId,
     activityType,
 }: SetManagerProps) {
+    const { width } = useWindowDimensions();
+    const isTablet = width >= 768;
+
     // State Requirements
     const [isInitializing, setIsInitializing] = useState(true);
     const [activityPool, setActivityPool] = useState<any[]>([]);
@@ -134,6 +246,23 @@ export default function SetManager({
     const [totalMistakesAccumulator, setTotalMistakesAccumulator] = useState(0);
     const [totalScoreAccumulator, setTotalScoreAccumulator] = useState(0);
     const [playedActivityPaths, setPlayedActivityPaths] = useState<string[]>([]);
+
+    // Microanimation for smooth progress bar fill (500ms easing slide)
+    const progressAnim = useSharedValue(0);
+
+    useEffect(() => {
+        const targetPercent = Math.min(100, (completedCount / 3) * 100);
+        progressAnim.value = withTiming(targetPercent, {
+            duration: 500,
+            easing: Easing.out(Easing.quad),
+        });
+    }, [completedCount]);
+
+    const animatedProgressStyle = useAnimatedStyle(() => {
+        return {
+            width: `${progressAnim.value}%`,
+        };
+    });
 
     const [studentPreferences, setStudentPreferences] = useState<{ sfx_enabled: boolean; music_enabled: boolean; confetti_enabled: boolean }>({
         sfx_enabled: true,
@@ -301,14 +430,14 @@ export default function SetManager({
     const handleFeedback = (message: string) => {
         setBearMessage(message);
         
-        const isInstruction = currentActivity && (
-            (typeof currentActivity.content_data === 'string' && currentActivity.content_data.includes(message)) ||
-            (currentActivity.content_data?.instruction === message)
-        );
-        const isSuccess = SUCCESS_MESSAGES.includes(message);
-        const isLetPlay = message.startsWith("Let's");
-        
-        if (!isInstruction && !isSuccess && !isLetPlay && message !== '') {
+        const isError = message.startsWith("Not quite") || 
+                        message.startsWith("Give it another") || 
+                        message.startsWith("Almost") || 
+                        message.startsWith("Let's try again") ||
+                        message.toLowerCase().includes("try again") ||
+                        message.toLowerCase().includes("incorrect");
+
+        if (isError) {
             setErrorMode(true);
         } else {
             setErrorMode(false);
@@ -443,7 +572,7 @@ export default function SetManager({
                         activity_path: allPaths,
                         category: currentActivity.category || 'Activity',
                         skill_domain: currentActivity.skill_domain || ['Fine Motor Skills'],
-                        score: finalScore,
+                        stars: finalScore,
                         duration_seconds: totalDuration, // Final duration
                         status: 'pending', // Hardcoded status string
                         mistakes: finalMistakes, // Combined sum of all hidden mistakes
@@ -571,24 +700,6 @@ export default function SetManager({
             }
         }
     };
-
-    // Fade/Slide entrance animation
-    const fadeAnim = useSharedValue(1);
-    const slideAnim = useSharedValue(0);
-
-    const animatedContentStyle = useAnimatedStyle(() => ({
-        opacity: fadeAnim.value,
-        transform: [{ translateY: slideAnim.value }],
-    }));
-
-    useEffect(() => {
-        // Trigger a subtle entrance reset on activity change
-        fadeAnim.value = 0;
-        slideAnim.value = 15;
-        fadeAnim.value = withTiming(1, { duration: 300 });
-        slideAnim.value = withTiming(0, { duration: 300 });
-    }, [currentActivity]);
-
     // Format timer
     const minutes = Math.floor(globalTimer / 60);
     const seconds = globalTimer % 60;
@@ -621,7 +732,8 @@ export default function SetManager({
         content_data: parsedContentData
     };
 
-    const progressPercent = `${Math.round(((completedCount + 1) / 3) * 100)}%`;
+    const effectiveCompleted = isSetComplete ? 3 : (completedCount + (isActivityDone ? 1 : 0));
+    const progressPercent = `${Math.round((effectiveCompleted / 3) * 100)}%`;
 
     const handleExitSession = () => {
         if (unlockedBadges.length > 0) {
@@ -632,41 +744,44 @@ export default function SetManager({
     };
 
     return (
-        <Animated.View style={[{ flex: 1 }, animatedContentStyle]}>
+        <View className="flex-1 bg-[#FBFBFB]">
             <SafeAreaView style={{ flex: 1, backgroundColor: '#FBFBFB' }} edges={['top', 'bottom']}>
 
                 {/* Header: X and Title */}
                 <View className="flex-row items-center px-6 pt-4 pb-4">
-                    <Pressable onPress={() => router.back()} className="mr-4">
-                        <Feather name="x" size={28} color="#535B74" />
-                    </Pressable>
+                    <HoldToExitButton onExit={handleExitSession} />
                     <Text className="text-2xl font-fredoka-one text-[#535B74]">{currentActivity.title || 'Lesson Activity'}</Text>
                 </View>
 
                 {/* Progress Bar & Timer */}
                 <View className="flex-row items-center px-6 pb-6">
                     <View className="flex-1 h-[18px] bg-[#C4E0F9] rounded-full overflow-hidden">
-                        <View className="h-full bg-[#69AEE3] rounded-full" style={{ width: progressPercent as any }} />
+                        <Animated.View className="h-full bg-[#69AEE3] rounded-full" style={animatedProgressStyle} />
                     </View>
-                    <View className="flex-row items-center ml-4">
+                    <View className="flex-row items-center ml-4 min-w-[82px] justify-end">
                         <Feather name="clock" size={20} color="#69AEE3" />
-                        <Text className="text-[#535B74] font-quicksand-bold ml-1.5 text-[17px]">{formattedTime}</Text>
+                        <Text
+                            className="text-[#535B74] font-quicksand-bold ml-1.5 text-[17px]"
+                            style={{ fontVariant: ['tabular-nums'] }}
+                        >
+                            {formattedTime}
+                        </Text>
                     </View>
                 </View>
 
                 {/* Bear & Dialog */}
-                <View className="flex-row items-center px-6 pb-4">
-                    <ActivityBear width={180} height={180} />
+                <View className={`flex-row items-center ${isTablet ? 'px-6 pb-4' : 'px-4 pb-2'}`}>
+                    <ActivityBear width={isTablet ? 180 : 135} height={isTablet ? 180 : 135} />
 
                     {/* Speech Bubble */}
-                    <View className="flex-1 ml-5 justify-center relative">
-                        <View className={`rounded-3xl p-6 justify-center z-10 border-[1.5px] ${successMode
+                    <View className={`flex-1 ${isTablet ? 'ml-5' : 'ml-3'} justify-center relative`}>
+                        <View className={`rounded-2xl ${isTablet ? 'p-6 border-[1.5px]' : 'p-4 border-[1.5px]'} justify-center z-10 ${successMode
                                 ? 'bg-[#F0FDF4] border-[#86EFAC]'
                                 : errorMode
                                     ? 'bg-[#FEF2F2] border-[#FCA5A5]'
                                     : 'bg-[#FCF5F5] border-[#EAD5D5]'
                             }`}>
-                            <Text className="text-[#6D7179] text-2xl leading-9 font-quicksand-medium">
+                            <Text className={`text-[#6D7179] font-quicksand-medium ${isTablet ? 'text-2xl leading-9' : 'text-lg leading-7'}`}>
                                 {bearMessage}
                             </Text>
                         </View>
@@ -775,6 +890,6 @@ export default function SetManager({
                     router.back();
                 }}
             />
-        </Animated.View>
+        </View>
     );
 }

@@ -503,6 +503,7 @@ export interface SessionRecord {
   skill_domain: string[];
   date: string;
   duration: string;
+  stars: number;
   score: string;
   status: 'pending' | 'validated';
   rubric_evaluation?: any;
@@ -542,7 +543,8 @@ export const getStudentSessions = async (studentId: string): Promise<SessionReco
   if (error) throw new Error(error.message);
 
   return (data || []).map((s: any) => {
-    const normalized = normalizeDepEdScore(s.score);
+    const stars = s.stars || 0;
+    const normalized = normalizeDepEdScore(s.stars);
     return {
       id: s.id,
       studentId: s.student_id,
@@ -600,6 +602,7 @@ export const getStudentSessions = async (studentId: string): Promise<SessionReco
           ? `${Math.floor(s.duration_seconds / 60)} min${Math.floor(s.duration_seconds / 60) === 1 ? '' : 's'}${s.duration_seconds % 60 > 0 ? ` ${s.duration_seconds % 60}s` : ''}`
           : `${s.duration_seconds}s`
         : '5 mins',
+      stars: stars,
       score: `${Math.round(normalized)}%`,
       status: s.status as 'pending' | 'validated',
       rubric_evaluation: s.rubric_evaluation || null,

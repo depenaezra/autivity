@@ -43,17 +43,20 @@ export const getActivitiesBySubcategories = async (subcategories: string[]) => {
     const expandedSubcategories = new Set<string>();
     subcategories.forEach((s) => {
         const lower = s.toLowerCase();
-        if (lower.includes('color') || lower.includes('red') || lower.includes('blue') || lower.includes('green')) {
+        if (lower === 'matching colors' || lower === 'color matching' || (lower.includes('color') && lower.includes('match'))) {
+            expandedSubcategories.add('Matching Colors');
+            return;
+        }
+        if (lower === 'matching fruits' || lower === 'fruits matching' || (lower.includes('fruit') && lower.includes('match'))) {
+            expandedSubcategories.add('Matching Fruits');
+            return;
+        }
+        if (lower.includes('color pop') || (lower.includes('color') && lower.includes('pop'))) {
             expandedSubcategories.add('Color Pop');
             return;
         }
         if (lower.includes('free')) {
             expandedSubcategories.add('Free Pop');
-            return;
-        }
-        if (lower.includes('fruit') || lower.includes('matching') || lower.includes('drag')) {
-            expandedSubcategories.add('Matching Fruits');
-            expandedSubcategories.add('Drag-Drop');
             return;
         }
         expandedSubcategories.add(s);

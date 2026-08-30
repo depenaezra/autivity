@@ -7,7 +7,7 @@ interface SessionPayload {
     activity_path: string[]; // text[] in DB — stores all paths of a completed set
     category: string;
     skill_domain: string | string[];
-    score: number;
+    stars?: number;
     duration_seconds: number;
     mistakes?: number;
 }

@@ -8,7 +8,7 @@ export interface ParentSessionRecord {
     skill_domain: string[];
     date: Date;
     durationSeconds: number;
-    score: number | null;
+    stars: number | null;
     status: 'pending' | 'validated';
     teacherFeedback: string;
     validatedAt: string | null;
@@ -123,7 +123,7 @@ export const getParentDashboardData = async (): Promise<ParentDashboardData> => 
         skill_domain: parseSkillDomain(s.skill_domain),
         date: new Date(s.created_at),
         durationSeconds: s.duration_seconds || 0,
-        score: s.score ?? null,
+        stars: s.stars ?? null,
         status: s.status as 'pending' | 'validated',
         teacherFeedback: s.teacher_feedback || '',
         validatedAt: s.validated_at || null,

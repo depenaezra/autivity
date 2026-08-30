@@ -59,7 +59,7 @@ export function ParentSkillPerformance({
     return masterDomains.map((domain) => {
       const relevant = filteredSessions.filter(
         (s) =>
-          (s.rubricEvaluation || (s.status === 'validated' && s.score != null)) &&
+          Boolean(s.rubricEvaluation) &&
           s.skill_domain.some((tag) =>
             domain.subSkills.some((sub) => sub.trim().toLowerCase() === tag.trim().toLowerCase())
           )
@@ -80,8 +80,6 @@ export function ParentSkillPerformance({
             (r.following_instructions || 0) +
             (r.completed_work || 0);
           scorePct = Math.round((rSum / 25) * 100);
-        } else if (s.status === 'validated' && s.score != null) {
-          scorePct = s.score;
         }
         return sum + scorePct;
       }, 0);
