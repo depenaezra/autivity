@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { createNotification } from './notifications';
 import { formatActivityTitle } from '../utils/format';
 
 
@@ -435,6 +436,29 @@ export const createStudentMilestone = async (studentId: string, title: string, t
     .single();
 
   if (error) throw new Error(error.message);
+
+  // Send milestone creation notification to parent
+  if (data?.student_id) {
+    try {
+      const { data: student } = await supabase
+        .from('students')
+        .select('name')
+        .eq('id', data.student_id)
+        .maybeSingle();
+
+      const studentName = student?.name || 'Learner';
+
+      await createNotification({
+        studentId: data.student_id,
+        title: 'New Milestone Goal',
+        message: `Teacher added a new milestone for ${studentName}: "${data.title}"`,
+        type: 'milestone',
+        metadata: { milestone_id: data.id, status: 'Target Set', target_date: data.target_date },
+      });
+    } catch (notifErr) {
+      console.error('[NOTIFICATIONS] Failed sending milestone creation notification:', notifErr);
+    }
+  }
   
   return {
     id: data.id,
@@ -455,6 +479,41 @@ export const updateStudentMilestoneStatus = async (milestoneId: string, newStatu
     .single();
 
   if (error) throw new Error(error.message);
+
+  // Send milestone status update notification to parent
+  if (data?.student_id) {
+    try {
+      const { data: student } = await supabase
+        .from('students')
+        .select('name')
+        .eq('id', data.student_id)
+        .maybeSingle();
+
+      const studentName = student?.name || 'Learner';
+      const milestoneTitle = data.title || 'Milestone';
+
+      let notifTitle = 'Milestone Updated';
+      let notifMsg = `Teacher updated milestone "${milestoneTitle}" for ${studentName}.`;
+
+      if (newStatus === 'In Progress') {
+        notifTitle = 'Milestone In Progress';
+        notifMsg = `Teacher marked milestone "${milestoneTitle}" for ${studentName} as In Progress.`;
+      } else if (newStatus === 'Achieved') {
+        notifTitle = 'Milestone Completed! 🎉';
+        notifMsg = `Teacher marked milestone "${milestoneTitle}" for ${studentName} as Completed!`;
+      }
+
+      await createNotification({
+        studentId: data.student_id,
+        title: notifTitle,
+        message: notifMsg,
+        type: 'milestone',
+        metadata: { milestone_id: data.id, status: newStatus, target_date: data.target_date },
+      });
+    } catch (notifErr) {
+      console.error('[NOTIFICATIONS] Failed sending milestone status update notification:', notifErr);
+    }
+  }
   
   return {
     id: data.id,

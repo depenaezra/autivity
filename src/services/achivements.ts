@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { createNotification } from './notifications';
 
 export const processActivityCompletion = async (
     studentId: string,
@@ -25,6 +26,34 @@ export const processActivityCompletion = async (
             // Error 23505 means they already own the badge
             if (!error) {
                 newlyUnlocked.push(badgeId);
+
+                // Send Achievement Notification
+                try {
+                    const { data: badgeData } = await supabase
+                        .from('achievements')
+                        .select('title')
+                        .eq('id', badgeId)
+                        .maybeSingle();
+
+                    const { data: student } = await supabase
+                        .from('students')
+                        .select('name')
+                        .eq('id', studentId)
+                        .maybeSingle();
+
+                    const badgeTitle = badgeData?.title || badgeId.replace(/_/g, ' ').toUpperCase();
+                    const studentName = student?.name || 'Learner';
+
+                    await createNotification({
+                        studentId,
+                        title: 'New Achievement Unlocked! 🎉',
+                        message: `${studentName} earned the "${badgeTitle}" achievement!`,
+                        type: 'achievement',
+                        metadata: { badge_id: badgeId },
+                    });
+                } catch (notifErr) {
+                    console.error('[NOTIFICATIONS] Error sending achievement notification:', notifErr);
+                }
             } else if (error.code !== '23505') {
                 console.error(`Error unlocking ${badgeId}:`, error);
             }

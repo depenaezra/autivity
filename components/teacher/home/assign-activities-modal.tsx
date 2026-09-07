@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Pressable } from 'react-native';
+import { View, Text, Pressable, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BaseModal } from './base-modal';
 
@@ -18,6 +18,10 @@ export const ALL_MATCHING_CATEGORIES = [
 export const ALL_BUBBLE_POP_CATEGORIES = [
   { id: 'Free Pop', title: 'Free Pop', icon: 'disc-outline' },
   { id: 'Color Pop', title: 'Color Pop', icon: 'color-palette-outline' },
+];
+
+export const ALL_PICK_CHOOSE_CATEGORIES = [
+  { id: 'Picture-Word Match', title: 'Picture-Word Match', icon: 'text-outline' },
 ];
 
 export interface AssignActivitiesModalProps {
@@ -83,50 +87,57 @@ export function AssignActivitiesModal({
           ({selectedActivityPaths.length} assigned activities)
         </Text>
 
-        {/* Tab Headers selector matching redesigned styles */}
-        <View className={`flex-row gap-1.5 mb-5 bg-[#F8FAFC] ${isTablet ? 'p-2 rounded-2xl' : 'p-1.5 rounded-xl'}`}>
-          {['tracing', 'matching', 'bubble-pop', 'sound'].map((type) => {
-            const isSelected = activeActivityType === type;
-            const label =
-              type === 'tracing'
-                ? 'Tracing'
-                : type === 'matching'
-                ? 'Matching'
-                : type === 'bubble-pop'
-                ? 'Bubble Pop'
-                : 'Sound';
-            return (
-              <Pressable
-                key={type}
-                onPress={() => setActiveActivityType(type)}
-                className={`flex-1 ${
-                  isTablet ? 'py-3 rounded-xl border-b-[4px]' : 'py-2 rounded-lg border-b-[3px]'
-                } items-center justify-center ${
-                  isSelected ? 'bg-white border-[#62A9E6]' : 'bg-transparent border-transparent'
-                }`}
-              >
-                <Text
-                  className={`font-fredoka-one text-center ${
-                    isSelected ? 'text-[#62A9E6]' : 'text-[#9CA3AF]'
-                  } ${isTablet ? 'text-base' : 'text-xs'}`}
-                  numberOfLines={1}
+        {/* Tab Headers selector matching redesigned styles - Horizontally Scrollable */}
+        <View className={`mb-5 bg-[#F8FAFC] ${isTablet ? 'p-2 rounded-2xl' : 'p-1.5 rounded-xl'}`}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: 6, flexGrow: 1 }}
+          >
+            {['tracing', 'matching', 'bubble-pop', 'pick-n-choose'].map((type) => {
+              const isSelected = activeActivityType === type;
+              const label =
+                type === 'tracing'
+                  ? 'Tracing'
+                  : type === 'matching'
+                  ? 'Matching'
+                  : type === 'bubble-pop'
+                  ? 'Bubble Pop'
+                  : 'Pick & Choose';
+              return (
+                <Pressable
+                  key={type}
+                  onPress={() => setActiveActivityType(type)}
+                  className={`flex-1 ${
+                    isTablet ? 'px-6 py-3 rounded-xl border-b-[4px]' : 'px-4 py-2 rounded-lg border-b-[3px]'
+                  } items-center justify-center ${
+                    isSelected ? 'bg-white border-[#62A9E6]' : 'bg-transparent border-transparent'
+                  }`}
                 >
-                  {label}
-                  {type === 'sound' && ' (Soon)'}
-                </Text>
-              </Pressable>
-            );
-          })}
+                  <Text
+                    className={`font-fredoka-one text-center ${
+                      isSelected ? 'text-[#62A9E6]' : 'text-[#9CA3AF]'
+                    } ${isTablet ? 'text-base' : 'text-xs'}`}
+                    numberOfLines={1}
+                  >
+                    {label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
         </View>
 
         {/* Grid Category List */}
-        {activeActivityType === 'tracing' || activeActivityType === 'matching' || activeActivityType === 'bubble-pop' ? (
+        {activeActivityType === 'tracing' || activeActivityType === 'matching' || activeActivityType === 'bubble-pop' || activeActivityType === 'pick-n-choose' ? (
           <View className="flex-row flex-wrap justify-between gap-y-3.5">
             {(activeActivityType === 'tracing'
               ? ALL_TRACING_CATEGORIES
               : activeActivityType === 'matching'
               ? ALL_MATCHING_CATEGORIES
-              : ALL_BUBBLE_POP_CATEGORIES
+              : activeActivityType === 'bubble-pop'
+              ? ALL_BUBBLE_POP_CATEGORIES
+              : ALL_PICK_CHOOSE_CATEGORIES
             ).map((cat) => {
               const isSelected = selectedActivityPaths.includes(cat.id);
               return (

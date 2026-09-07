@@ -8,6 +8,7 @@ import { getStudentDevelopmentalSkillsExposure, MasterDomainExposure } from '../
 interface StudentDevelopmentalDomainPracticeProps {
   studentId: string;
   filter?: string;
+  refreshTrigger?: number;
 }
 
 type FilterType = 'today' | 'week' | 'month' | 'overall';
@@ -79,7 +80,7 @@ function calculateAxisTicks(maxVal: number) {
   return { ticks, maxScale };
 }
 
-export default function StudentDevelopmentalDomainPractice({ studentId, filter: externalFilter }: StudentDevelopmentalDomainPracticeProps) {
+export default function StudentDevelopmentalDomainPractice({ studentId, filter: externalFilter, refreshTrigger }: StudentDevelopmentalDomainPracticeProps) {
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
 
@@ -111,7 +112,7 @@ export default function StudentDevelopmentalDomainPractice({ studentId, filter: 
       }
     }
     loadData();
-  }, [studentId, filter]);
+  }, [studentId, filter, refreshTrigger]);
 
   // Find global maximum count across all domains and skills
   const maxCount = useMemo(() => {

@@ -6,6 +6,7 @@ import BubbleList from "./bubble-list";
 import useBubbleField from "../hooks/use-bubble-field";
 import { BubbleColor } from "../utils/bubble-assets";
 import { BubbleContentData } from "../utils/types";
+import { useActivityHint } from "@/hooks/use-activity-hint";
 
 type Props = {
     contentData?: BubbleContentData;
@@ -19,9 +20,10 @@ type Props = {
     bubbleScale?: number;
     mode?: "free" | "color";
 
-    onComplete?: (score: number, timeSpent: number, mistakes: number) => void;
+    onComplete?: (score: number, timeSpent: number, mistakes: number, hintsUsed?: number) => void;
     onFeedback?: (message: string) => void;
     onIncorrectAttempt?: () => void;
+    hintSignal?: number;
 };
 
 export default function BubbleActivity({
@@ -33,6 +35,7 @@ export default function BubbleActivity({
     onComplete,
     onFeedback,
     onIncorrectAttempt,
+    hintSignal,
 }: Props) {
     const mode = contentData?.mode || (contentData?.target_color || directTargetColor ? "color" : "free");
     const bubbleCount = contentData?.bubble_count || directBubbleCount || 5;
@@ -52,17 +55,39 @@ export default function BubbleActivity({
     const feedbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const lastMessageIndexRef = useRef<number>(-1);
 
+    const { isHintActive, hintLevel, hintsUsed, triggerHint, recordAttempt, resetForNextQuestion } = useActivityHint({
+        getClueText: () => {
+            if (targetColor) {
+                return `Clue: Look for the ${targetColor} bubbles floating up!`;
+            }
+            return "Pop any bubble on the screen!";
+        },
+        onFeedback,
+    });
+
+    // Listen to manual hint button from top header
+    const lastHintSignalRef = useRef(hintSignal);
+    useEffect(() => {
+        if (hintSignal !== undefined && hintSignal !== lastHintSignalRef.current) {
+            lastHintSignalRef.current = hintSignal;
+            triggerHint();
+        }
+    }, [hintSignal, triggerHint]);
+
+    const contentDataKey = JSON.stringify(contentData);
+
     useEffect(() => {
         startTimeRef.current = Date.now();
         mistakesRef.current = 0;
         setPoppedCount(0);
         setIsCompleted(false);
         completionDetailsRef.current = null;
+        resetForNextQuestion();
 
         if (feedbackTimeoutRef.current) {
             clearTimeout(feedbackTimeoutRef.current);
         }
-    }, [contentData]);
+    }, [contentDataKey]);
 
     useEffect(() => {
         return () => {
@@ -88,9 +113,16 @@ export default function BubbleActivity({
         popBubble(id);
 
         if (mode === "color" && targetColor) {
-            if (poppedBubble?.content.color === targetColor) {
+            const isCorrect = poppedBubble?.content.color === targetColor;
+            const hintTriggered = recordAttempt(isCorrect);
+
+            if (isCorrect) {
                 const nextCount = poppedCount + 1;
                 setPoppedCount(nextCount);
+
+                // Revert Activity Bear speech bubble dialogue back to default instructions
+                const defaultInstruction = contentData?.instruction || (targetColor ? `Pop the ${targetColor} bubbles!` : "Let's play!");
+                onFeedback?.(defaultInstruction);
 
                 if (nextCount >= targetCount) {
                     const timeSpent = Math.max(1, Math.round((Date.now() - startTimeRef.current) / 1000));
@@ -106,27 +138,30 @@ export default function BubbleActivity({
                     clearTimeout(feedbackTimeoutRef.current);
                 }
 
-                const guidingMessages = [
-                    `Not quite! Pop the ${targetColor} bubbles!`,
-                    `Try again! Look for the ${targetColor} bubbles!`,
-                    `Almost! Tap only the ${targetColor} bubbles floating up!`,
-                    `Keep trying! Find and pop the ${targetColor} bubbles!`,
-                ];
+                if (!hintTriggered) {
+                    const guidingMessages = [
+                        `Not quite! Pop the ${targetColor} bubbles!`,
+                        `Try again! Look for the ${targetColor} bubbles!`,
+                        `Almost! Tap only the ${targetColor} bubbles floating up!`,
+                        `Keep trying! Find and pop the ${targetColor} bubbles!`,
+                    ];
 
-                let nextIdx = Math.floor(Math.random() * guidingMessages.length);
-                if (nextIdx === lastMessageIndexRef.current) {
-                    nextIdx = (nextIdx + 1) % guidingMessages.length;
+                    let nextIdx = Math.floor(Math.random() * guidingMessages.length);
+                    if (nextIdx === lastMessageIndexRef.current) {
+                        nextIdx = (nextIdx + 1) % guidingMessages.length;
+                    }
+                    lastMessageIndexRef.current = nextIdx;
+
+                    onFeedback?.(guidingMessages[nextIdx]);
+
+                    feedbackTimeoutRef.current = setTimeout(() => {
+                        onFeedback?.(contentData?.instruction || (targetColor ? `Pop the ${targetColor} bubbles!` : "Let's play!"));
+                    }, 3500);
                 }
-                lastMessageIndexRef.current = nextIdx;
-
-                onFeedback?.(guidingMessages[nextIdx]);
-
-                feedbackTimeoutRef.current = setTimeout(() => {
-                    onFeedback?.(contentData?.instruction || (targetColor ? `Pop the ${targetColor} bubbles!` : "Let's play!"));
-                }, 3500);
             }
         } else {
             // Free Pop mode
+            recordAttempt(true);
             const nextCount = poppedCount + 1;
             setPoppedCount(nextCount);
 
@@ -144,7 +179,7 @@ export default function BubbleActivity({
         if (completionDetailsRef.current && !isCompleted) {
             setIsCompleted(true);
             const { score, timeSpent, mistakes: finalMistakes } = completionDetailsRef.current;
-            onComplete?.(score, timeSpent, finalMistakes);
+            onComplete?.(score, timeSpent, finalMistakes, hintsUsed);
         }
     };
 
@@ -170,6 +205,9 @@ export default function BubbleActivity({
                     onPop={handleUserPop}
                     onPopFinished={handlePopFinished}
                     onRecycle={handleRecycle}
+                    isHintActive={isHintActive}
+                    hintLevel={hintLevel}
+                    targetColor={targetColor}
                 />
             )}
         </View>

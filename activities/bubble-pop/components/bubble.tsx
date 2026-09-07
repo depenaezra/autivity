@@ -32,6 +32,7 @@ export default function Bubble({
     onPop,
     onPopFinished,
     onRecycle,
+    isHighlighted = false,
 }: BubbleProps) {
 
     const [isPopped, setIsPopped] = useState(false);
@@ -129,7 +130,19 @@ export default function Bubble({
             <Pressable
                 disabled={isPopped}
                 onPress={handleTap}
-                style={styles.pressable}
+                style={[
+                    styles.pressable,
+                    isHighlighted && !isPopped && {
+                        borderRadius: 50,
+                        borderWidth: 4,
+                        borderColor: '#FFAE02',
+                        shadowColor: '#FFAE02',
+                        shadowOffset: { width: 0, height: 0 },
+                        shadowOpacity: 0.8,
+                        shadowRadius: 10,
+                        elevation: 6,
+                    }
+                ]}
             >
                 {!isPopped && (
                     <BubbleContent

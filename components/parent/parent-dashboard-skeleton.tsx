@@ -99,6 +99,43 @@ export function ParentHomeSkeleton() {
               </View>
             </View>
 
+            {/* 3. LEARNER MILESTONES SKELETON */}
+            <View className="mt-2">
+              <View
+                className={`bg-white border-[4px] border-[#F1F1F1] ${
+                  isTablet ? 'rounded-[32px] p-6' : 'rounded-[24px] p-5'
+                }`}
+                style={{
+                  shadowColor: '#F1F1F1',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 1,
+                  shadowRadius: 0,
+                  elevation: 2,
+                }}
+              >
+                {/* Header Row */}
+                <View className="flex-row items-center justify-between mb-4">
+                  <SkeletonBlock className={`rounded-md ${isTablet ? 'w-44 h-7' : 'w-36 h-5'}`} />
+                  <SkeletonBlock className={`rounded-full ${isTablet ? 'w-28 h-7' : 'w-20 h-6'}`} />
+                </View>
+
+                {/* Milestones Circular Badge Grid */}
+                <View className="flex-row flex-wrap justify-center items-start gap-3 sm:gap-6 py-2">
+                  {[1, 2, 3].map((i) => (
+                    <View key={i} className="items-center mb-2" style={{ width: isTablet ? 110 : 88 }}>
+                      <SkeletonBlock
+                        className={`rounded-full border-[3px] border-[#E5E7EB] ${
+                          isTablet ? 'w-[84px] h-[84px]' : 'w-[64px] h-[64px]'
+                        }`}
+                      />
+                      <SkeletonBlock className={`rounded-md mt-2 ${isTablet ? 'w-20 h-4' : 'w-16 h-3'}`} />
+                      <SkeletonBlock className={`rounded-[5px] mt-1.5 ${isTablet ? 'w-16 h-4' : 'w-12 h-3.5'}`} />
+                    </View>
+                  ))}
+                </View>
+              </View>
+            </View>
+
             {/* 3. TEACHER FEEDBACKS SKELETON */}
             <View className="flex-col mt-6 mb-8">
               <View className="mb-4 flex-row items-center justify-between">

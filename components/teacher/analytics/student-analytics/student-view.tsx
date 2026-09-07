@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { Ionicons, Feather } from '@expo/vector-icons';
 
@@ -56,6 +56,11 @@ export default function StudentView({ studentId, onBack }: StudentViewProps) {
   const [isExporting, setIsExporting] = useState(false);
   const [recommendations, setRecommendations] = useState<StudentRecommendation[]>([]);
   const [needsIntervention, setNeedsIntervention] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const handleEvaluationValidated = useCallback(() => {
+    setRefreshKey((prev) => prev + 1);
+  }, []);
 
   useEffect(() => {
     async function loadAnalyticsData() {
@@ -79,7 +84,7 @@ export default function StudentView({ studentId, onBack }: StudentViewProps) {
     if (studentId) {
       loadAnalyticsData();
     }
-  }, [studentId, globalFilter, studentData?.name]);
+  }, [studentId, globalFilter, studentData?.name, refreshKey]);
 
   useEffect(() => {
     async function fetchDetails() {
@@ -257,22 +262,22 @@ export default function StudentView({ studentId, onBack }: StudentViewProps) {
             <StudentDetailsCard student={studentData} needsIntervention={needsIntervention} />
 
             {/* Student Performance KPI Cards */}
-            <StudentPerformanceCards studentId={studentId} filter={globalFilter} />
+            <StudentPerformanceCards studentId={studentId} filter={globalFilter} refreshTrigger={refreshKey} />
 
             {/* Student Recommendations Card */}
             <StudentRecommendationsCard recommendations={recommendations} />
 
             {/* Student Evaluation Trend Chart */}
-            <StudentEvaluationTrend studentId={studentId} filter={globalFilter} />
+            <StudentEvaluationTrend studentId={studentId} filter={globalFilter} refreshTrigger={refreshKey} />
 
             {/* Student Developmental Domain Practice */}
-            <StudentDevelopmentalDomainPractice studentId={studentId} filter={globalFilter} />
+            <StudentDevelopmentalDomainPractice studentId={studentId} filter={globalFilter} refreshTrigger={refreshKey} />
 
             {/* Milestones */}
             <Milestones studentId={studentId} />
 
             {/* Completed Sessions */}
-            <Sessions studentId={studentId} studentName={studentData.name} filter={globalFilter} />
+            <Sessions studentId={studentId} studentName={studentData.name} filter={globalFilter} onEvaluationValidated={handleEvaluationValidated} />
           </View>
         )}
       </View>

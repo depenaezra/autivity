@@ -1,5 +1,7 @@
 import { supabase } from '../lib/supabase';
 
+import { createNotification } from './notifications';
+
 interface SessionPayload {
     student_id: string;
     class_id: string;
@@ -42,16 +44,22 @@ export interface RubricEvaluation {
 export const validateSession = async (
     sessionId: string,
     rubricEvaluation: RubricEvaluation,
-    teacherFeedback: string
+    teacherFeedback: string,
+    isEdit: boolean = false
 ) => {
+    const updateData: any = {
+        rubric_evaluation: rubricEvaluation,
+        teacher_feedback: teacherFeedback,
+        status: 'validated',
+    };
+
+    if (!isEdit) {
+        updateData.validated_at = new Date().toISOString();
+    }
+
     const { data, error } = await supabase
         .from('student_sessions')
-        .update({
-            rubric_evaluation: rubricEvaluation,
-            teacher_feedback: teacherFeedback,
-            status: 'validated',
-            validated_at: new Date().toISOString(),
-        })
+        .update(updateData)
         .eq('id', sessionId)
         .select()
         .single();
@@ -59,6 +67,35 @@ export const validateSession = async (
     if (error) {
         console.error("Error validating student session:", error);
         throw new Error(error.message || "Failed to validate session");
+    }
+
+    // Trigger Notification for Parent
+    if (data?.student_id) {
+        try {
+            const { data: student } = await supabase
+                .from('students')
+                .select('name')
+                .eq('id', data.student_id)
+                .maybeSingle();
+
+            const studentName = student?.name || 'your child';
+            const categoryName = data.category || 'an';
+            const feedbackText = teacherFeedback.trim()
+                ? `"${teacherFeedback.trim().slice(0, 90)}${teacherFeedback.length > 90 ? '...' : ''}"`
+                : 'Teacher provided evaluation remarks.';
+
+            await createNotification({
+                studentId: data.student_id,
+                title: isEdit ? 'Feedback Updated' : 'New Feedback Received',
+                message: isEdit
+                    ? `Teacher updated feedback for ${studentName} on ${categoryName} activity: ${feedbackText}`
+                    : `Teacher submitted feedback for ${studentName} on ${categoryName} activity: ${feedbackText}`,
+                type: 'feedback',
+                metadata: { session_id: sessionId },
+            });
+        } catch (notifErr) {
+            console.error('[NOTIFICATIONS] Failed sending feedback notification:', notifErr);
+        }
     }
 
     return data;

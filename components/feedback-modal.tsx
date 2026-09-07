@@ -2,7 +2,9 @@ import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -22,6 +24,7 @@ interface FeedbackModalProps {
   onClose: () => void;
   onSuccess?: () => void;
   isReadOnly?: boolean;
+  isEditing?: boolean;
   initialScores?: RubricEvaluation;
   initialFeedback?: string;
   validatedAt?: string;
@@ -86,6 +89,7 @@ export default function FeedbackModal({
   onClose,
   onSuccess,
   isReadOnly = false,
+  isEditing = false,
   initialScores,
   initialFeedback,
   validatedAt,
@@ -114,6 +118,14 @@ export default function FeedbackModal({
         if (initialFeedback !== undefined && initialFeedback !== null) {
           setTeacherFeedback(initialFeedback);
         }
+      } else if (isEditing) {
+        setStep('draft');
+        if (initialScores) {
+          setScores(initialScores);
+        }
+        if (initialFeedback !== undefined && initialFeedback !== null) {
+          setTeacherFeedback(initialFeedback);
+        }
       } else {
         setStep('draft');
         setScores({
@@ -127,7 +139,7 @@ export default function FeedbackModal({
       }
       setIsSubmitting(false);
     }
-  }, [visible, sessionId, isReadOnly, initialScores, initialFeedback]);
+  }, [visible, sessionId, isReadOnly, isEditing, initialScores, initialFeedback]);
 
   const handleScoreSelect = (key: keyof RubricEvaluation, score: number) => {
     setScores((prev) => ({
@@ -144,7 +156,7 @@ export default function FeedbackModal({
 
     setIsSubmitting(true);
     try {
-      await validateSession(sessionId, scores, teacherFeedback.trim());
+      await validateSession(sessionId, scores, teacherFeedback.trim(), isEditing);
       setIsSubmitting(false);
       onSuccess?.();
       onClose();
@@ -160,21 +172,33 @@ export default function FeedbackModal({
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View className="flex-1 bg-black/60 justify-center items-center p-4 z-50">
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        className="flex-1 bg-black/60 justify-center items-center p-4 z-50"
+        style={{ flex: 1 }}
+      >
         <View
           style={{
             width: '100%',
             maxWidth: isTablet ? 700 : undefined,
-            height: isTablet ? '80%' : '88%',
+            maxHeight: isTablet ? '85%' : '90%',
           }}
-          className="bg-white rounded-[28px] border-[3px] border-[#D1D5DB] border-b-[6px] shadow-2xl overflow-hidden flex-col"
+          className="bg-white rounded-[28px] border-[3px] border-[#D1D5DB] border-b-[6px] shadow-2xl overflow-hidden flex-col flex-1"
         >
           {/* Modal Header */}
           <View className="bg-[#F5F8FA] px-6 py-5 border-b border-[#E5E7EB] flex-row items-center justify-between">
             <View className="flex-1 mr-4">
               <View className="flex-row items-center gap-2">
                 <Text className="font-fredoka-one text-2xl text-[#4B5563]">
-                  {isReadOnly ? 'Teacher Evaluation Review' : step === 'draft' ? 'Teacher Evaluation Rubric' : 'Review & Confirm Evaluation'}
+                  {isEditing
+                    ? step === 'draft'
+                      ? 'Edit Evaluation Rubric'
+                      : 'Review Updated Evaluation'
+                    : isReadOnly
+                    ? 'Teacher Evaluation Review'
+                    : step === 'draft'
+                    ? 'Teacher Evaluation Rubric'
+                    : 'Review & Confirm Evaluation'}
                 </Text>
                 {!isReadOnly && (
                   <View className="bg-[#EBF5FF] border border-[#A3CFF1] px-2.5 py-0.5 rounded-full">
@@ -202,8 +226,11 @@ export default function FeedbackModal({
           {/* Scrollable Content Body */}
           <ScrollView
             className="flex-1 px-6 py-5"
-            contentContainerStyle={{ paddingBottom: 24 }}
+            contentContainerStyle={{ paddingBottom: 32 }}
             showsVerticalScrollIndicator={true}
+            keyboardShouldPersistTaps="always"
+            keyboardDismissMode="none"
+            automaticallyAdjustKeyboardInsets={true}
             bounces={false}
           >
             {step === 'draft' ? (
@@ -477,14 +504,14 @@ export default function FeedbackModal({
                     <Ionicons name="send" size={18} color="white" />
                   )}
                   <Text className="font-fredoka-regular text-white text-lg">
-                    {isSubmitting ? 'Sending...' : 'Confirm & Send to Parent'}
+                    {isSubmitting ? (isEditing ? 'Saving...' : 'Sending...') : (isEditing ? 'Save Changes' : 'Confirm & Send to Parent')}
                   </Text>
                 </Pressable>
               </>
             )}
           </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

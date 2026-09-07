@@ -6,6 +6,7 @@ import Animated, { FadeInRight } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { exportChildReportPdf } from '../../src/services/exportReport';
+import { getUnreadNotificationCount } from '../../src/services/notifications';
 import { getParentDashboardData, ParentDashboardData } from '../../src/services/parentDashboard';
 import { getUserProfile } from '../../src/services/profile';
 import { filterSessionsByPeriod, FilterPeriod, getFilterLabel } from '../../src/utils/dashboardFilters';
@@ -16,6 +17,7 @@ import { ParentActivityPerformance } from '../../components/parent/parent-activi
 import { ParentDashboardSkeleton } from '../../components/parent/parent-dashboard-skeleton';
 import { ParentFilterModal } from '../../components/parent/parent-filter-modal';
 import { ParentHeader } from '../../components/parent/parent-header';
+import { ParentMilestonesSection } from '../../components/parent/parent-milestones-section';
 import { ParentProgressTrend } from '../../components/parent/parent-progress-trend';
 import { ParentSkillPerformance } from '../../components/parent/parent-skill-performance';
 import { ParentStatsSection } from '../../components/parent/parent-stats-section';
@@ -34,6 +36,7 @@ export default function ParentHomeScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [dashboard, setDashboard] = useState<ParentDashboardData | null>(null);
   const [parentName, setParentName] = useState<string>((paramFirstName as string) || '');
+  const [hasUnread, setHasUnread] = useState(false);
   const [isLearnerInfoVisible, setLearnerInfoVisible] = useState(false);
   const [isGoalsVisible, setGoalsVisible] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -58,9 +61,14 @@ export default function ParentHomeScreen() {
             setParentName(profile.first_name);
           }
 
-          const data = await getParentDashboardData();
+          const [data, unreadCount] = await Promise.all([
+            getParentDashboardData(),
+            getUnreadNotificationCount().catch(() => 0),
+          ]);
+
           if (isActive) {
             setDashboard(data);
+            setHasUnread(unreadCount > 0);
             if (data.parentFirstName) {
               setParentName(data.parentFirstName);
             }
@@ -214,11 +222,20 @@ export default function ParentHomeScreen() {
                 parentLastName={dashboard?.parentLastName || ''}
                 isTablet={isTablet}
                 onProfilePress={() => router.push('/(parent-tabs)/profile' as any)}
+                hasUnreadNotifications={hasUnread}
                 student={student}
                 classInfo={dashboard?.classInfo}
                 teacherName={dashboard?.teacherName}
                 onChildPress={() => setLearnerInfoVisible(true)}
                 onGoalsPress={() => setGoalsVisible(true)}
+              />
+            </Animated.View>
+
+            {/* LEARNER MILESTONES GRID */}
+            <Animated.View key={`milestones-${focusKey}`} entering={FadeInRight.delay(75).duration(300)} className="w-full">
+              <ParentMilestonesSection
+                milestones={dashboard?.milestones || []}
+                isTablet={isTablet}
               />
             </Animated.View>
 

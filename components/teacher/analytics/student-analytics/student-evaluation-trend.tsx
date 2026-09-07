@@ -9,11 +9,12 @@ import { calculateStudentProgressForecast } from '../../../../src/services/stude
 interface StudentEvaluationTrendProps {
   studentId: string;
   filter?: string;
+  refreshTrigger?: number;
 }
 
 type FilterType = 'today' | 'week' | 'month' | 'overall';
 
-export default function StudentEvaluationTrend({ studentId, filter: externalFilter }: StudentEvaluationTrendProps) {
+export default function StudentEvaluationTrend({ studentId, filter: externalFilter, refreshTrigger }: StudentEvaluationTrendProps) {
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
 
@@ -50,7 +51,7 @@ export default function StudentEvaluationTrend({ studentId, filter: externalFilt
       }
     }
     loadData();
-  }, [studentId]);
+  }, [studentId, refreshTrigger]);
 
   // Helper to compute average rubric evaluation score (0-4)
   const calculateSessionScore = (rubric: any): number | null => {

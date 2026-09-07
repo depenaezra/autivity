@@ -5,6 +5,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming } 
 import { dragDropAssets } from '../utils/assetDictionary';
 import { generateDynamicActivityData } from '../utils/shuffler';
 import { playCorrectSound } from '@/src/utils/sound';
+import { useActivityHint } from '@/hooks/use-activity-hint';
 
 interface DynamicActivityProps {
     contentData: {
@@ -12,9 +13,10 @@ interface DynamicActivityProps {
         instruction?: string;
         pool: Array<{ id: string; type: string; asset_key: string; color: string }>;
     };
-    onComplete?: (score: number, timeSpent: number, mistakes: number) => void;
+    onComplete?: (score: number, timeSpent: number, mistakes: number, hintsUsed?: number) => void;
     onFeedback?: (message: string) => void;
     onIncorrectAttempt?: () => void;
+    hintSignal?: number;
 }
 
 const MATCHING_GUIDING_MESSAGES = [
@@ -51,12 +53,12 @@ const COLOR_THEME_MAP: Record<string, { bg: string; border: string; font: string
     },
 };
 
-export default function DragDropActivity({ contentData, onComplete, onFeedback, onIncorrectAttempt }: DynamicActivityProps) {
+export default function DragDropActivity({ contentData, onComplete, onFeedback, onIncorrectAttempt, hintSignal }: DynamicActivityProps) {
     const { width } = useWindowDimensions();
     const isTablet = width >= 768;
 
     // Store the active runtime layout pairs
-    const [activityLayout, setActivityLayout] = useState<{ items: any[]; targets: any[] } | null>(null);
+    const [activityLayout, setActivityLayout] = useState<{ items: any[]; targets: any[]; instruction?: string } | null>(null);
     const [placedItems, setPlacedItems] = useState<Record<string, boolean>>({});
     const [incorrectTrigger, setIncorrectTrigger] = useState<{ type: string; timestamp: number } | null>(null);
 
@@ -75,6 +77,27 @@ export default function DragDropActivity({ contentData, onComplete, onFeedback, 
         return MATCHING_GUIDING_MESSAGES[nextIdx];
     };
 
+    const { isHintActive, hintLevel, hintsUsed, triggerHint, recordAttempt, resetForNextQuestion } = useActivityHint({
+        getClueText: () => {
+            if (!activityLayout) return "Drag the items to their matching targets!";
+            const firstUnplaced = activityLayout.items.find((item) => !placedItems[item.type]);
+            if (firstUnplaced) {
+                return `Clue: Drag the ${firstUnplaced.type} item to its matching ${firstUnplaced.type} container!`;
+            }
+            return "Drag the items to their matching targets!";
+        },
+        onFeedback,
+    });
+
+    // Listen to manual hint button from header
+    const lastHintSignalRef = useRef(hintSignal);
+    useEffect(() => {
+        if (hintSignal !== undefined && hintSignal !== lastHintSignalRef.current) {
+            lastHintSignalRef.current = hintSignal;
+            triggerHint();
+        }
+    }, [hintSignal, triggerHint]);
+
     // Setup/Reset a unique randomized puzzle configuration mix
     const initializeActivityMix = () => {
         if (!contentData?.pool) return;
@@ -89,11 +112,14 @@ export default function DragDropActivity({ contentData, onComplete, onFeedback, 
         setPlacedItems({});
         mistakesRef.current = 0;
         startTimeRef.current = Date.now();
+        resetForNextQuestion();
 
         if (layoutMix.instruction) {
             onFeedback?.(layoutMix.instruction);
         }
     };
+
+    const contentDataKey = JSON.stringify(contentData);
 
     useEffect(() => {
         initializeActivityMix();
@@ -102,22 +128,29 @@ export default function DragDropActivity({ contentData, onComplete, onFeedback, 
                 clearTimeout(feedbackTimeoutRef.current);
             }
         };
-    }, [contentData]);
+    }, [contentDataKey]);
 
     const handleDrop = (draggedType: string, targetType: string) => {
         if (!activityLayout) return;
 
-        if (draggedType === targetType) {
+        const isCorrect = draggedType === targetType;
+        const hintTriggered = recordAttempt(isCorrect);
+
+        if (isCorrect) {
             playCorrectSound();
             const newPlacedItems = { ...placedItems, [draggedType]: true };
             setPlacedItems(newPlacedItems);
+
+            // Revert Activity Bear speech bubble dialogue back to default instructions
+            const defaultInstruction = activityLayout.instruction || contentData?.instruction || "Drag the items to their matching targets!";
+            onFeedback?.(defaultInstruction);
 
             // Verification rules evaluate against active runtime layout length
             if (Object.keys(newPlacedItems).length === activityLayout.targets.length) {
                 if (onComplete) {
                     const durationSeconds = Math.round((Date.now() - startTimeRef.current) / 1000);
                     const score = 15; // Each completed drag-drop activity awards 15 stars
-                    onComplete(score, durationSeconds, mistakesRef.current);
+                    onComplete(score, durationSeconds, mistakesRef.current, hintsUsed);
                 }
             }
         } else {
@@ -131,22 +164,22 @@ export default function DragDropActivity({ contentData, onComplete, onFeedback, 
                 clearTimeout(feedbackTimeoutRef.current);
             }
 
-            // Call feedback bridge with gentle shuffled guiding message
-            onFeedback?.(getNextGuidingMessage());
+            // Only set guiding error feedback if a hint was not triggered
+            if (!hintTriggered) {
+                onFeedback?.(getNextGuidingMessage());
 
-            // Set timeout to revert the message after 3.5 seconds
-            feedbackTimeoutRef.current = setTimeout(() => {
-                onFeedback?.(activityLayout.instruction || contentData.instruction || "Let's play!");
-            }, 3500);
+                feedbackTimeoutRef.current = setTimeout(() => {
+                    onFeedback?.(activityLayout.instruction || contentData.instruction || "Let's play!");
+                }, 3500);
+            }
         }
     };
 
     if (!activityLayout) return null;
 
-    if (!activityLayout) return null;
-
     const itemCount = activityLayout.targets.length;
     const cardSizes = getDynamicCardSizes(itemCount, isTablet);
+    const firstUnplaced = activityLayout.items.find((i: any) => !placedItems[i.type]);
 
     return (
         <DraxProvider>
@@ -155,6 +188,7 @@ export default function DragDropActivity({ contentData, onComplete, onFeedback, 
                 <View style={[styles.row, { gap: cardSizes.gap }]}>
                     {activityLayout.items.map((item) => {
                         const isPlaced = placedItems[item.type];
+                        const isHintItem = isHintActive && hintLevel === 2 && firstUnplaced?.type === item.type;
 
                         if (isPlaced) {
                             return (
@@ -174,6 +208,7 @@ export default function DragDropActivity({ contentData, onComplete, onFeedback, 
                                 item={item}
                                 incorrectTrigger={incorrectTrigger}
                                 cardSizes={cardSizes}
+                                isHintItem={isHintItem}
                             />
                         );
                     })}
@@ -181,29 +216,33 @@ export default function DragDropActivity({ contentData, onComplete, onFeedback, 
 
                 {/* RECEPTIVE CUTOUT TARGETS */}
                 <View style={[styles.row, { gap: cardSizes.gap }]}>
-                    {activityLayout.targets.map((target) => {
-                        const isPlaced = placedItems[target.type];
+                    {activityLayout.targets.map((target: any) => {
                         const theme = COLOR_THEME_MAP[target.type] || {
-                            bg: '#F3F4F6',
-                            border: '#E5E7EB',
-                            font: '#535B74',
-                            circle: target.color || '#9CA3AF',
+                            bg: '#F5F7FA',
+                            border: '#E2E8F0',
+                            font: '#64748B',
+                            circle: '#CBD5E1',
                         };
+
+                        const isPlaced = placedItems[target.type];
+                        const firstUnplaced = activityLayout.items.find((i: any) => !placedItems[i.type]);
+                        const isHintTarget = isHintActive && hintLevel === 2 && firstUnplaced?.type === target.type;
 
                         return (
                             <DraxView
-                                key={`target-${target.id}`}
+                                key={target.id}
                                 style={[
                                     styles.receiverCard,
                                     {
                                         width: cardSizes.cardSize,
                                         height: cardSizes.cardSize,
                                         borderRadius: cardSizes.borderRadius,
-                                        backgroundColor: theme.bg,
-                                        borderColor: theme.border,
-                                        borderBottomColor: theme.border,
+                                        backgroundColor: isHintTarget ? '#FFF3C4' : (isPlaced ? theme.bg : '#FFFFFF'),
+                                        borderColor: isHintTarget ? '#FFAE02' : theme.border,
+                                        borderBottomColor: isHintTarget ? '#FF9800' : theme.border,
                                         borderBottomWidth: isPlaced ? 2 : cardSizes.borderBottomWidth,
-                                        borderStyle: isPlaced ? 'solid' : 'dashed',
+                                        borderStyle: isHintTarget ? 'solid' : (isPlaced ? 'solid' : 'dashed'),
+                                        borderWidth: isHintTarget ? 3 : 2,
                                     },
                                 ]}
                                 receivingStyle={styles.receivingActive}
@@ -354,10 +393,12 @@ function DraggableItem({
     item,
     incorrectTrigger,
     cardSizes,
+    isHintItem = false,
 }: {
     item: any;
     incorrectTrigger: { type: string; timestamp: number } | null;
     cardSizes: any;
+    isHintItem?: boolean;
 }) {
     const shakeOffset = useSharedValue(0);
 
@@ -391,6 +432,10 @@ function DraggableItem({
                         height: cardSizes.cardSize,
                         borderRadius: cardSizes.borderRadius,
                         borderBottomWidth: cardSizes.borderBottomWidth,
+                        backgroundColor: isHintItem ? '#FFF3C4' : '#FFFFFF',
+                        borderColor: isHintItem ? '#FFAE02' : '#E2E8F0',
+                        borderBottomColor: isHintItem ? '#FF9800' : '#CBD5E1',
+                        borderWidth: isHintItem ? 3 : 2,
                     }
                 ]}
                 draggingStyle={styles.dragging}

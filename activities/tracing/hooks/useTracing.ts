@@ -123,11 +123,9 @@ export function useTracing(
         }
 
         if (minDistance > BOUNDARY_RADIUS) {
-            if (currentCheckpoint.value > 1) {
-                if (!isOutsideBoundary.value) {
-                    isOutsideBoundary.value = true;
-                    runOnJS(triggerBoundaryMistake)();
-                }
+            if (!isOutsideBoundary.value) {
+                isOutsideBoundary.value = true;
+                runOnJS(triggerBoundaryMistake)();
             }
         } else {
             isOutsideBoundary.value = false;
@@ -175,7 +173,7 @@ export function useTracing(
                 return;
             }
 
-            if (hasStarted.value && currentCheckpoint.value > 1 && !isOutsideBoundary.value) {
+            if (hasStarted.value && !isOutsideBoundary.value) {
                 runOnJS(triggerInterruption)();
             }
 

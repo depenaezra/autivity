@@ -1,7 +1,9 @@
 import { Feather } from '@expo/vector-icons';
-import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, useWindowDimensions, View } from 'react-native';
-import Animated, {
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Animated, Pressable, Text, useWindowDimensions, View } from 'react-native';
+import Swipeable from 'react-native-gesture-handler/Swipeable';
+import * as Haptics from 'expo-haptics';
+import AnimatedReanimated, {
   FadeInUp,
   FadeOutUp,
   useAnimatedStyle,
@@ -14,11 +16,13 @@ import { getStudentSessions, SessionRecord } from '../../../../src/services/stud
 import { filterSessionsByPeriod } from '../../../../src/utils/dashboardFilters';
 import FeedbackModal from '../../../feedback-modal';
 import EvaluationReviewModal from '../evaluation-review-modal';
+import EditIcon from '../../../../assets/images/teacher/class/icon-button-edit.svg';
 
 interface SessionsProps {
   studentId: string;
   studentName: string;
   filter?: string;
+  onEvaluationValidated?: () => void;
 }
 
 type SessionFilterType = 'all' | 'unvalidated' | 'validated';
@@ -42,7 +46,7 @@ function SessionSkeletonItem({ isTablet }: { isTablet: boolean }) {
   }));
 
   return (
-    <Animated.View
+    <AnimatedReanimated.View
       className={`bg-white border-[2px] border-[#F1F1F1] flex-row items-center justify-between overflow-hidden ${
         isTablet ? 'rounded-[24px] p-5' : 'rounded-[16px] p-3.5'
       }`}
@@ -63,11 +67,11 @@ function SessionSkeletonItem({ isTablet }: { isTablet: boolean }) {
         <View className={`bg-[#E5E7EB] rounded-[4px] ${isTablet ? 'h-4 w-56' : 'h-3.5 w-36'}`} />
       </View>
       <View className={`bg-[#E5E7EB] rounded-[6px] ${isTablet ? 'h-7 w-24' : 'h-5 w-16'}`} />
-    </Animated.View>
+    </AnimatedReanimated.View>
   );
 }
 
-export default function Sessions({ studentId, studentName, filter }: SessionsProps) {
+export default function Sessions({ studentId, studentName, filter, onEvaluationValidated }: SessionsProps) {
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
 
@@ -76,6 +80,9 @@ export default function Sessions({ studentId, studentName, filter }: SessionsPro
   const [error, setError] = useState<string | null>(null);
   const [sessionFilter, setSessionFilter] = useState<SessionFilterType>('all');
   const [showInfo, setShowInfo] = useState(false);
+
+  // Active open Swipeable ref
+  const openSwipeableRef = useRef<any>(null);
 
   // Modal states for pending validation (FeedbackModal) vs validated review (EvaluationReviewModal)
   const [activeModalSession, setActiveModalSession] = useState<{
@@ -88,6 +95,7 @@ export default function Sessions({ studentId, studentName, filter }: SessionsPro
     validated_at?: string;
   } | null>(null);
 
+  const [isEditingSession, setIsEditingSession] = useState<SessionRecord | null>(null);
   const [isReviewModalVisible, setIsReviewModalVisible] = useState(false);
   const [selectedReviewSessionId, setSelectedReviewSessionId] = useState<string | null>(null);
 
@@ -126,8 +134,13 @@ export default function Sessions({ studentId, studentName, filter }: SessionsPro
     }
   };
 
+  const handleEditPress = (session: SessionRecord) => {
+    setIsEditingSession(session);
+  };
+
   const handleValidationSuccess = () => {
     fetchSessions();
+    onEvaluationValidated?.();
   };
 
   const filteredSessions = useMemo(() => {
@@ -152,6 +165,62 @@ export default function Sessions({ studentId, studentName, filter }: SessionsPro
     { label: 'PENDING', value: 'unvalidated', count: sessions.filter((s) => s.status === 'pending').length },
     { label: 'EVALUATED', value: 'validated', count: sessions.filter((s) => s.status === 'validated').length },
   ];
+
+  const renderRightActions = (
+    session: SessionRecord,
+    swipeableRef: any,
+    progress: Animated.AnimatedInterpolation<number>
+  ) => {
+    const editScale = progress.interpolate({
+      inputRange: [0, 0.4, 1],
+      outputRange: [0.5, 1.1, 1],
+      extrapolate: 'clamp',
+    });
+    const editOpacity = progress.interpolate({
+      inputRange: [0, 0.3, 1],
+      outputRange: [0, 0.8, 1],
+      extrapolate: 'clamp',
+    });
+    const editTransX = progress.interpolate({
+      inputRange: [0, 1],
+      outputRange: [20, 0],
+      extrapolate: 'clamp',
+    });
+
+    return (
+      <View className="flex-row items-center justify-end pl-4 pr-1 bg-white" style={{ height: '100%' }}>
+        {/* EDIT */}
+        <Animated.View
+          style={{
+            opacity: editOpacity,
+            transform: [{ scale: editScale }, { translateX: editTransX }],
+          }}
+        >
+          <Pressable
+            onPress={() => {
+              swipeableRef?.close();
+              handleEditPress(session);
+            }}
+            className="flex-col items-center justify-center active:scale-95 transition-transform"
+            style={{ width: isTablet ? 72 : 56 }}
+          >
+            <View className="items-center justify-center" style={{ height: isTablet ? 32 : 26 }}>
+              <EditIcon width={isTablet ? 26 : 22} height={isTablet ? 26 : 22} />
+            </View>
+            <Text
+              className={`font-fredoka-one text-[#62A9E6] text-center w-full px-1 ${
+                isTablet ? 'text-[12px] mt-2' : 'text-[10px] mt-1.5'
+              }`}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+            >
+              EDIT
+            </Text>
+          </Pressable>
+        </Animated.View>
+      </View>
+    );
+  };
 
   return (
     <View className="w-full mt-6 mb-12 pb-6">
@@ -204,16 +273,16 @@ export default function Sessions({ studentId, studentName, filter }: SessionsPro
 
         {/* Full-width Info Banner Row below Title & Filters */}
         {showInfo && (
-          <Animated.View
+          <AnimatedReanimated.View
             entering={FadeInUp.duration(200)}
             exiting={FadeOutUp.duration(150)}
             className="w-full bg-[#E0F2FE] border border-[#BBE8FB] rounded-xl p-3 mt-3 flex-row items-center gap-2.5 overflow-hidden"
           >
             <Feather name="info" size={isTablet ? 22 : 18} color="#62A9E6" />
             <Text className={`font-quicksand-bold text-[#62A9E6] flex-1 leading-normal ${isTablet ? 'text-sm' : 'text-[11px]'}`}>
-              Validate pending sessions to evaluate student progress and publish updates directly to the Parent Portal.
+              Validate pending sessions to evaluate student progress and publish updates directly to the Parent Portal. Swipe left on evaluated sessions to edit feedback.
             </Text>
-          </Animated.View>
+          </AnimatedReanimated.View>
         )}
       </View>
 
@@ -248,10 +317,10 @@ export default function Sessions({ studentId, studentName, filter }: SessionsPro
           {filteredSessions.map((session) => {
             const isPending = session.status === 'pending';
             const accentColor = isPending ? '#FF8870' : '#179D33';
+            let currentSwipeableRef: any = null;
 
-            return (
+            const cardContent = (
               <Pressable
-                key={session.id}
                 onPress={() => handleCardPress(session)}
                 className="active:scale-[0.98] transition-transform"
               >
@@ -320,6 +389,39 @@ export default function Sessions({ studentId, studentName, filter }: SessionsPro
                 </View>
               </Pressable>
             );
+
+            if (!isPending) {
+              return (
+                <Swipeable
+                  key={session.id}
+                  ref={(ref) => {
+                    currentSwipeableRef = ref;
+                  }}
+                  renderRightActions={(progress) =>
+                    renderRightActions(session, currentSwipeableRef, progress)
+                  }
+                  onSwipeableWillOpen={() => {
+                    if (openSwipeableRef.current && openSwipeableRef.current !== currentSwipeableRef) {
+                      openSwipeableRef.current.close();
+                    }
+                    openSwipeableRef.current = currentSwipeableRef;
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  }}
+                  onSwipeableClose={() => {
+                    if (openSwipeableRef.current === currentSwipeableRef) {
+                      openSwipeableRef.current = null;
+                    }
+                  }}
+                  friction={1.5}
+                  overshootRight={false}
+                  rightThreshold={40}
+                >
+                  {cardContent}
+                </Swipeable>
+              );
+            }
+
+            return <React.Fragment key={session.id}>{cardContent}</React.Fragment>;
           })}
         </View>
       )}
@@ -332,13 +434,29 @@ export default function Sessions({ studentId, studentName, filter }: SessionsPro
         studentName={studentName}
         onClose={() => setActiveModalSession(null)}
         onSuccess={handleValidationSuccess}
-        isReadOnly={activeModalSession?.status === 'validated'}
+        isReadOnly={false}
+        isEditing={false}
         initialScores={activeModalSession?.rubric_evaluation}
         initialFeedback={activeModalSession?.teacher_feedback}
         validatedAt={activeModalSession?.validated_at}
       />
 
-      {/* Evaluation Review Modal (For Validated Sessions - Matching recent-activity-section) */}
+      {/* Edit Rubric Feedback Modal (For Validated Sessions via Swipe Edit Button) */}
+      <FeedbackModal
+        visible={!!isEditingSession}
+        sessionId={isEditingSession?.id || null}
+        activityTitle={isEditingSession?.activityName}
+        studentName={studentName}
+        onClose={() => setIsEditingSession(null)}
+        onSuccess={handleValidationSuccess}
+        isReadOnly={false}
+        isEditing={true}
+        initialScores={isEditingSession?.rubric_evaluation}
+        initialFeedback={isEditingSession?.teacher_feedback}
+        validatedAt={isEditingSession?.validated_at}
+      />
+
+      {/* Evaluation Review Modal (For Validated Sessions when clicking card directly) */}
       <EvaluationReviewModal
         visible={isReviewModalVisible}
         sessionId={selectedReviewSessionId}

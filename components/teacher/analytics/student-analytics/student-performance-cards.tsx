@@ -15,6 +15,7 @@ import { StudentSessionStats, getStudentSessionStats } from '../../../../src/ser
 interface StudentPerformanceCardsProps {
   studentId: string;
   filter?: string;
+  refreshTrigger?: number;
 }
 
 type FilterType = 'today' | 'week' | 'month' | 'overall';
@@ -96,7 +97,7 @@ const CARDS: CardConfig[] = [
   },
 ];
 
-export default function StudentPerformanceCards({ studentId, filter: externalFilter }: StudentPerformanceCardsProps) {
+export default function StudentPerformanceCards({ studentId, filter: externalFilter, refreshTrigger }: StudentPerformanceCardsProps) {
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
 
@@ -137,7 +138,7 @@ export default function StudentPerformanceCards({ studentId, filter: externalFil
     return () => {
       active = false;
     };
-  }, [studentId, filter]);
+  }, [studentId, filter, refreshTrigger]);
 
   const filterButtons: { label: string; value: FilterType }[] = [
     { label: 'Today', value: 'today' },

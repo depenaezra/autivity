@@ -7,7 +7,7 @@ import Animated, { useAnimatedStyle, withTiming, Easing, useSharedValue } from '
 import ActivitySectionIcon from '@/assets/images/teacher/class/icon-class.svg';
 
 export interface ActivityCardItem {
-  id: 'tracing' | 'matching' | 'bubble';
+  id: 'tracing' | 'matching' | 'bubble' | 'pick-n-choose';
   title: string;
   imageSource: any;
   headerBgColor: string;
@@ -136,7 +136,7 @@ interface ActivitiesSectionProps {
   assignedPaths: string[];
   isLoading: boolean;
   isTablet: boolean;
-  onNavigateToLesson: (type: 'tracing' | 'matching' | 'bubble') => void;
+  onNavigateToLesson: (type: 'tracing' | 'matching' | 'bubble' | 'pick-n-choose') => void;
 }
 
 export function ActivitiesSection({
@@ -178,6 +178,16 @@ export function ActivitiesSection({
     );
   };
 
+  const isPickChoicePath = (path: string) => {
+    const lower = path.toLowerCase();
+    return (
+      lower.includes('pick') ||
+      lower.includes('choice') ||
+      lower.includes('identification') ||
+      lower.includes('picture-word')
+    );
+  };
+
   const allActivities: ActivityCardItem[] = [
     {
       id: 'tracing',
@@ -206,12 +216,22 @@ export function ActivitiesSection({
       themeFontColor: '#8A57BE',
       themeFillColor: '#E6D8F2',
     },
+    {
+      id: 'pick-n-choose',
+      title: "Pick 'n Choose",
+      imageSource: require('@/assets/images/activities/pick-n-choose-header.png'),
+      headerBgColor: '#DCFCE7',
+      themeColor: '#22C55E',
+      themeFontColor: '#15803D',
+      themeFillColor: '#F0FDF4',
+    },
   ];
 
   const assignedActivities = allActivities.filter((item) => {
     if (item.id === 'tracing') return assignedPaths.some(isTracingPath);
     if (item.id === 'matching') return assignedPaths.some(isMatchingPath);
     if (item.id === 'bubble') return assignedPaths.some(isBubblePath);
+    if (item.id === 'pick-n-choose') return assignedPaths.some(isPickChoicePath);
     return false;
   });
 

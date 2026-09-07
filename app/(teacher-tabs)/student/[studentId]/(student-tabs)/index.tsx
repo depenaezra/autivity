@@ -147,8 +147,18 @@ export default function StudentHome() {
         ? tracingCategories.join(', ')
         : null;
 
+    const isPickChoicePath = (path: string) => {
+        const lower = path.toLowerCase();
+        return (
+            lower.includes('pick') ||
+            lower.includes('choice') ||
+            lower.includes('identification') ||
+            lower.includes('picture-word')
+        );
+    };
+
     // 2. PASS THE IDs TO THE LESSON ROUTE
-    const navigateToLesson = (activityType: 'tracing' | 'matching' | 'bubble') => {
+    const navigateToLesson = (activityType: 'tracing' | 'matching' | 'bubble' | 'pick-n-choose') => {
         const targetStudentId = (studentId as string) || '1';
 
         // Filter to only match the activityType
@@ -157,8 +167,10 @@ export default function StudentHome() {
                 return isTracingPath(path);
             } else if (activityType === 'matching') {
                 return isMatchingPath(path);
-            } else {
+            } else if (activityType === 'bubble') {
                 return isBubblePath(path);
+            } else {
+                return isPickChoicePath(path);
             }
         });
 

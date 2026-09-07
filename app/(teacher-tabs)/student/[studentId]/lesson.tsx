@@ -109,6 +109,14 @@ export default function LessonScreen() {
                         }
                         return true;
                     });
+                } else if (activityType === 'pick-n-choose' || activityType === 'pick') {
+                    pool = pool.filter(a => {
+                        const path = (a.path || '').toLowerCase();
+                        const cat = (a.category || '').toLowerCase();
+                        const sub = (a.sub_category || '').toLowerCase();
+                        const type = (a.type || a.content_data?.type || '').toLowerCase();
+                        return path.includes('pick') || cat.includes('pick') || sub.includes('pick') || sub.includes('picture-word') || path.includes('picture-word') || type.includes('pick') || type.includes('choice') || type.includes('identification');
+                    });
                 }
 
                 setActivityPool(pool);

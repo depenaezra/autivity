@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { useRouter } from 'expo-router';
-import React, { useRef, useState, useEffect } from 'react';
-import { Animated, Alert, Pressable, Text, useWindowDimensions, View } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Animated, Alert, Pressable, Text, useWindowDimensions, View, ActivityIndicator } from 'react-native';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { HeaderButton } from './header-button';
 import { ScreenLayout } from './screen-layout';
@@ -13,13 +13,26 @@ import IconClear from '../assets/images/parent/icon-clear.svg';
 import IconRead from '../assets/images/parent/icon-read.svg';
 import IconUnread from '../assets/images/parent/icon-unread.svg';
 
+import ParentEvaluationReviewModal from './parent/parent-evaluation-review-modal';
+import ParentMilestoneDetailModal, { ParentMilestoneItem } from './parent/parent-milestone-detail-modal';
+import { supabase } from '../src/lib/supabase';
+import {
+  clearAllNotifications,
+  deleteNotification,
+  getNotificationsForUser,
+  markNotificationRead,
+  markNotificationUnread,
+} from '../src/services/notifications';
+
 export interface NotificationItem {
   id: string;
   title: string;
   message: string;
   timestamp: string;
   isRead?: boolean;
-  type?: 'feedback' | 'announcement' | 'alert' | 'general';
+  type?: 'feedback' | 'activity' | 'achievement' | 'milestone' | 'announcement' | 'alert' | 'general';
+  studentId?: string;
+  metadata?: any;
 }
 
 interface NotificationsScreenProps {
@@ -293,10 +306,35 @@ export function NotificationsScreen({
   const isTablet = width >= 600;
 
   const [items, setItems] = useState<NotificationItem[]>(notifications);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [selectedFeedbackSessionId, setSelectedFeedbackSessionId] = useState<string | null>(null);
+  const [selectedMilestoneItem, setSelectedMilestoneItem] = useState<ParentMilestoneItem | null>(null);
   const openSwipeableRef = useRef<any>(null);
 
+  const fetchUserNotifications = async () => {
+    setIsLoading(true);
+    try {
+      const data = await getNotificationsForUser();
+      setItems(data);
+    } catch (err) {
+      console.error('[NOTIFICATIONS] Error loading notifications:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchUserNotifications();
+    }, [])
+  );
+
   useEffect(() => {
-    setItems(notifications);
+    if (notifications && notifications.length > 0) {
+      setItems(notifications);
+    } else {
+      fetchUserNotifications();
+    }
   }, [notifications]);
 
   const handleSwipeableWillOpen = (ref: any) => {
@@ -312,6 +350,7 @@ export function NotificationsScreen({
         item.id === id ? { ...item, isRead: true } : item
       )
     );
+    markNotificationRead(id);
   };
 
   const handleMarkUnread = (id: string) => {
@@ -320,6 +359,7 @@ export function NotificationsScreen({
         item.id === id ? { ...item, isRead: false } : item
       )
     );
+    markNotificationUnread(id);
   };
 
   const handleDelete = (id: string) => {
@@ -333,6 +373,7 @@ export function NotificationsScreen({
           style: 'destructive',
           onPress: () => {
             setItems((prev) => prev.filter((item) => item.id !== id));
+            deleteNotification(id);
           },
         },
       ]
@@ -350,6 +391,7 @@ export function NotificationsScreen({
           style: 'destructive',
           onPress: () => {
             setItems([]);
+            clearAllNotifications();
             onClearAll?.();
           },
         },
@@ -365,12 +407,104 @@ export function NotificationsScreen({
     }
   };
 
+  const handleItemPress = async (item: NotificationItem) => {
+    // 1. Mark as read immediately
+    if (!item.isRead) {
+      handleMarkRead(item.id);
+    }
+
+    // 2. Call external callback if provided
+    onNotificationPress?.(item);
+
+    const meta = typeof item.metadata === 'string'
+      ? (() => { try { return JSON.parse(item.metadata); } catch { return {}; } })()
+      : (item.metadata || {});
+
+    // 3. If feedback type, open ParentEvaluationReviewModal
+    if (item.type === 'feedback') {
+      const sessionId = meta?.session_id;
+      if (sessionId) {
+        setSelectedFeedbackSessionId(sessionId);
+      }
+    }
+
+    // 4. If milestone type, open ParentMilestoneDetailModal
+    if (item.type === 'milestone') {
+      const mId = meta?.milestone_id || meta?.goal_id;
+
+      let status = meta?.status || 'Target Set';
+      if (item.message?.toLowerCase().includes('completed') || item.message?.toLowerCase().includes('achieved')) {
+        status = 'Achieved';
+      } else if (item.message?.toLowerCase().includes('in progress')) {
+        status = 'In Progress';
+      }
+
+      let title = item.title;
+      const quoteMatch = item.message?.match(/"([^"]+)"/);
+      if (quoteMatch && quoteMatch[1]) {
+        title = quoteMatch[1];
+      }
+
+      const formatTargetDate = (rawDate?: string | null): string | null => {
+        if (!rawDate) return null;
+        const d = new Date(rawDate);
+        if (isNaN(d.getTime())) return rawDate;
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      };
+
+      let targetDate = formatTargetDate(meta?.target_date || meta?.targetDate);
+
+      // Fetch latest details from database BEFORE opening modal so targetDate is ready instantly
+      if (mId) {
+        try {
+          const { data: sm } = await supabase
+            .from('student_milestones')
+            .select('*')
+            .eq('id', mId)
+            .maybeSingle();
+
+          if (sm) {
+            title = sm.title || title;
+            status = sm.status || status;
+            targetDate = formatTargetDate(sm.target_date) || targetDate;
+          } else {
+            const { data: ig } = await supabase
+              .from('iep_goals')
+              .select('*')
+              .eq('id', mId)
+              .maybeSingle();
+
+            if (ig) {
+              title = ig.title || title;
+              status = ig.status || status;
+              targetDate = formatTargetDate(ig.target_date) || targetDate;
+            }
+          }
+        } catch (err) {
+          console.error('[NOTIFICATIONS] Error fetching milestone details:', err);
+        }
+      }
+
+      setSelectedMilestoneItem({
+        id: mId || item.id,
+        title,
+        status,
+        targetDate,
+      });
+    }
+  };
+
   const getTypeIcon = (type?: string) => {
     switch (type) {
       case 'feedback':
         return <Ionicons name="chatbubble-ellipses" size={isTablet ? 24 : 20} color="#62A9E6" />;
+      case 'activity':
       case 'general':
         return <Ionicons name="checkmark-circle" size={isTablet ? 24 : 20} color="#179D33" />;
+      case 'achievement':
+        return <Ionicons name="trophy" size={isTablet ? 24 : 20} color="#FFAE02" />;
+      case 'milestone':
+        return <Ionicons name="flag" size={isTablet ? 24 : 20} color="#8B5CF6" />;
       case 'announcement':
         return <Ionicons name="ribbon" size={isTablet ? 24 : 20} color="#FFAE02" />;
       case 'alert':
@@ -384,10 +518,14 @@ export function NotificationsScreen({
     switch (type) {
       case 'feedback':
         return 'bg-[#EBF5FF] border-[#BBE8FB]';
+      case 'activity':
       case 'general':
         return 'bg-[#E8F8E5] border-[#CBFAC4]';
+      case 'achievement':
       case 'announcement':
         return 'bg-[#FFF8E5] border-[#FFF3C4]';
+      case 'milestone':
+        return 'bg-[#F3E8FF] border-[#DDD6FE]';
       case 'alert':
         return 'bg-[#FFEBE8] border-[#FFDBD4]';
       default:
@@ -466,7 +604,7 @@ export function NotificationsScreen({
                 key={item.id}
                 item={item}
                 isTablet={isTablet}
-                onPress={() => onNotificationPress?.(item)}
+                onPress={() => handleItemPress(item)}
                 onMarkRead={handleMarkRead}
                 onMarkUnread={handleMarkUnread}
                 onDelete={handleDelete}
@@ -478,6 +616,22 @@ export function NotificationsScreen({
           </View>
         )}
       </View>
+
+      {/* Parent Evaluation Review Modal */}
+      <ParentEvaluationReviewModal
+        visible={!!selectedFeedbackSessionId}
+        sessionId={selectedFeedbackSessionId}
+        onClose={() => setSelectedFeedbackSessionId(null)}
+        isTablet={isTablet}
+      />
+
+      {/* Parent Milestone Detail Modal */}
+      <ParentMilestoneDetailModal
+        visible={!!selectedMilestoneItem}
+        milestone={selectedMilestoneItem}
+        onClose={() => setSelectedMilestoneItem(null)}
+        isTablet={isTablet}
+      />
     </ScreenLayout>
   );
 }

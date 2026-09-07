@@ -2,7 +2,7 @@ import ActivityBear from '@/assets/images/activity-bear.svg';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated as RNAnimated, Dimensions, Pressable, Text, View, ActivityIndicator, useWindowDimensions } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
@@ -118,11 +118,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import AchievementUnlockScreen, { UnlockedBadge } from '@/components/achievement-unlock-screen';
 import ActivityRenderer from '@/components/activity-renderer';
 import FeedbackModal from '@/components/feedback-modal';
+import InstructionSpeakerButton from '@/components/ui/instruction-speaker-button';
+import HintButton from '@/components/ui/hint-button';
 import { supabase } from '@/src/lib/supabase';
 import { processActivityCompletion } from '@/src/services/achivements';
+import { createNotification } from '@/src/services/notifications';
 import { getStudentHistoricalBaseline } from '@/src/services/sessions';
 import { formatActivityTitle } from '@/src/utils/format';
 import { playCorrectSound, setGlobalSfxEnabled, startBackgroundMusic, stopBackgroundMusic } from '@/src/utils/sound';
+import { stopSpeech } from '@/src/utils/speech';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -246,6 +250,7 @@ export default function SetManager({
     const [totalMistakesAccumulator, setTotalMistakesAccumulator] = useState(0);
     const [totalScoreAccumulator, setTotalScoreAccumulator] = useState(0);
     const [playedActivityPaths, setPlayedActivityPaths] = useState<string[]>([]);
+    const [hintSignal, setHintSignal] = useState(0);
 
     // Microanimation for smooth progress bar fill (500ms easing slide)
     const progressAnim = useSharedValue(0);
@@ -602,6 +607,37 @@ export default function SetManager({
                         console.log("[DATABASE] Session insertion succeeded:", data[0]);
                         setSavedSetSessionId(data[0].id);
                     }
+
+                    if (studentId) {
+                        try {
+                            const accuracy = Math.max(0, Math.round(((15 - finalMistakes) / 15) * 100));
+                            const categoryName = currentActivity?.category || 'Activity';
+
+                            const { data: student } = await supabase
+                                .from('students')
+                                .select('name, parent_id')
+                                .eq('id', studentId)
+                                .maybeSingle();
+
+                            const studentName = student?.name || 'Learner';
+
+                            await createNotification({
+                                studentId,
+                                userId: student?.parent_id || undefined,
+                                title: 'New Activity Completed',
+                                message: `${studentName} completed ${categoryName} activity set with ${accuracy}% accuracy!`,
+                                type: 'activity',
+                                metadata: {
+                                    category: categoryName,
+                                    accuracy,
+                                    mistakes: finalMistakes,
+                                    duration_seconds: totalDuration,
+                                },
+                            });
+                        } catch (notifErr) {
+                            console.error('[NOTIFICATIONS] Error sending activity notification:', notifErr);
+                        }
+                    }
                 } catch (e) {
                     console.error("[DATABASE] Error inserting student session:", e);
                 }
@@ -700,6 +736,28 @@ export default function SetManager({
             }
         }
     };
+    // Build the format currentTask expects
+    const currentTask = useMemo(() => {
+        if (!currentActivity) return null;
+
+        const parsedContentData = typeof currentActivity.content_data === 'string'
+            ? (() => { try { return JSON.parse(currentActivity.content_data); } catch { return {}; } })()
+            : (currentActivity.content_data || { id: currentActivity.id, paths: [] });
+
+        return {
+            id: currentActivity.id || `set-activity-${completedCount}`,
+            type: parsedContentData.type || (
+                currentActivity.category?.toLowerCase().includes('drag') ? 'drag-and-drop' :
+                (currentActivity.category?.toLowerCase().includes('bubble') || currentActivity.path?.toLowerCase().includes('bubble')) ? 'bubble-pop' :
+                'tracing'
+            ),
+            title: currentActivity.title || formatActivityTitle(currentActivity.path || ''),
+            path: currentActivity.path || '',
+            data: parsedContentData,
+            content_data: parsedContentData
+        };
+    }, [currentActivity, completedCount]);
+
     // Format timer
     const minutes = Math.floor(globalTimer / 60);
     const seconds = globalTimer % 60;
@@ -714,34 +772,35 @@ export default function SetManager({
 
     const formattedTime = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 
-    // Build the format currentTask expects
-    const parsedContentData = typeof currentActivity.content_data === 'string'
-        ? (() => { try { return JSON.parse(currentActivity.content_data); } catch { return {}; } })()
-        : (currentActivity.content_data || { id: currentActivity.id, paths: [] });
-
-    const currentTask = {
-        id: currentActivity.id || `set-activity-${completedCount}`,
-        type: parsedContentData.type || (
-            currentActivity.category?.toLowerCase().includes('drag') ? 'drag-and-drop' :
-            (currentActivity.category?.toLowerCase().includes('bubble') || currentActivity.path?.toLowerCase().includes('bubble')) ? 'bubble-pop' :
-            'tracing'
-        ),
-        title: currentActivity.title || formatActivityTitle(currentActivity.path || ''),
-        path: currentActivity.path || '',
-        data: parsedContentData,
-        content_data: parsedContentData
-    };
-
     const effectiveCompleted = isSetComplete ? 3 : (completedCount + (isActivityDone ? 1 : 0));
     const progressPercent = `${Math.round((effectiveCompleted / 3) * 100)}%`;
 
     const handleExitSession = () => {
+        stopSpeech().catch(() => {});
         if (unlockedBadges.length > 0) {
             setShowAchievementScreen(true);
         } else {
             router.back();
         }
     };
+
+    const isPickActivity =
+        currentTask?.type === 'pick-n-choose' ||
+        currentTask?.type === 'pick_and_choose' ||
+        currentActivity.sub_category === 'Picture-Word Match' ||
+        (currentActivity.category || '').toLowerCase().includes('pick') ||
+        (currentActivity.path || '').toLowerCase().includes('pick') ||
+        (currentActivity.path || '').toLowerCase().includes('picture-word') ||
+        (currentActivity.title || '').toLowerCase().includes('object identification');
+
+    const displayActivityTitle = isPickActivity
+        ? 'Picture-Word Match'
+        : (currentActivity.title || formatActivityTitle(currentActivity.path || ''));
+
+    const isFrameless =
+        currentTask?.type === 'drag-and-drop' ||
+        currentTask?.type === 'dragdrop' ||
+        isPickActivity;
 
     return (
         <View className="flex-1 bg-[#FBFBFB]">
@@ -750,22 +809,30 @@ export default function SetManager({
                 {/* Header: X and Title */}
                 <View className="flex-row items-center px-6 pt-4 pb-4">
                     <HoldToExitButton onExit={handleExitSession} />
-                    <Text className="text-2xl font-fredoka-one text-[#535B74]">{currentActivity.title || 'Lesson Activity'}</Text>
+                    <Text className="text-2xl font-fredoka-one text-[#535B74]">{displayActivityTitle}</Text>
                 </View>
 
-                {/* Progress Bar & Timer */}
+                {/* Progress Bar, Speaker Button & Timer */}
                 <View className="flex-row items-center px-6 pb-6">
                     <View className="flex-1 h-[18px] bg-[#C4E0F9] rounded-full overflow-hidden">
                         <Animated.View className="h-full bg-[#69AEE3] rounded-full" style={animatedProgressStyle} />
                     </View>
-                    <View className="flex-row items-center ml-4 min-w-[82px] justify-end">
-                        <Feather name="clock" size={20} color="#69AEE3" />
-                        <Text
-                            className="text-[#535B74] font-quicksand-bold ml-1.5 text-[17px]"
-                            style={{ fontVariant: ['tabular-nums'] }}
-                        >
-                            {formattedTime}
-                        </Text>
+                    <View className="flex-row items-center ml-3 gap-2.5">
+                        <HintButton
+                            onPress={() => setHintSignal((prev) => prev + 1)}
+                            size={isTablet ? 44 : 36}
+                            iconSize={isTablet ? 22 : 18}
+                        />
+                        <InstructionSpeakerButton text={bearMessage} size={isTablet ? 44 : 36} iconSize={isTablet ? 22 : 18} />
+                        <View className="flex-row items-center ml-1">
+                            <Feather name="clock" size={20} color="#69AEE3" />
+                            <Text
+                                className="text-[#535B74] font-quicksand-bold ml-1 text-[17px]"
+                                style={{ fontVariant: ['tabular-nums'] }}
+                            >
+                                {formattedTime}
+                            </Text>
+                        </View>
                     </View>
                 </View>
 
@@ -790,12 +857,13 @@ export default function SetManager({
 
                 {/* Tracing / Matching Area */}
                 <View className="flex-1 px-6 pb-6 mt-1">
-                    <View className={currentTask.type === 'drag-and-drop' ? "flex-1" : "flex-1 bg-[#FCFCFC] border-[1.5px] border-[#EBE5E5] rounded-2xl overflow-hidden"}>
+                    <View className={isFrameless ? "flex-1" : "flex-1 bg-[#FCFCFC] border-[1.5px] border-[#EBE5E5] rounded-2xl overflow-hidden"}>
                         <ActivityRenderer
                             key={`${currentActivity.id}-${completedCount}`}
                             activity={currentTask}
                             onComplete={handleActivityComplete}
                             onFeedback={handleFeedback}
+                            hintSignal={hintSignal}
                         />
                     </View>
                 </View>

@@ -1,5 +1,5 @@
-import { GestureHandlerRootView } from "react-native-gesture-handler"; // For handling tracing
-import "../global.css"; // The '../' steps out of the 'app' folder into the root
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import "../global.css";
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import {
@@ -23,10 +23,18 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import 'react-native-reanimated';
+import { LogBox } from 'react-native';
+import { configureReanimatedLogger, ReanimatedLogLevel } from 'react-native-reanimated';
+
+configureReanimatedLogger({
+  level: ReanimatedLogLevel.warn,
+  strict: false,
+});
+
+LogBox.ignoreLogs(['[Reanimated] Reading from `value` during component render']);
 
 
-SplashScreen.preventAutoHideAsync().catch(() => {});
+SplashScreen.preventAutoHideAsync().catch(() => { });
 
 export const unstable_settings = {
   initialRouteName: '(auth)',
@@ -51,7 +59,7 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (fontsLoaded || fontError) {
-      SplashScreen.hideAsync().catch(() => {});
+      SplashScreen.hideAsync().catch(() => { });
     }
   }, [fontsLoaded, fontError]);
 
