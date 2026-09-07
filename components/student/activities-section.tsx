@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { useAnimatedStyle, withTiming, Easing, useSharedValue } from 'react-native-reanimated';
 
@@ -145,6 +145,7 @@ export function ActivitiesSection({
   isTablet,
   onNavigateToLesson,
 }: ActivitiesSectionProps) {
+  const { width } = useWindowDimensions();
   const [activeIndex, setActiveIndex] = useState(0);
   const snapToInterval = isTablet ? 420 + 14 : 290 + 8; // 434 (tablet) and 298 (mobile)
 
@@ -238,7 +239,7 @@ export function ActivitiesSection({
   return (
     <View className={`w-full ${isTablet ? 'mt-10' : 'mt-8'}`}>
       {/* Title Header Row with icon on left matching ClassCard section */}
-      <View className={`flex-row items-center justify-between ${isTablet ? 'mb-6' : 'mb-4'}`}>
+      <View className={`flex-row items-center justify-between ${isTablet ? 'px-12 mb-6' : 'px-6 mb-4'}`}>
         <View className="flex-row items-center gap-2">
           <ActivitySectionIcon
             width={isTablet ? 32 : 22}
@@ -256,7 +257,7 @@ export function ActivitiesSection({
           <ActivityIndicator size="large" color="#62A9E6" />
         </View>
       ) : assignedActivities.length === 0 ? (
-        <View className="bg-white border-[2px] border-dashed border-[#E5E7EB] rounded-2xl p-6 items-center justify-center">
+        <View className={`bg-white border-[2px] border-dashed border-[#E5E7EB] rounded-2xl p-6 items-center justify-center ${isTablet ? 'mx-12 mt-2' : 'mx-6 mt-2'}`}>
           <Text className="font-quicksand-medium text-gray-400 text-sm text-center">
             No activities currently assigned.
           </Text>
@@ -265,17 +266,27 @@ export function ActivitiesSection({
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 8 }}
+          contentContainerStyle={{
+            paddingLeft: isTablet ? 48 : 24,
+            paddingRight: Math.max(isTablet ? 48 : 24, width - (isTablet ? 420 : 290)),
+            paddingBottom: 8,
+          }}
           scrollEventThrottle={16}
           snapToInterval={snapToInterval}
           decelerationRate="fast"
           snapToAlignment="start"
           onScroll={(e) => {
-            const x = e.nativeEvent?.contentOffset?.x;
+            const { contentOffset, layoutMeasurement, contentSize } = e.nativeEvent;
+            const x = contentOffset?.x;
             if (typeof x === 'number' && !isNaN(x)) {
-              const nextIndex = Math.round(x / snapToInterval);
-              if (!isNaN(nextIndex)) {
-                setActiveIndex(nextIndex);
+              const isAtEnd = x + layoutMeasurement.width >= contentSize.width - 20;
+              if (isAtEnd) {
+                setActiveIndex(assignedActivities.length - 1);
+              } else {
+                const nextIndex = Math.round(x / snapToInterval);
+                if (!isNaN(nextIndex)) {
+                  setActiveIndex(Math.max(0, Math.min(assignedActivities.length - 1, nextIndex)));
+                }
               }
             }
           }}

@@ -305,10 +305,11 @@ export default function SetManager({
             }
 
             const category = initialPool[0]?.category || 'Activity';
+            const subCategory = initialPool[0]?.sub_category || initialPool[0]?.path || initialPool[0]?.title || undefined;
             let startingActivity: any = null;
 
             // Step 2: Fetch student's historical baseline
-            const baseline = studentId ? await getStudentHistoricalBaseline(studentId, category) : null;
+            const baseline = studentId ? await getStudentHistoricalBaseline(studentId, category, subCategory) : null;
 
             if (baseline && baseline.lastPath) {
                 // SCENARIO B (History Exists):
@@ -576,6 +577,7 @@ export default function SetManager({
                         teacher_id: teacherId,
                         activity_path: allPaths,
                         category: currentActivity.category || 'Activity',
+                        sub_category: currentActivity.sub_category || initialPool[0]?.sub_category || null,
                         skill_domain: currentActivity.skill_domain || ['Fine Motor Skills'],
                         stars: finalScore,
                         duration_seconds: totalDuration, // Final duration

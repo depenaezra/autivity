@@ -21,17 +21,18 @@ export function generateDynamicActivityData(pool: any[], itemCount: number, asse
     const isColorMatching = pool.some(i => ['toys', 'school_supplies', 'clothing', 'household_items'].includes(i.category));
 
     // 1. If items have category tags, pick ONE category per session so items belong to the same theme!
+    // 1. If items have category tags, pick ONE category per session if it has enough items for itemCount!
     const categories = Array.from(new Set(pool.map(i => i.category).filter(Boolean)));
     if (categories.length > 0) {
         const chosenCategory = categories[Math.floor(Math.random() * categories.length)];
         const categorySubset = pool.filter(i => i.category === chosenCategory);
-        if (categorySubset.length >= Math.min(itemCount, 3)) {
+        if (categorySubset.length >= itemCount) {
             candidatePool = categorySubset;
             categoryName = chosenCategory.replace(/_/g, ' ').replace(/-/g, ' ').toLowerCase();
         }
     }
 
-    // 2. Pick N unique items randomly from candidatePool (deduplicate by item.type for distinct target colors)
+    // 2. Pick N items randomly from candidatePool (preferring distinct types when possible)
     const randomizedPool = shuffleArray(candidatePool);
     
     const uniqueTypeItems: any[] = [];
@@ -45,24 +46,35 @@ export function generateDynamicActivityData(pool: any[], itemCount: number, asse
         if (uniqueTypeItems.length >= itemCount) break;
     }
 
-    const selectedSubset = uniqueTypeItems.length >= itemCount 
-        ? uniqueTypeItems 
-        : randomizedPool.slice(0, Math.min(itemCount, randomizedPool.length));
+    let selectedSubset: any[];
+    if (uniqueTypeItems.length >= itemCount) {
+        selectedSubset = uniqueTypeItems;
+    } else {
+        // If candidate pool has fewer distinct types than itemCount (e.g. 5 items needed but 4 colors exist),
+        // take all distinct types first, then fill remaining slots with additional items from randomizedPool
+        const remainingNeeded = itemCount - uniqueTypeItems.length;
+        const usedIds = new Set(uniqueTypeItems.map(i => i.id));
+        const extraItems = randomizedPool.filter(i => !usedIds.has(i.id)).slice(0, remainingNeeded);
+        selectedSubset = [...uniqueTypeItems, ...extraItems];
+    }
 
-    // 3. Map draggable items with resolved static require pointers
-    const finalItems = selectedSubset.map(item => ({
-        id: `${item.id}-item`,
+    // Ensure subset length matches itemCount if pool has enough items
+    selectedSubset = selectedSubset.slice(0, Math.min(itemCount, candidatePool.length));
+
+    // 3. Map draggable items with unique runtime item IDs
+    const finalItems = selectedSubset.map((item, idx) => ({
+        id: `${item.id}-item-${idx}`,
         type: item.type,
         imageSource: assetDictionary[item.item_asset_key || item.asset_key],
         color: item.color,
         label: item.label || item.type
     }));
 
-    // 4. Map targets with resolved static require pointers
+    // 4. Map targets with unique runtime target IDs
     // NOTE: For Color Matching, imageSource is undefined so it renders Color Target Cards (badge + label).
     // For Fruit Matching / Silhouette Matching, imageSource is set to the fruit asset pointer to render silhouettes.
-    const finalTargets = selectedSubset.map(item => ({
-        id: `${item.id}-target`,
+    const finalTargets = selectedSubset.map((item, idx) => ({
+        id: `${item.id}-target-${idx}`,
         type: item.type,
         imageSource: isColorMatching 
             ? (item.target_asset_key ? assetDictionary[item.target_asset_key] : undefined)

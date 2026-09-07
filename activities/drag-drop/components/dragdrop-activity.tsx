@@ -4,14 +4,15 @@ import { DraxProvider, DraxView } from 'react-native-drax';
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 import { dragDropAssets } from '../utils/assetDictionary';
 import { generateDynamicActivityData } from '../utils/shuffler';
+import { COLOR_MATCHING_POOL } from '../data/matching-colors';
 import { playCorrectSound } from '@/src/utils/sound';
 import { useActivityHint } from '@/hooks/use-activity-hint';
 
 interface DynamicActivityProps {
-    contentData: {
-        item_count: number;
+    contentData?: {
+        item_count?: number;
         instruction?: string;
-        pool: Array<{ id: string; type: string; asset_key: string; color: string }>;
+        pool?: Array<{ id: string; type: string; asset_key: string; color: string; category?: string }>;
     };
     onComplete?: (score: number, timeSpent: number, mistakes: number, hintsUsed?: number) => void;
     onFeedback?: (message: string) => void;
@@ -59,8 +60,9 @@ export default function DragDropActivity({ contentData, onComplete, onFeedback, 
 
     // Store the active runtime layout pairs
     const [activityLayout, setActivityLayout] = useState<{ items: any[]; targets: any[]; instruction?: string } | null>(null);
-    const [placedItems, setPlacedItems] = useState<Record<string, boolean>>({});
-    const [incorrectTrigger, setIncorrectTrigger] = useState<{ type: string; timestamp: number } | null>(null);
+    const [placedItemIds, setPlacedItemIds] = useState<Record<string, boolean>>({});
+    const [targetMap, setTargetMap] = useState<Record<string, any>>({});
+    const [incorrectTrigger, setIncorrectTrigger] = useState<{ itemId: string; timestamp: number } | null>(null);
 
     const mistakesRef = useRef(0);
     const lastMessageIndexRef = useRef<number>(-1);
@@ -80,7 +82,7 @@ export default function DragDropActivity({ contentData, onComplete, onFeedback, 
     const { isHintActive, hintLevel, hintsUsed, triggerHint, recordAttempt, resetForNextQuestion } = useActivityHint({
         getClueText: () => {
             if (!activityLayout) return "Drag the items to their matching targets!";
-            const firstUnplaced = activityLayout.items.find((item) => !placedItems[item.type]);
+            const firstUnplaced = activityLayout.items.find((item) => !placedItemIds[item.id]);
             if (firstUnplaced) {
                 return `Clue: Drag the ${firstUnplaced.type} item to its matching ${firstUnplaced.type} container!`;
             }
@@ -100,16 +102,20 @@ export default function DragDropActivity({ contentData, onComplete, onFeedback, 
 
     // Setup/Reset a unique randomized puzzle configuration mix
     const initializeActivityMix = () => {
-        if (!contentData?.pool) return;
+        const pool = contentData?.pool && contentData.pool.length > 0
+            ? contentData.pool
+            : COLOR_MATCHING_POOL;
 
         const layoutMix = generateDynamicActivityData(
-            contentData.pool,
-            contentData.item_count || 3,
+            pool,
+            contentData?.item_count || 3,
             dragDropAssets
         );
 
         setActivityLayout(layoutMix);
-        setPlacedItems({});
+        setPlacedItemIds({});
+        setTargetMap({});
+        setIncorrectTrigger(null);
         mistakesRef.current = 0;
         startTimeRef.current = Date.now();
         resetForNextQuestion();
@@ -130,23 +136,26 @@ export default function DragDropActivity({ contentData, onComplete, onFeedback, 
         };
     }, [contentDataKey]);
 
-    const handleDrop = (draggedType: string, targetType: string) => {
-        if (!activityLayout) return;
+    const handleDrop = (draggedItem: any, target: any) => {
+        if (!activityLayout || !draggedItem || !target) return;
+        if (targetMap[target.id]) return; // Target slot already filled
 
-        const isCorrect = draggedType === targetType;
+        const isCorrect = draggedItem.type === target.type;
         const hintTriggered = recordAttempt(isCorrect);
 
         if (isCorrect) {
             playCorrectSound();
-            const newPlacedItems = { ...placedItems, [draggedType]: true };
-            setPlacedItems(newPlacedItems);
+            const newPlacedItemIds = { ...placedItemIds, [draggedItem.id]: true };
+            const newTargetMap = { ...targetMap, [target.id]: draggedItem };
+            setPlacedItemIds(newPlacedItemIds);
+            setTargetMap(newTargetMap);
 
             // Revert Activity Bear speech bubble dialogue back to default instructions
             const defaultInstruction = activityLayout.instruction || contentData?.instruction || "Drag the items to their matching targets!";
             onFeedback?.(defaultInstruction);
 
             // Verification rules evaluate against active runtime layout length
-            if (Object.keys(newPlacedItems).length === activityLayout.targets.length) {
+            if (Object.keys(newTargetMap).length === activityLayout.targets.length) {
                 if (onComplete) {
                     const durationSeconds = Math.round((Date.now() - startTimeRef.current) / 1000);
                     const score = 15; // Each completed drag-drop activity awards 15 stars
@@ -154,7 +163,7 @@ export default function DragDropActivity({ contentData, onComplete, onFeedback, 
                 }
             }
         } else {
-            setIncorrectTrigger({ type: draggedType, timestamp: Date.now() });
+            setIncorrectTrigger({ itemId: draggedItem.id, timestamp: Date.now() });
             mistakesRef.current += 1;
 
             onIncorrectAttempt?.();
@@ -169,7 +178,7 @@ export default function DragDropActivity({ contentData, onComplete, onFeedback, 
                 onFeedback?.(getNextGuidingMessage());
 
                 feedbackTimeoutRef.current = setTimeout(() => {
-                    onFeedback?.(activityLayout.instruction || contentData.instruction || "Let's play!");
+                    onFeedback?.(activityLayout.instruction || contentData?.instruction || "Let's play!");
                 }, 3500);
             }
         }
@@ -179,7 +188,7 @@ export default function DragDropActivity({ contentData, onComplete, onFeedback, 
 
     const itemCount = activityLayout.targets.length;
     const cardSizes = getDynamicCardSizes(itemCount, isTablet);
-    const firstUnplaced = activityLayout.items.find((i: any) => !placedItems[i.type]);
+    const firstUnplaced = activityLayout.items.find((i: any) => !placedItemIds[i.id]);
 
     return (
         <DraxProvider>
@@ -187,8 +196,8 @@ export default function DragDropActivity({ contentData, onComplete, onFeedback, 
                 {/* COMPONENT DRAGGABLE SOURCE TRAY */}
                 <View style={[styles.row, { gap: cardSizes.gap }]}>
                     {activityLayout.items.map((item) => {
-                        const isPlaced = placedItems[item.type];
-                        const isHintItem = isHintActive && hintLevel === 2 && firstUnplaced?.type === item.type;
+                        const isPlaced = !!placedItemIds[item.id];
+                        const isHintItem = isHintActive && hintLevel === 2 && firstUnplaced?.id === item.id;
 
                         if (isPlaced) {
                             return (
@@ -224,9 +233,9 @@ export default function DragDropActivity({ contentData, onComplete, onFeedback, 
                             circle: '#CBD5E1',
                         };
 
-                        const isPlaced = placedItems[target.type];
-                        const firstUnplaced = activityLayout.items.find((i: any) => !placedItems[i.type]);
-                        const isHintTarget = isHintActive && hintLevel === 2 && firstUnplaced?.type === target.type;
+                        const placedItem = targetMap[target.id];
+                        const isPlaced = !!placedItem;
+                        const isHintTarget = isHintActive && hintLevel === 2 && firstUnplaced && !isPlaced && target.type === firstUnplaced.type;
 
                         return (
                             <DraxView
@@ -247,8 +256,8 @@ export default function DragDropActivity({ contentData, onComplete, onFeedback, 
                                 ]}
                                 receivingStyle={styles.receivingActive}
                                 onReceiveDragDrop={(event) => {
-                                    const payload = event.dragged.payload as string;
-                                    handleDrop(payload, target.type);
+                                    const draggedItem = event.dragged.payload;
+                                    handleDrop(draggedItem, target);
                                 }}
                             >
                                 {target.imageSource ? (
@@ -278,31 +287,59 @@ export default function DragDropActivity({ contentData, onComplete, onFeedback, 
                                     )
                                 ) : (
                                     <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-                                        <View style={{
-                                            width: cardSizes.circleSize,
-                                            height: cardSizes.circleSize,
-                                            borderRadius: 999,
-                                            backgroundColor: isPlaced ? theme.border : theme.circle,
-                                            justifyContent: 'center',
-                                            alignItems: 'center',
-                                        }}>
-                                            {isPlaced && (
-                                                <Text style={{ color: '#FFFFFF', fontSize: cardSizes.checkFontSize, fontWeight: 'bold' }}>✓</Text>
-                                            )}
-                                        </View>
-                                        <Text
-                                            style={{
-                                                fontFamily: 'FredokaOne_400Regular',
-                                                color: theme.font,
-                                                fontSize: cardSizes.labelFontSize,
-                                                marginTop: 4,
-                                                fontWeight: 'bold',
-                                                textTransform: 'uppercase',
-                                                letterSpacing: 0.5,
-                                            }}
-                                        >
-                                            {target.type}
-                                        </Text>
+                                        {isPlaced && placedItem?.imageSource ? (
+                                            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+                                                <Image
+                                                    source={placedItem.imageSource}
+                                                    style={{
+                                                        width: cardSizes.imageSize * 0.8,
+                                                        height: cardSizes.imageSize * 0.8,
+                                                        resizeMode: 'contain',
+                                                    }}
+                                                />
+                                                <View style={{
+                                                    position: 'absolute',
+                                                    top: -4,
+                                                    right: -4,
+                                                    width: 22,
+                                                    height: 22,
+                                                    borderRadius: 11,
+                                                    backgroundColor: theme.border,
+                                                    justifyContent: 'center',
+                                                    alignItems: 'center',
+                                                }}>
+                                                    <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: 'bold' }}>✓</Text>
+                                                </View>
+                                            </View>
+                                        ) : (
+                                            <>
+                                                <View style={{
+                                                    width: cardSizes.circleSize,
+                                                    height: cardSizes.circleSize,
+                                                    borderRadius: 999,
+                                                    backgroundColor: isPlaced ? theme.border : theme.circle,
+                                                    justifyContent: 'center',
+                                                    alignItems: 'center',
+                                                }}>
+                                                    {isPlaced && (
+                                                        <Text style={{ color: '#FFFFFF', fontSize: cardSizes.checkFontSize, fontWeight: 'bold' }}>✓</Text>
+                                                    )}
+                                                </View>
+                                                <Text
+                                                    style={{
+                                                        fontFamily: 'FredokaOne_400Regular',
+                                                        color: theme.font,
+                                                        fontSize: cardSizes.labelFontSize,
+                                                        marginTop: 4,
+                                                        fontWeight: 'bold',
+                                                        textTransform: 'uppercase',
+                                                        letterSpacing: 0.5,
+                                                    }}
+                                                >
+                                                    {target.type}
+                                                </Text>
+                                            </>
+                                        )}
                                     </View>
                                 )}
                             </DraxView>
@@ -396,14 +433,14 @@ function DraggableItem({
     isHintItem = false,
 }: {
     item: any;
-    incorrectTrigger: { type: string; timestamp: number } | null;
+    incorrectTrigger: { itemId: string; timestamp: number } | null;
     cardSizes: any;
     isHintItem?: boolean;
 }) {
     const shakeOffset = useSharedValue(0);
 
     useEffect(() => {
-        if (incorrectTrigger && incorrectTrigger.type === item.type) {
+        if (incorrectTrigger && incorrectTrigger.itemId === item.id) {
             shakeOffset.value = withSequence(
                 withTiming(-10, { duration: 60 }),
                 withTiming(10, { duration: 60 }),
@@ -414,7 +451,7 @@ function DraggableItem({
                 withTiming(0, { duration: 60 })
             );
         }
-    }, [incorrectTrigger, item.type, shakeOffset]);
+    }, [incorrectTrigger, item.id, shakeOffset]);
 
     const animatedStyle = useAnimatedStyle(() => {
         return {
@@ -440,7 +477,7 @@ function DraggableItem({
                 ]}
                 draggingStyle={styles.dragging}
                 dragReleasedStyle={styles.dragging}
-                dragPayload={item.type}
+                dragPayload={item}
                 longPressDelay={0}
             >
                 {item.imageSource ? (

@@ -120,24 +120,50 @@ export const getLatestStudentSession = async (studentId: string) => {
 
 export const getStudentHistoricalBaseline = async (
     studentId: string,
-    category: string
+    category: string,
+    subCategory?: string
 ): Promise<{ lastPath: string; previousMistakes: number } | null> => {
     try {
         if (!studentId || !category) return null;
+
+        const isTracing = category.toLowerCase().includes('tracing') || category.toLowerCase().includes('fine motor');
 
         const { data, error } = await supabase
             .from('student_sessions')
             .select('*')
             .eq('student_id', studentId)
             .eq('category', category)
-            .order('created_at', { ascending: false })
-            .limit(1);
+            .order('created_at', { ascending: false });
 
         if (error || !data || data.length === 0) {
             return null;
         }
 
-        const record = data[0];
+        // For non-tracing categories (Matching, Bubble Pop, Pick 'n Choose), filter to sessions matching the specific subcategory
+        let record = data[0];
+        if (!isTracing && subCategory && subCategory.trim()) {
+            const cleanSub = subCategory.toLowerCase().trim();
+            const matchingRecord = data.find((r) => {
+                if (r.sub_category && r.sub_category.toLowerCase().includes(cleanSub)) {
+                    return true;
+                }
+                const rawPaths = r.activity_path || r.activity_paths;
+                if (Array.isArray(rawPaths)) {
+                    return rawPaths.some((p: string) => p.toLowerCase().includes(cleanSub));
+                }
+                if (typeof rawPaths === 'string') {
+                    return rawPaths.toLowerCase().includes(cleanSub);
+                }
+                return false;
+            });
+
+            if (!matchingRecord) {
+                // Student has no prior baseline for this specific subcategory, start at Level 1
+                return null;
+            }
+            record = matchingRecord;
+        }
+
         const rawPaths = record.activity_path || record.activity_paths;
         let lastPath: string | null = null;
         if (Array.isArray(rawPaths) && rawPaths.length > 0) {

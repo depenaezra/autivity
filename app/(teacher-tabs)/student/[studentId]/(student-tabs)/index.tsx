@@ -209,15 +209,15 @@ export default function StudentHome() {
                         latestSession={latestSession}
                         isLoading={isLoading}
                     />
-
-                    {/* ACTIVITIES SECTION */}
-                    <ActivitiesSection
-                        assignedPaths={assignedPaths}
-                        isLoading={isLoading}
-                        isTablet={isTablet}
-                        onNavigateToLesson={navigateToLesson}
-                    />
                 </View>
+
+                {/* ACTIVITIES SECTION */}
+                <ActivitiesSection
+                    assignedPaths={assignedPaths}
+                    isLoading={isLoading}
+                    isTablet={isTablet}
+                    onNavigateToLesson={navigateToLesson}
+                />
             </ScrollView>
         </View>
     );
