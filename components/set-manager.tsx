@@ -592,8 +592,8 @@ export default function SetManager({
                         .select();
 
                     if (error) {
-                        console.warn("[DATABASE] Supabase insert failed, trying fallback without activity_id:", error.message);
-                        const { activity_id, ...fallbackPayload } = payload;
+                        console.warn("[DATABASE] Supabase insert failed, trying fallback payload:", error.message);
+                        const { activity_id, sub_category, ...fallbackPayload } = payload;
                         const { data: fbData, error: fbErr } = await supabase
                             .from('student_sessions')
                             .insert([fallbackPayload])

@@ -5,9 +5,19 @@ import { Ionicons } from '@expo/vector-icons';
 import StudentBackground from '@/assets/images/student/background.svg';
 import { HeaderButton } from '../header-button';
 
+const EMOTION_MAP: Record<string, string> = {
+  happy: 'Happy (Masaya)',
+  calm: 'Calm (Kalmado)',
+  excited: 'Excited (Masigla)',
+  tired: 'Tired (Pagod)',
+  sad: 'Sad (Malungkot)',
+  nervous: 'Nervous (Kinakabahan)',
+};
+
 interface StudentHeaderProps {
   name: string;
   avatar?: string | null;
+  todayEmotion?: string | null;
   onBackPress?: () => void;
   isTablet?: boolean;
 }
@@ -15,6 +25,7 @@ interface StudentHeaderProps {
 export function StudentHeader({
   name,
   avatar,
+  todayEmotion,
   onBackPress,
   isTablet = false,
 }: StudentHeaderProps) {
@@ -23,6 +34,10 @@ export function StudentHeader({
   // Fixed height of SVG is 135px, plus topInset for status bar padding
   const svgNativeHeight = isTablet ? 180 : 135;
   const bannerHeight = svgNativeHeight + topInset;
+
+  const emotionBadgeText = todayEmotion
+    ? EMOTION_MAP[todayEmotion.toLowerCase()] || todayEmotion
+    : null;
 
   return (
     <View className="w-full mb-6">
@@ -82,6 +97,15 @@ export function StudentHeader({
         >
           {name || 'Student'}
         </Text>
+
+        {/* Today's Feeling Badge */}
+        {emotionBadgeText && (
+          <View className="mt-2.5 px-4 py-1.5 bg-[#EBF5FF] border-[1.5px] border-[#A3CFF1] rounded-full items-center justify-center">
+            <Text className="font-fredoka-one text-[#62A9E6] text-sm md:text-lg tracking-wide">
+              Feeling: {emotionBadgeText}
+            </Text>
+          </View>
+        )}
       </View>
     </View>
   );

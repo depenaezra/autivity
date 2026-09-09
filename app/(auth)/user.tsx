@@ -1,7 +1,8 @@
 import { Feather, Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback, useState } from 'react';
 import {
+  BackHandler,
   Image,
   Pressable,
   Text,
@@ -16,6 +17,29 @@ export default function User() {
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
   const router = useRouter();
 
+  const handleBack = useCallback(() => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(auth)');
+    }
+  }, [router]);
+
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        if (!router.canGoBack()) {
+          router.replace('/(auth)');
+          return true;
+        }
+        return false;
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
+    }, [router])
+  );
+
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
 
@@ -25,7 +49,7 @@ export default function User() {
       {/* Top Navigation / Back Button */}
       <View className={`w-full pt-4 pb-2 ${isTablet ? 'px-8' : 'px-6'}`}>
         <HeaderButton
-          onPress={() => router.back()}
+          onPress={handleBack}
           icon={
             <View style={{ marginLeft: -3, marginTop: -1 }}>
               <Ionicons name="caret-back" size={isTablet ? 30 : 24} color="#62A9E6" />

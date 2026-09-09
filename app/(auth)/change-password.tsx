@@ -1,13 +1,14 @@
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   Alert,
   ActivityIndicator,
+  BackHandler,
   Pressable,
   Text,
   TextInput,
   View,
 } from "react-native";
-import { router } from "expo-router";
+import { useFocusEffect, router } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { supabase } from "../../src/lib/supabase";
 
@@ -15,6 +16,29 @@ export default function ChangePasswordScreen() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const handleBack = useCallback(() => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(auth)/login');
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        if (!router.canGoBack()) {
+          router.replace('/(auth)/login');
+          return true;
+        }
+        return false;
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
+    }, [])
+  );
 
   const handleChangePassword = async () => {
 
@@ -83,7 +107,7 @@ export default function ChangePasswordScreen() {
 
       {/* BACK BUTTON */}
       <Pressable
-        onPress={() => router.back()}
+        onPress={handleBack}
         className="mt-14 w-11 h-11 bg-white rounded-full items-center justify-center shadow"
       >
         <Feather 

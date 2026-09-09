@@ -15,6 +15,7 @@ export const dragDropAssets: Record<string, any> = {
     red_comb: require('../../../assets/images/activities/drag-drop/colors/clothing/comb.png'),
     red_scarf: require('../../../assets/images/activities/drag-drop/colors/clothing/scarf.png'),
     red_pillow: require('../../../assets/images/activities/drag-drop/colors/household-items/pillow.png'),
+    red_polo: require('../../../assets/images/activities/drag-drop/colors/clothing/polo.png'),
 
     // Color Matching - GREEN
     green_spray_bottle: require('../../../assets/images/activities/drag-drop/colors/household-items/spray-bottle.png'),
@@ -23,6 +24,7 @@ export const dragDropAssets: Record<string, any> = {
     green_backpack: require('../../../assets/images/activities/drag-drop/colors/school-supplies/backpack.png'),
     green_headband: require('../../../assets/images/activities/drag-drop/colors/clothing/headband.png'),
     green_slippers: require('../../../assets/images/activities/drag-drop/colors/clothing/slippers.png'),
+    green_water_boots: require('../../../assets/images/activities/drag-drop/colors/clothing/water-boots.png'),
 
     // Color Matching - BLUE
     blue_cap: require('../../../assets/images/activities/drag-drop/colors/clothing/cap.png'),
@@ -39,4 +41,11 @@ export const dragDropAssets: Record<string, any> = {
     yellow_glue: require('../../../assets/images/activities/drag-drop/colors/school-supplies/glue.png'),
     yellow_pencil: require('../../../assets/images/activities/drag-drop/colors/school-supplies/pencil.png'),
     yellow_puzzle: require('../../../assets/images/activities/drag-drop/colors/toys/puzzle.png'),
+    yellow_rain_jacket: require('../../../assets/images/activities/drag-drop/colors/clothing/rain-jacket.png'),
+
+    // Color Matching - PURPLE
+    purple_umbrella: require('../../../assets/images/activities/drag-drop/colors/household-items/umbrella.png'),
+    purple_tea: require('../../../assets/images/activities/drag-drop/colors/household-items/tea.png'),
+    purple_crayon: require('../../../assets/images/activities/drag-drop/colors/school-supplies/crayon-purple.png'),
+    purple_witch_hat: require('../../../assets/images/activities/drag-drop/colors/clothing/witch-hat.png'),
 };

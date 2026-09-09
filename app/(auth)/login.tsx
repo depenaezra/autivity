@@ -1,8 +1,8 @@
 import { Feather, Ionicons } from '@expo/vector-icons';
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Keyboard, Pressable, Text, TextInput, TouchableWithoutFeedback, View, useWindowDimensions } from "react-native";
+import { useFocusEffect, useRouter } from "expo-router";
+import React, { useCallback, useEffect, useState } from "react";
+import { ActivityIndicator, Alert, BackHandler, Keyboard, Pressable, Text, TextInput, TouchableWithoutFeedback, View, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { HeaderButton } from "../../components/header-button";
 import { supabase } from "../../src/lib/supabase";
@@ -10,6 +10,29 @@ import { login } from '../../src/services/auth';
 
 export default function Login() {
   const router = useRouter();
+
+  const handleBack = useCallback(() => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(auth)');
+    }
+  }, [router]);
+
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        if (!router.canGoBack()) {
+          router.replace('/(auth)');
+          return true;
+        }
+        return false;
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
+    }, [router])
+  );
 
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
@@ -179,7 +202,7 @@ export default function Login() {
         {/* header + back btn */}
         <View className={`w-full pt-4 pb-2 ${isTablet ? 'px-8' : 'px-6'}`}>
           <HeaderButton
-            onPress={() => router.back()}
+            onPress={handleBack}
             icon={
               <View style={{ marginLeft: -3, marginTop: -1 }}>
                 <Ionicons name="caret-back" size={isTablet ? 30 : 24} color="#62A9E6" />

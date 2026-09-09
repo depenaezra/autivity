@@ -16,6 +16,7 @@ import { StudentAnalyticsHeaderSkeleton, StudentAnalyticsSkeleton } from './stud
 
 import StudentDetailsCard from './student-details-card';
 import StudentPerformanceCards from './student-performance-cards';
+import StudentEmotionRegulationCard from './student-emotion-regulation-card';
 import StudentEvaluationTrend from './student-evaluation-trend';
 import StudentDevelopmentalDomainPractice from './student-developmental-domain-practice';
 import Milestones from './milestones';
@@ -266,6 +267,14 @@ export default function StudentView({ studentId, onBack }: StudentViewProps) {
 
             {/* Student Recommendations Card */}
             <StudentRecommendationsCard recommendations={recommendations} />
+
+            {/* Emotional Recognition & Self-Regulation Card */}
+            <StudentEmotionRegulationCard
+              studentId={studentId}
+              studentName={studentData.name}
+              filter={globalFilter}
+              refreshTrigger={refreshKey}
+            />
 
             {/* Student Evaluation Trend Chart */}
             <StudentEvaluationTrend studentId={studentId} filter={globalFilter} refreshTrigger={refreshKey} />

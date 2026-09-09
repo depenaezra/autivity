@@ -129,7 +129,78 @@ export function StudentAnalyticsSkeleton({ isTablet }: SkeletonProps) {
         </View>
       </View>
 
-      {/* 4. Evaluation Trend Chart Skeleton */}
+      {/* 4. Emotional Recognition & Self-Regulation Card Skeleton */}
+      <View className="flex-col mt-4">
+        {/* Title & Info Skeleton */}
+        <View className="flex-row justify-between items-center mb-4">
+          <View className="flex-row items-center gap-2">
+            <View className={`bg-[#E5E7EB] rounded-[6px] ${isTablet ? 'h-7 w-64' : 'h-6 w-48'}`} />
+            <View className="w-5 h-5 rounded-full bg-[#E5E7EB]" />
+          </View>
+        </View>
+
+        {/* Main Card Skeleton */}
+        <View className={`bg-white border border-[#E5E7EB] ${isTablet ? 'rounded-[32px] p-6' : 'rounded-[24px] p-5'} flex-col gap-4`}>
+          {/* Top Metric & Badges */}
+          <View className="flex-row items-center justify-between flex-wrap gap-2">
+            <View className="flex-col gap-1.5">
+              <View className={`bg-[#E5E7EB] rounded-[8px] ${isTablet ? 'h-9 w-40' : 'h-8 w-32'}`} />
+              <View className="bg-[#E5E7EB] rounded-[4px] h-3 w-48" />
+            </View>
+            <View className="flex-row gap-2">
+              <View className="bg-[#E5E7EB] rounded-xl h-10 w-24" />
+              <View className="bg-[#E5E7EB] rounded-xl h-10 w-24" />
+            </View>
+          </View>
+
+          {/* 5-Day Strip Skeleton */}
+          <View className="flex-col gap-2 my-1">
+            <View className="bg-[#E5E7EB] rounded-[4px] h-4 w-36" />
+            <View className="flex-row justify-between gap-2">
+              {[1, 2, 3, 4, 5].map((d) => (
+                <View
+                  key={d}
+                  className={`flex-1 rounded-[16px] p-2 items-center justify-between bg-[#FAFAFA] border border-[#F1F1F1] ${
+                    isTablet ? 'h-[125px]' : 'h-[105px]'
+                  }`}
+                >
+                  <View className="bg-[#E5E7EB] rounded-[4px] h-3 w-8" />
+                  <View className="bg-[#E5E7EB] rounded-full w-8 h-8 my-1" />
+                  <View className="bg-[#E5E7EB] rounded-full h-3.5 w-12" />
+                </View>
+              ))}
+            </View>
+          </View>
+
+          {/* Regulation Zones Distribution Skeleton */}
+          <View className="pt-3 border-t border-[#F1F1F1] flex-col gap-2.5">
+            <View className="bg-[#E5E7EB] rounded-[4px] h-4 w-52 mb-1" />
+            {[1, 2, 3].map((z) => (
+              <View key={z} className="flex-col gap-1.5">
+                <View className="flex-row justify-between items-center">
+                  <View className="flex-row items-center gap-2">
+                    <View className="w-2.5 h-2.5 rounded-full bg-[#E5E7EB]" />
+                    <View className="bg-[#E5E7EB] rounded-[4px] h-3.5 w-32" />
+                  </View>
+                  <View className="bg-[#E5E7EB] rounded-[4px] h-3.5 w-16" />
+                </View>
+                <View className="w-full h-2.5 rounded-full bg-[#F3F4F6]" />
+              </View>
+            ))}
+          </View>
+
+          {/* Behavioral Insight Box Skeleton */}
+          <View className="bg-[#F0F9FF] border border-[#BBE8FB] rounded-2xl p-3.5 flex-row items-center justify-between">
+            <View className="flex-row items-center gap-2">
+              <View className="w-7 h-7 rounded-xl bg-white border border-[#BBE8FB]" />
+              <View className="bg-[#E5E7EB] rounded-[4px] h-4 w-36" />
+            </View>
+            <View className="w-4 h-4 rounded-full bg-[#E5E7EB]" />
+          </View>
+        </View>
+      </View>
+
+      {/* 5. Evaluation Trend Chart Skeleton */}
       <View className="flex-col mt-4">
         <View className="flex-row justify-between items-center mb-4 flex-wrap gap-2">
           <View className={`bg-[#E5E7EB] rounded-[6px] ${isTablet ? 'h-6 w-52' : 'h-5 w-36'}`} />

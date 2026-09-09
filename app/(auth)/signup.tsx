@@ -1,9 +1,10 @@
 import { Feather, Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useState } from 'react';
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  BackHandler,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -22,6 +23,29 @@ import { register } from '../../src/services/auth';
 
 export default function Signup() {
   const router = useRouter();
+
+  const handleBack = useCallback(() => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(auth)');
+    }
+  }, [router]);
+
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        if (!router.canGoBack()) {
+          router.replace('/(auth)');
+          return true;
+        }
+        return false;
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
+    }, [router])
+  );
 
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
@@ -131,7 +155,7 @@ export default function Signup() {
           {/* back btn */}
           <View className={`w-full pt-4 pb-2 ${isTablet ? 'px-8' : 'px-6'}`}>
             <HeaderButton
-              onPress={() => router.back()}
+              onPress={handleBack}
               icon={
                 <View style={{ marginLeft: -3, marginTop: -1 }}>
                   <Ionicons name="caret-back" size={isTablet ? 30 : 24} color="#62A9E6" />

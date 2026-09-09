@@ -32,16 +32,16 @@ export function generateDynamicActivityData(pool: any[], itemCount: number, asse
         }
     }
 
-    // 2. Pick N items randomly from candidatePool (preferring distinct types when possible)
+    // 2. Pick N items randomly from candidatePool (ensuring equal chance for every available color/type)
     const randomizedPool = shuffleArray(candidatePool);
-    
+    const availableTypes = shuffleArray(Array.from(new Set<string>(candidatePool.map(i => i.type))));
     const uniqueTypeItems: any[] = [];
-    const usedTypes = new Set<string>();
 
-    for (const item of randomizedPool) {
-        if (!usedTypes.has(item.type)) {
-            usedTypes.add(item.type);
-            uniqueTypeItems.push(item);
+    for (const type of availableTypes) {
+        const matchingItems = candidatePool.filter(i => i.type === type);
+        if (matchingItems.length > 0) {
+            const randomItem = matchingItems[Math.floor(Math.random() * matchingItems.length)];
+            uniqueTypeItems.push(randomItem);
         }
         if (uniqueTypeItems.length >= itemCount) break;
     }
@@ -54,7 +54,7 @@ export function generateDynamicActivityData(pool: any[], itemCount: number, asse
         // take all distinct types first, then fill remaining slots with additional items from randomizedPool
         const remainingNeeded = itemCount - uniqueTypeItems.length;
         const usedIds = new Set(uniqueTypeItems.map(i => i.id));
-        const extraItems = randomizedPool.filter(i => !usedIds.has(i.id)).slice(0, remainingNeeded);
+        const extraItems = randomizedPool.filter((i: any) => !usedIds.has(i.id)).slice(0, remainingNeeded);
         selectedSubset = [...uniqueTypeItems, ...extraItems];
     }
 

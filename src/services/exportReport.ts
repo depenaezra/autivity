@@ -10,8 +10,17 @@ import {
 } from './class-analytics';
 import { generateNarrativeHighlights, generateProgressForecast, NarrativeHighlight } from './parentAnalyticsEngine';
 import { ParentDashboardData, ParentSessionRecord } from './parentDashboard';
-import { calculateClassProgressForecast, generateClassRecommendations, calculateRubricScore, ClassRecommendation } from './classAnalyticsEngine';
-import { generateStudentRecommendations, calculateStudentProgressForecast } from './studentAnalyticsEngine';
+import {
+  calculateClassProgressForecast,
+  generateClassRecommendations,
+  calculateRubricScore,
+  ClassRecommendation,
+} from './classAnalyticsEngine';
+import {
+  generateStudentRecommendations,
+  calculateStudentProgressForecast,
+  calculateStudentEmotionRegulationAnalytics,
+} from './studentAnalyticsEngine';
 import {
   getStudentSessionStats,
   getStudentValidatedSessionsEvaluations,
@@ -21,6 +30,7 @@ import {
   Milestone,
   StudentHeaderDetails,
 } from './student-analytics';
+import { getStudentCheckInsForFilter } from './check-ins';
 
 interface ReportStats {
   overallPerformance: number;
@@ -602,23 +612,28 @@ export const exportStudentAnalyticsReportPdf = async (
   let domainExposure: MasterDomainExposure[] = [];
   let rawSessions: any[] = [];
   let milestones: Milestone[] = [];
+  let checkIns: any[] = [];
 
   try {
-    const [statsRes, evalsRes, domRes, sessRes, milestonesRes] = await Promise.all([
+    const [statsRes, evalsRes, domRes, sessRes, milestonesRes, checkInsRes] = await Promise.all([
       getStudentSessionStats(studentId, filter).catch(() => ({ averageDuration: 0, averageMistakes: 0, totalSessions: 0 })),
       getStudentValidatedSessionsEvaluations(studentId).catch(() => []),
       getStudentDevelopmentalSkillsExposure(studentId, filter).catch(() => []),
       getStudentSessions(studentId).catch(() => []),
       getStudentMilestones(studentId).catch(() => []),
+      getStudentCheckInsForFilter(studentId, filter).catch(() => []),
     ]);
     stats = statsRes || stats;
     evaluations = evalsRes || [];
     domainExposure = domRes || [];
     rawSessions = sessRes || [];
     milestones = milestonesRes || [];
+    checkIns = checkInsRes || [];
   } catch (err) {
     console.error('exportStudentAnalyticsReportPdf: error loading student data', err);
   }
+
+  const emotionAnalytics = calculateStudentEmotionRegulationAnalytics(checkIns, evaluations, studentDetails.name);
 
   // 2. Check if student needs intervention (< 3.0 / 4.0 average rubric score)
   const validScores = evaluations
@@ -796,6 +811,40 @@ export const exportStudentAnalyticsReportPdf = async (
           ${recommendationsHtml}
         </div>
       ` : ''}
+
+      <div style="background:#FFFFFF; border:2px solid #E2E8F0; border-radius:16px; padding:18px; margin-bottom:20px; page-break-inside:avoid;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <div style="font-weight:800; font-size:14px; color:#1E293B; text-transform:uppercase; letter-spacing:0.5px;">Emotional Recognition & Self-Regulation</div>
+          <span style="font-weight:800; font-size:11px; color:#179D33; background:#F0FDF4; border:1px solid #CBFAC4; border-radius:999px; padding:3px 10px; text-transform:uppercase;">
+            ${emotionAnalytics.totalCheckIns} Total Check-Ins
+          </span>
+        </div>
+        
+        <div style="display:flex; gap:8px; margin-bottom:14px;">
+          ${emotionAnalytics.zoneDistribution.map((z) => `
+            <div style="flex:1; background:${z.bgColor}; border:1.5px solid ${z.borderColor}; border-radius:12px; padding:10px; text-align:center;">
+              <div style="font-size:18px; font-weight:800; color:${z.color};">${z.percentage}%</div>
+              <div style="font-size:11px; font-weight:800; color:#374151; margin-top:2px;">${escapeHtml(z.title)}</div>
+              <div style="font-size:10px; color:#6B7280; font-weight:600; margin-top:1px;">${z.count} ${z.count === 1 ? 'Day' : 'Days'}</div>
+              ${z.averageScore !== null ? `
+                <div style="margin-top:6px; background:#FFFFFF; border:1px solid ${z.borderColor}; border-radius:6px; padding:2px 4px; font-size:10px; font-weight:800; color:${z.color};">
+                  Avg: ${z.averageScore.toFixed(1)} / 4.0
+                </div>
+              ` : ''}
+            </div>
+          `).join('')}
+        </div>
+
+        <div style="background:#F0F9FF; border:1px solid #BBE8FB; border-radius:12px; padding:12px 14px;">
+          <div style="font-weight:800; font-size:12px; color:#0369A1; text-transform:uppercase;">Behavioral Insight</div>
+          <div style="font-size:12px; color:#334155; font-weight:500; margin-top:4px; line-height:1.4;">
+            ${escapeHtml(emotionAnalytics.insightSummary)}
+          </div>
+          <div style="font-size:12px; color:#0284C7; font-weight:700; margin-top:6px;">
+            💡 Strategy: ${escapeHtml(emotionAnalytics.pedagogicalTip)}
+          </div>
+        </div>
+      </div>
 
       <h2>Developmental Milestones</h2>
       ${milestonesHtml}
@@ -985,20 +1034,23 @@ export const exportStudentAnalyticsReportExcel = async (
   let domainExposure: MasterDomainExposure[] = [];
   let rawSessions: any[] = [];
   let milestones: Milestone[] = [];
+  let checkIns: any[] = [];
 
   try {
-    const [statsRes, evalsRes, domRes, sessRes, milestonesRes] = await Promise.all([
+    const [statsRes, evalsRes, domRes, sessRes, milestonesRes, checkInsRes] = await Promise.all([
       getStudentSessionStats(studentId, filter).catch(() => ({ averageDuration: 0, averageMistakes: 0, totalSessions: 0 })),
       getStudentValidatedSessionsEvaluations(studentId).catch(() => []),
       getStudentDevelopmentalSkillsExposure(studentId, filter).catch(() => []),
       getStudentSessions(studentId).catch(() => []),
       getStudentMilestones(studentId).catch(() => []),
+      getStudentCheckInsForFilter(studentId, filter).catch(() => []),
     ]);
     stats = statsRes || stats;
     evaluations = evalsRes || [];
     domainExposure = domRes || [];
     rawSessions = sessRes || [];
     milestones = milestonesRes || [];
+    checkIns = checkInsRes || [];
   } catch (err) {
     console.error('exportStudentAnalyticsReportExcel: error loading student data', err);
   }
@@ -1065,6 +1117,55 @@ export const exportStudentAnalyticsReportExcel = async (
   const wsMilestones = XLSX.utils.aoa_to_sheet(milestoneRows);
   XLSX.utils.book_append_sheet(wb, wsMilestones, 'Milestones');
 
+  const emotionAnalytics = calculateStudentEmotionRegulationAnalytics(checkIns, evaluations, studentDetails.name);
+  
+  // Map evaluations by date for row-level score correlation
+  const evalScoreByDateMap: Record<string, number> = {};
+  evaluations.forEach((ev) => {
+    const score = calculateRubricScore(ev.rubric_evaluation);
+    if (score !== null && ev.created_at) {
+      const d = new Date(ev.created_at).toISOString().split('T')[0];
+      evalScoreByDateMap[d] = score;
+    }
+  });
+
+  const emotionRows = [
+    ['Emotional Recognition & Performance Correlation Summary'],
+    ['Zone', 'Distribution (%)', 'Total Days', 'Average Evaluation Score (0–4)', 'Mastery Level'],
+    ...emotionAnalytics.zoneDistribution.map((z) => [
+      z.title,
+      `${z.percentage}%`,
+      z.count,
+      z.averageScore !== null ? z.averageScore.toFixed(1) : 'No evaluations',
+      z.averageScore !== null ? `${Math.round((z.averageScore / 4) * 100)}%` : 'N/A',
+    ]),
+    [''],
+    ['Daily Emotional Check-Ins & Day Activity Evaluation Log'],
+    ['Date', 'Reported Emotion', 'Tagalog Label', 'Regulation Zone', 'Day Evaluation Score (0–4)', 'Evaluation Status'],
+    ...checkIns.map((c) => {
+      const e = (c.emotion || '').toLowerCase();
+      let zoneTitle = 'Optimal Learning';
+      let tagalog = 'Masaya';
+      if (e === 'calm') { zoneTitle = 'Optimal Learning'; tagalog = 'Kalmado'; }
+      else if (e === 'excited') { zoneTitle = 'Heightened State'; tagalog = 'Masigla'; }
+      else if (e === 'nervous') { zoneTitle = 'Heightened State'; tagalog = 'Kinakabahan'; }
+      else if (e === 'tired') { zoneTitle = 'Low Energy'; tagalog = 'Pagod'; }
+      else if (e === 'sad') { zoneTitle = 'Low Energy'; tagalog = 'Malungkot'; }
+
+      const dayScore = evalScoreByDateMap[c.check_in_date];
+      return [
+        c.check_in_date,
+        e.toUpperCase(),
+        tagalog,
+        zoneTitle,
+        dayScore !== undefined ? dayScore.toFixed(1) : 'N/A',
+        dayScore !== undefined ? 'Evaluated' : 'No Activity Evaluated',
+      ];
+    }),
+  ];
+  const wsEmotions = XLSX.utils.aoa_to_sheet(emotionRows);
+  XLSX.utils.book_append_sheet(wb, wsEmotions, 'Emotional Check-Ins');
+
   const validatedSessionsList = rawSessions.filter((s: any) => s.status === 'validated' && s.rubric_evaluation);
   const valRows = [
     ['Session Date', 'Activity Title', 'Looking at Objects', 'Concentrating', 'Performing Task', 'Following Instructions', 'Completed Work', 'Average Rubric Score', 'Teacher Remarks'],
@@ -1126,6 +1227,7 @@ export const exportStudentAnalyticsReportExcel = async (
   setWorksheetColumnWidths(wsOverview, overviewData);
   setWorksheetColumnWidths(wsRecs, recRows);
   setWorksheetColumnWidths(wsMilestones, milestoneRows);
+  setWorksheetColumnWidths(wsEmotions, emotionRows);
   setWorksheetColumnWidths(wsVal, valRows);
   setWorksheetColumnWidths(wsDom, domRows);
 

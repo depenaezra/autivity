@@ -1,11 +1,12 @@
 import { Feather, Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
-import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useState } from 'react';
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  BackHandler,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -37,7 +38,6 @@ const decodeBase64 = (base64: string): ArrayBuffer => {
   } else if (cleanBase64.endsWith('=')) {
     bufferLength -= 1;
   }
-
   const arrayBuffer = new ArrayBuffer(bufferLength);
   const bytes = new Uint8Array(arrayBuffer);
 
@@ -69,6 +69,30 @@ interface SelectedImage {
 
 export default function TeacherVerification() {
   const router = useRouter();
+
+  const handleBack = useCallback(() => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(auth)');
+    }
+  }, [router]);
+
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        if (!router.canGoBack()) {
+          router.replace('/(auth)');
+          return true;
+        }
+        return false;
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
+    }, [router])
+  );
+
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
 
@@ -235,7 +259,7 @@ export default function TeacherVerification() {
           {/* back btn */}
           <View className={`w-full pt-4 pb-2 ${isTablet ? 'px-8' : 'px-6'}`}>
             <HeaderButton
-              onPress={() => router.back()}
+              onPress={handleBack}
               icon={
                 <View style={{ marginLeft: -3, marginTop: -1 }}>
                   <Ionicons name="caret-back" size={isTablet ? 30 : 24} color="#62A9E6" />

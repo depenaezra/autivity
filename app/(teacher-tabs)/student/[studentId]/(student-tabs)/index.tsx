@@ -6,11 +6,14 @@ import { ActivityIndicator, Image, Pressable, ScrollView, Text, View, useWindowD
 import { ActivitiesSection } from '@/components/student/activities-section';
 import { RecentActivityCard } from '@/components/student/recent-activity-card';
 import { StudentHeader } from '@/components/student/student-header';
+import { DailyCheckInModal } from '@/components/student/daily-check-in-modal';
 
 // Import your student services
 import { getLatestStudentSession } from '../../../../../src/services/sessions';
 import { getStudentActivities, getStudentById } from '../../../../../src/services/students';
 import { getClassById } from '../../../../../src/services/classes';
+import { hasCheckedInToday, saveDailyCheckIn, getTodayCheckIn } from '../../../../../src/services/check-ins';
+import { playCorrectSound } from '../../../../../src/utils/sound';
 
 const themeStyles: Record<string, { stroke: string; font: string; fill: string }> = {
   green: { stroke: '#CBFAC4', font: '#179D33', fill: '#CBFAC4' },
@@ -39,6 +42,11 @@ export default function StudentHome() {
     const [avatar, setAvatar] = useState<string>('');
     const [themeName, setThemeName] = useState<string>((routeThemeName as string) || 'yellow');
 
+    // Daily Emotion Check-In state
+    const [showCheckInModal, setShowCheckInModal] = useState(false);
+    const [isSubmittingCheckIn, setIsSubmittingCheckIn] = useState(false);
+    const [todayEmotion, setTodayEmotion] = useState<string | null>(null);
+
     // Fetch the paths when screen loads
     useEffect(() => {
         const loadActivities = async () => {
@@ -46,17 +54,27 @@ export default function StudentHome() {
 
             setIsLoading(true);
             try {
-                const paths = await getStudentActivities(studentId as string);
+                const safeStudentId = Array.isArray(studentId) ? studentId[0] : (studentId as string);
+
+                // Fetch today's check-in
+                const checkIn = await getTodayCheckIn(safeStudentId);
+                if (checkIn) {
+                    setTodayEmotion(checkIn.emotion);
+                } else {
+                    setShowCheckInModal(true);
+                }
+
+                const paths = await getStudentActivities(safeStudentId);
                 setAssignedPaths(paths);
 
-                const session = await getLatestStudentSession(studentId as string);
+                const session = await getLatestStudentSession(safeStudentId);
                 setLatestSession(session);
 
                 let currentClassId = (initialClassId as string) || classId;
                 let currentTeacherId = (initialTeacherId as string) || teacherId;
                 let currentName = (initialStudentName as string) || studentName;
 
-                const student = await getStudentById(studentId as string);
+                const student = await getStudentById(safeStudentId);
                 let activeTheme = (routeThemeName as string) || 'yellow';
                 if (student) {
                     currentClassId = student.class_id;
@@ -89,6 +107,22 @@ export default function StudentHome() {
         };
         loadActivities();
     }, [studentId, initialClassId, initialTeacherId, initialStudentName]);
+
+    const handleConfirmCheckIn = async (selectedEmotion: string) => {
+        const safeStudentId = Array.isArray(studentId) ? studentId[0] : (studentId as string);
+        if (!safeStudentId || isSubmittingCheckIn) return;
+
+        setIsSubmittingCheckIn(true);
+        try {
+            await saveDailyCheckIn(safeStudentId, selectedEmotion);
+            playCorrectSound();
+            setTodayEmotion(selectedEmotion);
+        } catch (err) {
+            console.error("Error saving check-in:", err);
+        } finally {
+            setIsSubmittingCheckIn(false);
+        }
+    };
 
     const isTracingPath = (path: string) => {
         if (['lines', 'shapes', 'letters', 'numbers'].includes(path.toLowerCase())) {
@@ -198,6 +232,7 @@ export default function StudentHome() {
                 <StudentHeader
                     name={studentName || 'Monna'}
                     avatar={avatar}
+                    todayEmotion={todayEmotion}
                     onBackPress={() => router.back()}
                     isTablet={isTablet}
                 />
@@ -219,6 +254,16 @@ export default function StudentHome() {
                     onNavigateToLesson={navigateToLesson}
                 />
             </ScrollView>
+
+            {/* DAILY EMOTION CHECK-IN MODAL */}
+            <DailyCheckInModal
+                visible={showCheckInModal}
+                studentName={studentName}
+                onConfirm={handleConfirmCheckIn}
+                onBackPress={() => router.back()}
+                onClose={() => setShowCheckInModal(false)}
+                isSubmitting={isSubmittingCheckIn}
+            />
         </View>
     );
 }

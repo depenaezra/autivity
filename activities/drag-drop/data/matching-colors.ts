@@ -1,7 +1,7 @@
 export interface ColorMatchingItem {
     id: string;
     category: 'toys' | 'school_supplies' | 'clothing' | 'household_items';
-    type: 'Red' | 'Green' | 'Blue' | 'Yellow';
+    type: 'Red' | 'Green' | 'Blue' | 'Yellow' | 'Purple';
     asset_key: string;
     color: string;
     label: string;
@@ -65,6 +65,14 @@ export const COLOR_MATCHING_POOL: ColorMatchingItem[] = [
         color: '#EF4444',
         label: 'Red Pillow',
     },
+    {
+        id: 'red-polo',
+        category: 'clothing',
+        type: 'Red',
+        asset_key: 'red_polo',
+        color: '#EF4444',
+        label: 'Red Polo Shirt',
+    },
 
     // GREEN ITEMS (#10B981)
     {
@@ -114,6 +122,14 @@ export const COLOR_MATCHING_POOL: ColorMatchingItem[] = [
         asset_key: 'green_slippers',
         color: '#10B981',
         label: 'Green Slippers',
+    },
+    {
+        id: 'green-water-boots',
+        category: 'clothing',
+        type: 'Green',
+        asset_key: 'green_water_boots',
+        color: '#10B981',
+        label: 'Green Water Boots',
     },
 
     // BLUE ITEMS (#3B82F6)
@@ -215,6 +231,48 @@ export const COLOR_MATCHING_POOL: ColorMatchingItem[] = [
         color: '#FACC15',
         label: 'Yellow Puzzle',
     },
+    {
+        id: 'yellow-rain-jacket',
+        category: 'clothing',
+        type: 'Yellow',
+        asset_key: 'yellow_rain_jacket',
+        color: '#FACC15',
+        label: 'Yellow Rain Jacket',
+    },
+
+    // PURPLE ITEMS (#A855F7)
+    {
+        id: 'purple-umbrella',
+        category: 'household_items',
+        type: 'Purple',
+        asset_key: 'purple_umbrella',
+        color: '#A855F7',
+        label: 'Purple Umbrella',
+    },
+    {
+        id: 'purple-tea',
+        category: 'household_items',
+        type: 'Purple',
+        asset_key: 'purple_tea',
+        color: '#A855F7',
+        label: 'Purple Tea Cup',
+    },
+    {
+        id: 'purple-crayon',
+        category: 'school_supplies',
+        type: 'Purple',
+        asset_key: 'purple_crayon',
+        color: '#A855F7',
+        label: 'Purple Crayon',
+    },
+    {
+        id: 'purple-witch-hat',
+        category: 'clothing',
+        type: 'Purple',
+        asset_key: 'purple_witch_hat',
+        color: '#A855F7',
+        label: 'Purple Witch Hat',
+    },
 ];
 
 export const COLOR_TARGET_DEFS: Record<string, { color: string; label: string }> = {
@@ -222,4 +280,5 @@ export const COLOR_TARGET_DEFS: Record<string, { color: string; label: string }>
     Green: { color: '#10B981', label: 'GREEN' },
     Blue: { color: '#3B82F6', label: 'BLUE' },
     Yellow: { color: '#FACC15', label: 'YELLOW' },
+    Purple: { color: '#A855F7', label: 'PURPLE' },
 };

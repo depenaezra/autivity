@@ -196,9 +196,7 @@ export default function ProfileScreen() {
     try {
       await logout();
 
-      router.dismissAll();
-      router.replace("/(auth)");
-      router.push("/(auth)/login");
+      router.replace("/(auth)/login");
     } catch (error: any) {
       Alert.alert("Logout Failed", error.message);
     }

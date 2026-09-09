@@ -52,6 +52,12 @@ const COLOR_THEME_MAP: Record<string, { bg: string; border: string; font: string
         font: '#FFAE02',
         circle: '#FFAE02',
     },
+    Purple: {
+        bg: '#F3E8FF',
+        border: '#A855F7',
+        font: '#A855F7',
+        circle: '#A855F7',
+    },
 };
 
 export default function DragDropActivity({ contentData, onComplete, onFeedback, onIncorrectAttempt, hintSignal }: DynamicActivityProps) {
