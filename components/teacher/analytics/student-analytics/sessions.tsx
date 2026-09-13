@@ -377,6 +377,17 @@ export default function Sessions({ studentId, studentName, filter, onEvaluationV
                           </Text>
                         </View>
                       ) : null}
+
+                      {/* Hints Requested Badge */}
+                      <Text className="text-[#D1D5DB] text-xs">•</Text>
+                      <View className="flex-row items-center gap-1">
+                        <Feather name="help-circle" size={isTablet ? 12 : 10} color={session.hints_used && session.hints_used > 0 ? '#D97706' : '#10B981'} />
+                        <Text className={`font-quicksand-bold ${isTablet ? 'text-sm' : 'text-xs'} ${session.hints_used && session.hints_used > 0 ? 'text-[#D97706]' : 'text-[#10B981]'}`}>
+                          {session.hints_used && session.hints_used > 0
+                            ? `${session.hints_used} hint${session.hints_used === 1 ? '' : 's'}`
+                            : 'Independent'}
+                        </Text>
+                      </View>
                     </View>
                   </View>
 

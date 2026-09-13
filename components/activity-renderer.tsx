@@ -3,6 +3,7 @@ import React from 'react';
 import DragDropActivity from '@/activities/drag-drop/components/dragdrop-activity';
 import BubbleActivity from '@/activities/bubble-pop/components/bubble-activity';
 import PickChoiceActivity from '@/activities/pick-n-choose/components/pick-n-choose-activity';
+import SequencingActivity from '@/activities/sequencing/components/sequencing-activity';
 
 type ActivityRendererProps = {
     activity: any;
@@ -13,7 +14,19 @@ type ActivityRendererProps = {
 };
 
 export default function ActivityRenderer({ activity, onComplete, onFeedback, onIncorrectAttempt, hintSignal }: ActivityRendererProps) {
-    const activityType = (activity.type || activity.content_data?.type || '').toLowerCase();
+    const activityType = (activity.type || activity.content_data?.type || activity.category || '').toLowerCase();
+
+    if (activityType.includes('sequenc')) {
+        return (
+            <SequencingActivity
+                contentData={activity.content_data}
+                onComplete={onComplete}
+                onFeedback={onFeedback}
+                onIncorrectAttempt={onIncorrectAttempt}
+                hintSignal={hintSignal}
+            />
+        );
+    }
 
     if (activityType.includes('bubble')) {
         return (
@@ -44,6 +57,18 @@ export default function ActivityRenderer({ activity, onComplete, onFeedback, onI
     }
 
     switch (activityType) {
+        case 'sequencing':
+        case 'picture-sequencing':
+            return (
+                <SequencingActivity
+                    contentData={activity.content_data}
+                    onComplete={onComplete}
+                    onFeedback={onFeedback}
+                    onIncorrectAttempt={onIncorrectAttempt}
+                    hintSignal={hintSignal}
+                />
+            );
+
         case 'tracing':
             // Pass the specific data into your reusable engine
             return (

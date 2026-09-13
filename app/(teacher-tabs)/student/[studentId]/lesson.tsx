@@ -55,6 +55,14 @@ export default function LessonScreen() {
                             .eq('is_hidden', false);
                         pool = data || [];
                     }
+                    if (activityType === 'sequencing' || activityType === 'sequence') {
+                        const { data } = await supabase
+                            .from('activities')
+                            .select('*')
+                            .or('category.ilike.%sequenc%,sub_category.ilike.%sequenc%')
+                            .eq('is_hidden', false);
+                        pool = data || [];
+                    }
                     if (!pool || pool.length === 0) {
                         pool = await getDefaultActivities(50);
                     }
@@ -116,6 +124,14 @@ export default function LessonScreen() {
                         const sub = (a.sub_category || '').toLowerCase();
                         const type = (a.type || a.content_data?.type || '').toLowerCase();
                         return path.includes('pick') || cat.includes('pick') || sub.includes('pick') || sub.includes('picture-word') || path.includes('picture-word') || type.includes('pick') || type.includes('choice') || type.includes('identification');
+                    });
+                } else if (activityType === 'sequencing' || activityType === 'sequence') {
+                    pool = pool.filter(a => {
+                        const path = (a.path || '').toLowerCase();
+                        const cat = (a.category || '').toLowerCase();
+                        const sub = (a.sub_category || '').toLowerCase();
+                        const type = (a.type || a.content_data?.type || '').toLowerCase();
+                        return path.includes('sequenc') || cat.includes('sequenc') || sub.includes('sequenc') || type.includes('sequenc');
                     });
                 }
 

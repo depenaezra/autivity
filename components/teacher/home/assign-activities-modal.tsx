@@ -24,6 +24,10 @@ export const ALL_PICK_CHOOSE_CATEGORIES = [
   { id: 'Picture-Word Match', title: 'Picture-Word Match', icon: 'text-outline' },
 ];
 
+export const ALL_SEQUENCING_CATEGORIES = [
+  { id: 'Picture Sequencing', title: 'Picture Sequencing', icon: 'list-outline' },
+];
+
 export interface AssignActivitiesModalProps {
   visible: boolean;
   onClose: () => void;
@@ -94,7 +98,7 @@ export function AssignActivitiesModal({
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ gap: 6, flexGrow: 1 }}
           >
-            {['tracing', 'matching', 'bubble-pop', 'pick-n-choose'].map((type) => {
+            {['tracing', 'matching', 'bubble-pop', 'pick-n-choose', 'sequencing'].map((type) => {
               const isSelected = activeActivityType === type;
               const label =
                 type === 'tracing'
@@ -103,7 +107,9 @@ export function AssignActivitiesModal({
                   ? 'Matching'
                   : type === 'bubble-pop'
                   ? 'Bubble Pop'
-                  : 'Pick & Choose';
+                  : type === 'pick-n-choose'
+                  ? 'Pick & Choose'
+                  : 'Sequencing';
               return (
                 <Pressable
                   key={type}
@@ -129,7 +135,7 @@ export function AssignActivitiesModal({
         </View>
 
         {/* Grid Category List */}
-        {activeActivityType === 'tracing' || activeActivityType === 'matching' || activeActivityType === 'bubble-pop' || activeActivityType === 'pick-n-choose' ? (
+        {['tracing', 'matching', 'bubble-pop', 'pick-n-choose', 'sequencing'].includes(activeActivityType) ? (
           <View className="flex-row flex-wrap justify-between gap-y-3.5">
             {(activeActivityType === 'tracing'
               ? ALL_TRACING_CATEGORIES
@@ -137,7 +143,9 @@ export function AssignActivitiesModal({
               ? ALL_MATCHING_CATEGORIES
               : activeActivityType === 'bubble-pop'
               ? ALL_BUBBLE_POP_CATEGORIES
-              : ALL_PICK_CHOOSE_CATEGORIES
+              : activeActivityType === 'pick-n-choose'
+              ? ALL_PICK_CHOOSE_CATEGORIES
+              : ALL_SEQUENCING_CATEGORIES
             ).map((cat) => {
               const isSelected = selectedActivityPaths.includes(cat.id);
               return (

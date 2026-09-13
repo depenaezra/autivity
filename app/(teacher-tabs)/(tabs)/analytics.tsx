@@ -6,7 +6,7 @@ import Animated, { FadeInRight } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import AnalyticsCards from '../../../components/teacher/analytics/analytics-cards';
-import ClassPerformanceSection from '../../../components/teacher/analytics/class-performance-section';
+import StudentPerformanceSection from '../../../components/teacher/analytics/student-performance-section';
 import RecentActivitySection from '../../../components/teacher/analytics/recent-activity-section';
 import { ParentFilterModal } from '../../../components/parent/parent-filter-modal';
 import { FilterPeriod, getFilterLabel } from '../../../src/utils/dashboardFilters';
@@ -19,6 +19,7 @@ export default function AnalyticsDraftScreen() {
   const isTablet = width >= 768;
 
   const [focusKey, setFocusKey] = useState(0);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [globalFilter, setGlobalFilter] = useState<FilterPeriod>('overall');
   const [isFilterModalVisible, setFilterModalVisible] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -129,17 +130,17 @@ export default function AnalyticsDraftScreen() {
 
         {/* ANALYTICS CARDS */}
         <Animated.View key={`cards-${focusKey}`} entering={FadeInRight.delay(100).duration(300)}>
-          <AnalyticsCards />
+          <AnalyticsCards refreshTrigger={refreshKey} />
         </Animated.View>
 
-        {/* CLASS PERFORMANCE SECTION */}
+        {/* STUDENT PERFORMANCE / ANALYTICS SECTION */}
         <Animated.View key={`perf-${focusKey}`} entering={FadeInRight.delay(150).duration(300)}>
-          <ClassPerformanceSection />
+          <StudentPerformanceSection />
         </Animated.View>
 
         {/* RECENT ACTIVITY SECTION */}
         <Animated.View key={`activity-${focusKey}`} entering={FadeInRight.delay(200).duration(300)}>
-          <RecentActivitySection />
+          <RecentActivitySection onEvaluationValidated={() => setRefreshKey((prev) => prev + 1)} />
         </Animated.View>
       </ScrollView>
 

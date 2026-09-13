@@ -3,22 +3,20 @@ import { speakInstruction } from '@/src/utils/speech';
 
 export type HintState = {
     isHintActive: boolean;
-    hintLevel: 1 | 2; // Level 1 = Voice & text clue first; Level 2 = Direct visual highlight
+    hintLevel: 1 | 2; // Level 1 = Audio & text clue only (1st tap); Level 2 = Direct visual highlight + audio (2nd+ tap)
     clueText: string | null;
     hintsUsed: number;
 };
 
 export type UseActivityHintOptions = {
-    inactivityTimeoutMs?: number; // Default: 15 seconds (15000ms)
-    mistakeThreshold?: number;     // Default: 3 consecutive wrong attempts
+    inactivityTimeoutMs?: number; // Kept for backwards-compatibility; no longer triggers auto-hints
+    mistakeThreshold?: number;     // Kept for backwards-compatibility; no longer triggers auto-hints
     getClueText?: () => string;    // Function returning clue for current step/question
     onFeedback?: (message: string) => void;
     enabled?: boolean;
 };
 
 export function useActivityHint({
-    inactivityTimeoutMs = 15000,
-    mistakeThreshold = 3,
     getClueText,
     onFeedback,
     enabled = true,
@@ -31,9 +29,8 @@ export function useActivityHint({
     });
 
     const mistakeCountRef = useRef(0);
-    const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-    // Keep refs of callbacks to prevent timer reset on every render / prop change
+    // Keep refs of callbacks to prevent unnecessary re-creations
     const getClueTextRef = useRef(getClueText);
     const onFeedbackRef = useRef(onFeedback);
 
@@ -42,12 +39,19 @@ export function useActivityHint({
         onFeedbackRef.current = onFeedback;
     }, [getClueText, onFeedback]);
 
-    // Trigger hint (TTS audio clue + feedback banner + level calculation)
+    /**
+     * Manual Trigger for Hint Button:
+     * - 1st click on current question: Level 1 (Audio clue spoken aloud + top banner clue, no visual highlighting)
+     * - 2nd or subsequent clicks: Level 2 (Audio clue re-spoken + visual answer/target highlight activated)
+     */
     const triggerHint = useCallback((forcedLevel?: 1 | 2) => {
+        if (!enabled) return;
+
         let currentClue = getClueTextRef.current ? getClueTextRef.current() : 'Here is a hint to help you!';
 
         setHintState((prev) => {
-            const nextLevel = forcedLevel || (prev.isHintActive && prev.hintLevel === 1 ? 2 : 1);
+            // If hint was not active yet, 1st tap is Level 1. If already active, escalate to Level 2.
+            const nextLevel = forcedLevel || (prev.isHintActive ? 2 : 1);
             currentClue = getClueTextRef.current ? getClueTextRef.current() : 'Here is a hint to help you!';
 
             return {
@@ -58,53 +62,33 @@ export function useActivityHint({
             };
         });
 
-        // Always speak TTS voice clue aloud for all hint triggers
+        // Speak TTS voice clue aloud on every manual tap
         speakInstruction(currentClue);
 
         if (onFeedbackRef.current) {
             onFeedbackRef.current(`💡 ${currentClue}`);
         }
-    }, []);
+    }, [enabled]);
 
-    // Reset 15s inactivity timer
-    const resetInactivityTimer = useCallback(() => {
-        if (inactivityTimerRef.current) {
-            clearTimeout(inactivityTimerRef.current);
-            inactivityTimerRef.current = null;
-        }
-
-        if (!enabled) return;
-
-        inactivityTimerRef.current = setTimeout(() => {
-            triggerHint();
-        }, inactivityTimeoutMs);
-    }, [enabled, inactivityTimeoutMs, triggerHint]);
-
-    // Record user attempt (wrong or right). Returns true if hint was triggered.
+    // Record user attempt (purely records mistakes; NO automated hints are triggered on mistakes)
     const recordAttempt = useCallback((isCorrect: boolean): boolean => {
         if (isCorrect) {
             mistakeCountRef.current = 0;
             setHintState((prev) => ({
                 ...prev,
                 isHintActive: false,
+                hintLevel: 1,
                 clueText: null,
             }));
-            resetInactivityTimer();
             return false;
         } else {
             mistakeCountRef.current += 1;
-            resetInactivityTimer();
-
-            // Trigger Level 2 hint (visual highlight + spoken clue) when mistake threshold reached
-            if (mistakeCountRef.current >= mistakeThreshold) {
-                triggerHint(2);
-                return true;
-            }
+            // No automated hint trigger on mistake — user must manually tap hint if needed
             return false;
         }
-    }, [mistakeThreshold, resetInactivityTimer, triggerHint]);
+    }, []);
 
-    // Reset hint state for next question/step
+    // Reset hint state for next question/step (clears active hints and resets tier to Level 1)
     const resetForNextQuestion = useCallback(() => {
         mistakeCountRef.current = 0;
         setHintState((prev) => ({
@@ -113,18 +97,10 @@ export function useActivityHint({
             hintLevel: 1,
             clueText: null,
         }));
-        resetInactivityTimer();
-    }, [resetInactivityTimer]);
-
-    // Initial mount start of inactivity timer
-    useEffect(() => {
-        resetInactivityTimer();
-        return () => {
-            if (inactivityTimerRef.current) {
-                clearTimeout(inactivityTimerRef.current);
-            }
-        };
     }, []);
+
+    // Kept as a no-op for any legacy caller references
+    const resetInactivityTimer = useCallback(() => {}, []);
 
     return {
         isHintActive: hintState.isHintActive,
@@ -137,3 +113,4 @@ export function useActivityHint({
         resetInactivityTimer,
     };
 }
+

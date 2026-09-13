@@ -11,6 +11,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { StudentSessionStats, getStudentSessionStats } from '../../../../src/services/student-analytics';
+import { StudentKpiCalculationModal, MetricKey } from './student-kpi-calculation-modal';
 
 interface StudentPerformanceCardsProps {
   studentId: string;
@@ -39,12 +40,13 @@ function StudentPerformanceCardsSkeleton({ isTablet }: { isTablet: boolean }) {
   }));
 
   return (
-    <Animated.View style={animatedStyle} className="flex-row gap-4">
-      {[1, 2].map((cardKey) => (
+    <Animated.View style={animatedStyle} className="flex-row gap-2.5 sm:gap-4">
+      {[1, 2, 3].map((cardKey) => (
         <View
           key={cardKey}
-          className={`border-[4px] bg-white justify-center items-center flex-1 ${isTablet ? 'rounded-[32px] p-4 h-[160px]' : 'rounded-[20px] p-3 h-[130px]'
-            }`}
+          className={`border-[4px] bg-white justify-between items-center flex-1 ${
+            isTablet ? 'rounded-[32px] p-4 min-h-[175px]' : 'rounded-[20px] p-2.5 min-h-[148px]'
+          }`}
           style={{
             borderColor: '#F1F1F1',
             shadowColor: '#F1F1F1',
@@ -54,9 +56,13 @@ function StudentPerformanceCardsSkeleton({ isTablet }: { isTablet: boolean }) {
             elevation: 2,
           }}
         >
-          <View className={`bg-[#E5E7EB] rounded-[4px] ${isTablet ? 'w-32 h-4 mb-3' : 'w-20 h-3 mb-2'}`} />
-          <View className={`bg-[#E5E7EB] rounded-full ${isTablet ? 'w-10 h-10 mb-3' : 'w-7 h-7 mb-2'}`} />
-          <View className={`bg-[#E5E7EB] rounded-[6px] ${isTablet ? 'w-20 h-8' : 'w-14 h-6'}`} />
+          <View className={`bg-[#E5E7EB] rounded-[4px] ${isTablet ? 'w-24 h-4 mt-1' : 'w-16 h-3 mt-1'}`} />
+          <View className={`bg-[#E5E7EB] rounded-full ${isTablet ? 'w-9 h-9 my-1' : 'w-6 h-6 my-1'}`} />
+          <View className="items-center w-full">
+            <View className={`bg-[#E5E7EB] rounded-[6px] ${isTablet ? 'w-16 h-7 mb-1' : 'w-12 h-5 mb-1'}`} />
+            <View className={`bg-[#E5E7EB] rounded-[4px] ${isTablet ? 'w-16 h-3' : 'w-12 h-2.5'}`} />
+          </View>
+          <View className={`bg-[#E5E7EB] rounded-full ${isTablet ? 'w-20 h-5 mb-1' : 'w-14 h-4 mb-1'}`} />
         </View>
       ))}
     </Animated.View>
@@ -64,36 +70,38 @@ function StudentPerformanceCardsSkeleton({ isTablet }: { isTablet: boolean }) {
 }
 
 interface CardConfig {
-  key: 'duration' | 'mistakes';
+  key: MetricKey;
   label: string;
-  sublabel: string;
   iconName: string;
   accentColor: string;
   bgColor: string;
   borderColor: string;
-  iconColor: string;
 }
 
 const CARDS: CardConfig[] = [
   {
     key: 'duration',
-    label: 'Average Session',
-    sublabel: 'Time spent per session',
+    label: 'Avg Session',
     iconName: 'clock',
     accentColor: '#62A9E6',
     bgColor: '#E0F2FE',
     borderColor: '#BBE8FB',
-    iconColor: '#62A9E6',
   },
   {
     key: 'mistakes',
-    label: 'Average Mistakes',
-    sublabel: 'Mistakes per session',
+    label: 'Avg Mistakes',
     iconName: 'alert-circle',
     accentColor: '#F43F5E',
     bgColor: '#FFF1F2',
     borderColor: '#FECDD3',
-    iconColor: '#E11D48',
+  },
+  {
+    key: 'hints',
+    label: 'Avg Hints',
+    iconName: 'help-circle',
+    accentColor: '#FFAE02',
+    bgColor: '#FEF3C7',
+    borderColor: '#FDE68A',
   },
 ];
 
@@ -106,6 +114,7 @@ export default function StudentPerformanceCards({ studentId, filter: externalFil
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showInfo, setShowInfo] = useState(false);
+  const [selectedCardForModal, setSelectedCardForModal] = useState<MetricKey | null>(null);
 
   useEffect(() => {
     if (externalFilter) {
@@ -160,6 +169,10 @@ export default function StudentPerformanceCards({ studentId, filter: externalFil
     return `${avgMistakes.toFixed(1)}`;
   };
 
+  const formatHints = (avgHints: number) => {
+    return `${avgHints.toFixed(1)}`;
+  };
+
   const hasNoSessions = !stats || stats.totalSessions === 0;
 
   if (isLoading) {
@@ -182,6 +195,7 @@ export default function StudentPerformanceCards({ studentId, filter: externalFil
             <Pressable
               onPress={() => setShowInfo(!showInfo)}
               className="active:opacity-75 p-1"
+              accessibilityLabel="Information about student performance metrics"
             >
               <Feather name="info" size={isTablet ? 20 : 16} color="#62A9E6" />
             </Pressable>
@@ -194,6 +208,7 @@ export default function StudentPerformanceCards({ studentId, filter: externalFil
                 <Pressable
                   key={btn.value}
                   onPress={() => setFilter(btn.value)}
+                  className="active:scale-95 transition-transform"
                   style={{
                     borderWidth: 2,
                     borderRadius: 8,
@@ -224,12 +239,19 @@ export default function StudentPerformanceCards({ studentId, filter: externalFil
           <Animated.View
             entering={FadeInUp.duration(200)}
             exiting={FadeOutUp.duration(150)}
-            className="w-full bg-[#E0F2FE] border border-[#BBE8FB] rounded-xl p-3 mt-3 flex-row items-center gap-2.5 overflow-hidden"
+            className="w-full bg-[#E0F2FE] border border-[#BBE8FB] rounded-2xl p-3.5 mt-3 flex-row items-start gap-3 overflow-hidden"
           >
-            <Feather name="info" size={isTablet ? 22 : 18} color="#62A9E6" />
-            <Text className={`font-quicksand-bold text-[#62A9E6] flex-1 leading-normal ${isTablet ? 'text-sm' : 'text-[11px]'}`}>
-              Key indicators for completed sessions of this student.
-            </Text>
+            <View className="mt-0.5">
+              <Feather name="info" size={isTablet ? 22 : 18} color="#62A9E6" />
+            </View>
+            <View className="flex-1">
+              <Text className={`font-quicksand-bold text-[#1E40AF] leading-snug ${isTablet ? 'text-sm' : 'text-xs'}`}>
+                Averages are calculated per completed session (Total ÷ Sessions).
+              </Text>
+              <Text className={`font-quicksand-medium text-[#2563EB] mt-1 leading-relaxed ${isTablet ? 'text-xs' : 'text-[11px]'}`}>
+                Unlike 1.0–4.0 rubric scores, mistakes and hints have no max cap—lower numbers indicate greater accuracy and independence. Tap any card below to view its formula and breakdown.
+              </Text>
+            </View>
           </Animated.View>
         )}
       </View>
@@ -242,21 +264,33 @@ export default function StudentPerformanceCards({ studentId, filter: externalFil
           </Text>
         </View>
       ) : (
-        <View className="flex-row gap-4">
+        <View className="flex-row gap-2.5 sm:gap-4">
           {CARDS.map((card) => {
             const value = hasNoSessions
               ? 'No sessions'
               : card.key === 'duration'
                 ? formatDuration(stats!.averageDuration)
-                : formatMistakes(stats!.averageMistakes);
+                : card.key === 'mistakes'
+                  ? formatMistakes(stats!.averageMistakes)
+                  : formatHints(stats!.averageHints);
 
-            const iconSize = isTablet ? 48 : 32;
+            const iconSize = isTablet ? 36 : 24;
+
+            const totalSubtitle = hasNoSessions
+              ? '0 sessions'
+              : card.key === 'duration'
+                ? `${stats?.totalSessions ?? 0} sessions`
+                : card.key === 'mistakes'
+                  ? `${stats?.totalMistakes ?? 0} total`
+                  : `${stats?.totalHints ?? 0} total`;
 
             return (
-              <View
+              <Pressable
                 key={card.key}
-                className={`border-[4px] bg-white justify-center items-center flex-1 ${isTablet ? 'rounded-[32px] p-4 h-[160px]' : 'rounded-[20px] p-3 h-[130px]'
-                  }`}
+                onPress={() => setSelectedCardForModal(card.key)}
+                className={`border-[4px] bg-white justify-between items-center flex-1 active:scale-95 transition-transform ${
+                  isTablet ? 'rounded-[32px] p-4 min-h-[175px]' : 'rounded-[20px] p-2.5 min-h-[148px]'
+                }`}
                 style={{
                   borderColor: card.borderColor,
                   shadowColor: card.borderColor,
@@ -268,8 +302,9 @@ export default function StudentPerformanceCards({ studentId, filter: externalFil
               >
                 {/* Label */}
                 <Text
-                  className={`font-fredoka-one tracking-[0.06em] text-center ${isTablet ? 'text-sm mt-2' : 'text-[10px] mt-2'
-                    }`}
+                  className={`font-fredoka-one tracking-[0.06em] text-center ${
+                    isTablet ? 'text-sm mt-1' : 'text-[10px] mt-1'
+                  }`}
                   style={{ color: card.accentColor, letterSpacing: isTablet ? 1.2 : 0.6 }}
                   numberOfLines={1}
                 >
@@ -277,22 +312,65 @@ export default function StudentPerformanceCards({ studentId, filter: externalFil
                 </Text>
 
                 {/* Icon */}
-                <View className={`justify-center items-center ${isTablet ? 'my-2' : 'my-1.5'}`}>
+                <View className={`justify-center items-center ${isTablet ? 'my-1' : 'my-0.5'}`}>
                   <Feather name={card.iconName as any} size={iconSize} color={card.accentColor} />
                 </View>
 
-                {/* Value / Count */}
-                <Text
-                  className="font-fredoka-one text-[#484A4B] text-center mb-1"
-                  style={{ fontSize: hasNoSessions ? (isTablet ? 14 : 11) : (isTablet ? 36 : 26) }}
+                {/* Value & Rate Unit */}
+                <View className="items-center justify-center">
+                  <Text
+                    className="font-fredoka-one text-[#484A4B] text-center"
+                    style={{
+                      fontSize: hasNoSessions ? (isTablet ? 13 : 11) : (isTablet ? 28 : 22),
+                      lineHeight: hasNoSessions ? undefined : (isTablet ? 32 : 24),
+                    }}
+                    numberOfLines={1}
+                  >
+                    {value}
+                  </Text>
+                  {!hasNoSessions && (
+                    <Text
+                      className={`font-quicksand-bold text-[#9CA3AF] text-center ${
+                        isTablet ? 'text-xs mt-0.5' : 'text-[10px] mt-0.5'
+                      }`}
+                    >
+                      per session
+                    </Text>
+                  )}
+                </View>
+
+                {/* Totals Pill */}
+                <View
+                  className={`rounded-full items-center justify-center mt-1.5 ${
+                    isTablet ? 'px-2.5 py-1' : 'px-2 py-0.5'
+                  }`}
+                  style={{ backgroundColor: card.bgColor }}
                 >
-                  {value}
-                </Text>
-              </View>
+                  <Text
+                    className={`font-quicksand-bold text-center ${
+                      isTablet ? 'text-xs' : 'text-[9px]'
+                    }`}
+                    style={{ color: card.accentColor }}
+                    numberOfLines={1}
+                  >
+                    {totalSubtitle}
+                  </Text>
+                </View>
+              </Pressable>
             );
           })}
         </View>
       )}
+
+      {/* DEDICATED CALCULATION & INSIGHTS MODAL COMPONENT */}
+      <StudentKpiCalculationModal
+        visible={selectedCardForModal !== null}
+        onClose={() => setSelectedCardForModal(null)}
+        initialMetric={selectedCardForModal}
+        stats={stats}
+        filter={filter}
+        isTablet={isTablet}
+      />
     </View>
   );
 }

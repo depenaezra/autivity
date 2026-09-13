@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase';
 import { createNotification } from './notifications';
 import { formatActivityTitle } from '../utils/format';
+import { calculateRubricScore } from './classAnalyticsEngine';
 
 
 export interface ParentInfo {
@@ -104,7 +105,11 @@ export const getStudentHeaderDetails = async (studentId: string): Promise<Studen
 export interface StudentSessionStats {
   averageDuration: number;
   averageMistakes: number;
+  averageHints: number;
   totalSessions: number;
+  totalMistakes?: number;
+  totalHints?: number;
+  totalDuration?: number;
 }
 
 export const getStudentSessionStats = async (
@@ -131,7 +136,7 @@ export const getStudentSessionStats = async (
 
   let query = supabase
     .from('student_sessions')
-    .select('duration_seconds, mistakes, created_at')
+    .select('duration_seconds, mistakes, hints_used, created_at')
     .eq('student_id', studentId)
     .eq('teacher_id', user.id);
 
@@ -146,16 +151,29 @@ export const getStudentSessionStats = async (
   const totalSessions = sessions.length;
 
   if (totalSessions === 0) {
-    return { averageDuration: 0, averageMistakes: 0, totalSessions: 0 };
+    return {
+      averageDuration: 0,
+      averageMistakes: 0,
+      averageHints: 0,
+      totalSessions: 0,
+      totalMistakes: 0,
+      totalHints: 0,
+      totalDuration: 0,
+    };
   }
 
   const sumDuration = sessions.reduce((acc, s) => acc + (s.duration_seconds || 0), 0);
   const sumMistakes = sessions.reduce((acc, s) => acc + (s.mistakes || 0), 0);
+  const sumHints = sessions.reduce((acc, s) => acc + (s.hints_used || 0), 0);
 
   return {
     averageDuration: sumDuration / totalSessions,
     averageMistakes: sumMistakes / totalSessions,
+    averageHints: sumHints / totalSessions,
     totalSessions,
+    totalMistakes: sumMistakes,
+    totalHints: sumHints,
+    totalDuration: sumDuration,
   };
 };
 
@@ -262,9 +280,11 @@ export const getStudentDevelopmentalSkillsExposure = async (
 
   // Setup domain maps from DB
   const domainColorMap: Record<string, string> = {};
+  const masterDomainNameMap: Record<string, string> = {};
   for (const dom of domainsData) {
     if (dom.name) {
       domainColorMap[dom.name] = dom.color || '#62A9E6';
+      masterDomainNameMap[dom.name.trim().toLowerCase()] = dom.name;
       const subSkills = dom.sub_skills || [];
       for (const sub of subSkills) {
         if (sub.name) {
@@ -276,23 +296,29 @@ export const getStudentDevelopmentalSkillsExposure = async (
     }
   }
 
-  // Accumulate counts
+  // Accumulate counts for registered sub-skills or sub-skill tags
+  const masterDomainNamesLower = new Set(Object.keys(masterDomainNameMap));
+
   for (const [path, count] of Object.entries(pathCounts)) {
     const norm = normalizePath(path);
     const skills = skillDomainMap[norm] || [];
     for (const skill of skills) {
       const key = skill.trim().toLowerCase();
+      // Skip adding master domain name itself as a sub-skill if it matches a top-level domain name
+      if (masterDomainNamesLower.has(key)) {
+        continue;
+      }
       const dbName = exactSkillNameMap[key] || skill;
       skillCounts[dbName] = (skillCounts[dbName] || 0) + count;
     }
   }
 
-  // 6. Group by master domain
+  // 6. Group sub-skills by master domain
   const grouped: Record<string, DevelopmentalSkillExposure[]> = {};
   for (const [skillName, count] of Object.entries(skillCounts)) {
     if (count > 0) {
       const key = skillName.trim().toLowerCase();
-      const masterDomain = skillToDomainMap[key] || 'Other';
+      const masterDomain = skillToDomainMap[key] || 'General Skills';
       if (!grouped[masterDomain]) {
         grouped[masterDomain] = [];
       }
@@ -350,6 +376,7 @@ export interface SessionEvaluation {
   id: string;
   created_at: string;
   rubric_evaluation: any;
+  hints_used?: number;
 }
 
 export const getStudentValidatedSessionsEvaluations = async (studentId: string): Promise<SessionEvaluation[]> => {
@@ -358,7 +385,7 @@ export const getStudentValidatedSessionsEvaluations = async (studentId: string):
 
   const { data, error } = await supabase
     .from('student_sessions')
-    .select('id, created_at, rubric_evaluation')
+    .select('id, created_at, rubric_evaluation, hints_used')
     .eq('student_id', studentId)
     .eq('status', 'validated')
     .order('created_at', { ascending: true });
@@ -568,6 +595,7 @@ export interface SessionRecord {
   rubric_evaluation?: any;
   teacher_feedback?: string;
   validated_at?: string;
+  hints_used?: number;
 }
 
 const normalizeDepEdScore = (rawScore: any): number => {
@@ -667,9 +695,75 @@ export const getStudentSessions = async (studentId: string): Promise<SessionReco
       rubric_evaluation: s.rubric_evaluation || null,
       teacher_feedback: s.teacher_feedback || '',
       validated_at: s.validated_at || null,
+      hints_used: s.hints_used ?? 0,
     };
   });
 };
+
+export interface StudentPerformanceOverview {
+  id: string;
+  name: string;
+  avatar: string;
+  class_id?: string;
+  needsHelp: boolean;
+  averageScore: number | null;
+  pendingCount: number;
+}
+
+export const getStudentsPerformanceOverview = async (): Promise<StudentPerformanceOverview[]> => {
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return [];
+
+  const [studentsRes, sessionsRes] = await Promise.all([
+    supabase
+      .from('students')
+      .select('id, name, avatar, class_id')
+      .eq('teacher_id', user.id)
+      .order('name', { ascending: true }),
+    supabase
+      .from('student_sessions')
+      .select('student_id, rubric_evaluation, mistakes, status')
+      .eq('teacher_id', user.id),
+  ]);
+
+  if (studentsRes.error || !studentsRes.data) return [];
+  const sessions = sessionsRes.data || [];
+
+  return studentsRes.data.map((student) => {
+    const studentSessions = sessions.filter((s) => s.student_id === student.id);
+    const validScores: number[] = [];
+    let totalMistakes = 0;
+    let pendingCount = 0;
+
+    studentSessions.forEach((s) => {
+      if (s.status === 'pending') pendingCount++;
+      const score = calculateRubricScore(s.rubric_evaluation);
+      if (score !== null) validScores.push(score);
+      if (typeof s.mistakes === 'number') totalMistakes += s.mistakes;
+    });
+
+    const avgScore = validScores.length > 0
+      ? validScores.reduce((a, b) => a + b, 0) / validScores.length
+      : null;
+    const avgMistakes = studentSessions.length > 0
+      ? totalMistakes / studentSessions.length
+      : 0;
+
+    // Needs help if average rubric score is below mastery threshold (< 3.0 out of 4.0) or average mistakes >= 3
+    const needsHelp = (avgScore !== null && avgScore < 3.0) || avgMistakes >= 3;
+
+    return {
+      id: student.id,
+      name: student.name,
+      avatar: student.avatar || '🙂',
+      class_id: student.class_id,
+      needsHelp,
+      averageScore: avgScore,
+      pendingCount,
+    };
+  });
+};
+
 
 
 

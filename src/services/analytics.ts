@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { formatActivityTitle } from '../utils/format';
 
 export interface KpiData {
   pendingEvaluations: number;
@@ -112,11 +113,15 @@ export const getDraftClassPerformance = getClassPerformance;
 
 export interface RecentActivityData {
   id: string;
+  studentId: string;
+  activityTitle: string;
   createdAt: string;
   studentName: string;
   category: string;
   status: 'pending' | 'validated';
   validatedAt: string | null;
+  rubricEvaluation?: any;
+  teacherFeedback?: string;
 }
 
 export const getRecentActivity = async (
@@ -164,11 +169,25 @@ export const getRecentActivity = async (
 
   return sessions.map((s: any) => ({
     id: s.id,
+    studentId: s.student_id,
+    activityTitle: (() => {
+      if (Array.isArray(s.activity_path)) {
+        return s.activity_path.length > 0
+          ? s.activity_path.map((path: string) => formatActivityTitle(path)).join(', ')
+          : (s.category || 'General');
+      }
+      if (typeof s.activity_path === 'string') {
+        return formatActivityTitle(s.activity_path);
+      }
+      return s.category || 'General';
+    })(),
     createdAt: s.created_at,
     studentName: studentNameMap[s.student_id] || 'Unknown Student',
     category: s.category || 'General',
     status: s.status as 'pending' | 'validated',
     validatedAt: s.validated_at || null,
+    rubricEvaluation: s.rubric_evaluation || null,
+    teacherFeedback: s.teacher_feedback || '',
   }));
 };
 

@@ -169,7 +169,16 @@ export function useTeacherDashboard() {
   };
 
   const handleAddClass = async () => {
-    if (!newClassName.trim()) return;
+    const trimmedName = newClassName.trim();
+    if (!trimmedName) return;
+
+    const isDuplicate = [...classesData, ...archivedClasses].some(
+      (c) => c.id !== editingClassId && c.title.trim().toLowerCase() === trimmedName.toLowerCase()
+    );
+    if (isDuplicate) {
+      Alert.alert("Duplicate Class Name", "A class with this name already exists. Please choose a different name.");
+      return;
+    }
 
     const selectedTheme = themeColors.find(c => c.value === newClassTheme) || themeColors[0];
     const scheduleStr = newClassSchedule.trim();
@@ -179,14 +188,14 @@ export function useTeacherDashboard() {
       if (editingClassId) {
         await updateClass(
           editingClassId,
-          newClassName.trim(),
+          trimmedName,
           newClassGrade.trim() || 'Grade 1',
           scheduleStr,
           selectedTheme.name
         );
       } else {
         await createClass(
-          newClassName.trim(),
+          trimmedName,
           newClassGrade.trim() || 'Grade 1',
           scheduleStr,
           selectedTheme.name

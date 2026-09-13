@@ -84,12 +84,12 @@ export function StudentAnalyticsSkeleton({ isTablet }: SkeletonProps) {
         <View className="flex-row justify-between items-center mb-4">
           <View className={`bg-[#E5E7EB] rounded-[6px] ${isTablet ? 'h-6 w-56' : 'h-5 w-40'}`} />
         </View>
-        <View className="flex-row gap-4">
-          {[1, 2].map((cardIdx) => (
+        <View className="flex-row gap-2.5 sm:gap-4">
+          {[1, 2, 3].map((cardIdx) => (
             <View
               key={cardIdx}
-              className={`border-[4px] border-[#F1F1F1] bg-white justify-center items-center flex-1 ${
-                isTablet ? 'rounded-[32px] p-4 h-[160px]' : 'rounded-[20px] p-3 h-[130px]'
+              className={`border-[4px] border-[#F1F1F1] bg-white justify-between items-center flex-1 ${
+                isTablet ? 'rounded-[32px] p-4 min-h-[175px]' : 'rounded-[20px] p-2.5 min-h-[148px]'
               }`}
               style={{
                 shadowColor: '#F1F1F1',
@@ -99,9 +99,13 @@ export function StudentAnalyticsSkeleton({ isTablet }: SkeletonProps) {
                 elevation: 2,
               }}
             >
-              <View className={`bg-[#E5E7EB] rounded-[4px] ${isTablet ? 'w-32 h-4 mb-3' : 'w-20 h-3 mb-2'}`} />
-              <View className={`bg-[#E5E7EB] rounded-full ${isTablet ? 'w-10 h-10 mb-3' : 'w-7 h-7 mb-2'}`} />
-              <View className={`bg-[#E5E7EB] rounded-[6px] ${isTablet ? 'w-20 h-8' : 'w-14 h-6'}`} />
+              <View className={`bg-[#E5E7EB] rounded-[4px] ${isTablet ? 'w-24 h-4 mt-1' : 'w-16 h-3 mt-1'}`} />
+              <View className={`bg-[#E5E7EB] rounded-full ${isTablet ? 'w-9 h-9 my-1' : 'w-6 h-6 my-1'}`} />
+              <View className="items-center w-full">
+                <View className={`bg-[#E5E7EB] rounded-[6px] ${isTablet ? 'w-16 h-7 mb-1' : 'w-12 h-5 mb-1'}`} />
+                <View className={`bg-[#E5E7EB] rounded-[4px] ${isTablet ? 'w-16 h-3' : 'w-12 h-2.5'}`} />
+              </View>
+              <View className={`bg-[#E5E7EB] rounded-full ${isTablet ? 'w-20 h-5 mb-1' : 'w-14 h-4 mb-1'}`} />
             </View>
           ))}
         </View>

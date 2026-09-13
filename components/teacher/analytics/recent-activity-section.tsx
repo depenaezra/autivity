@@ -10,6 +10,7 @@ import Animated, {
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { getRecentActivity, RecentActivityData } from '../../../src/services/analytics';
 import EvaluationReviewModal from './evaluation-review-modal';
+import FeedbackModal from '../../feedback-modal';
 import RecentIcon from '../../../assets/images/teacher/analytics/icon-recent.svg';
 
 type FilterType = 'today' | 'week' | 'month';
@@ -58,7 +59,11 @@ function RecentActivitySkeletonItem({ isTablet }: { isTablet: boolean }) {
   );
 }
 
-export function RecentActivitySection() {
+interface RecentActivitySectionProps {
+  onEvaluationValidated?: () => void;
+}
+
+export function RecentActivitySection({ onEvaluationValidated }: RecentActivitySectionProps = {}) {
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
 
@@ -70,6 +75,7 @@ export function RecentActivitySection() {
   // Modal state
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [activeFeedbackSession, setActiveFeedbackSession] = useState<RecentActivityData | null>(null);
 
   useEffect(() => {
     setIsExpanded(false);
@@ -102,7 +108,15 @@ export function RecentActivitySection() {
     if (item.status === 'validated') {
       setSelectedSessionId(item.id);
       setIsModalVisible(true);
+    } else {
+      setActiveFeedbackSession(item);
     }
+  };
+
+  const handleFeedbackSuccess = () => {
+    setActiveFeedbackSession(null);
+    fetchRecentActivity();
+    onEvaluationValidated?.();
   };
 
   const renderFilterButton = (type: FilterType, label: string) => {
@@ -287,6 +301,21 @@ export function RecentActivitySection() {
           setIsModalVisible(false);
           setSelectedSessionId(null);
         }}
+      />
+
+      {/* Feedback / Evaluation Modal (For Pending Sessions) */}
+      <FeedbackModal
+        visible={!!activeFeedbackSession}
+        sessionId={activeFeedbackSession?.id || null}
+        activityTitle={activeFeedbackSession?.activityTitle || activeFeedbackSession?.category}
+        studentName={activeFeedbackSession?.studentName}
+        onClose={() => setActiveFeedbackSession(null)}
+        onSuccess={handleFeedbackSuccess}
+        isReadOnly={false}
+        isEditing={false}
+        initialScores={activeFeedbackSession?.rubricEvaluation}
+        initialFeedback={activeFeedbackSession?.teacherFeedback}
+        validatedAt={activeFeedbackSession?.validatedAt || undefined}
       />
     </View>
   );

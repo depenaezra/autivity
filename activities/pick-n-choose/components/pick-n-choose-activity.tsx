@@ -58,7 +58,7 @@ export default function PickChoiceActivity({
             : OBJECT_IDENTIFICATION_POOL;
 
         const count = contentData?.item_count || 3;
-        const optionsCount = contentData?.choice_count || 3;
+        const optionsCount = contentData?.choice_count || (count <= 2 ? 2 : count === 3 ? 3 : 4);
 
         const generatedQuestions = generatePickChoiceQuestions(pool, count, optionsCount);
         setQuestions(generatedQuestions);
@@ -167,6 +167,7 @@ export default function PickChoiceActivity({
     }
 
     const promptAsset = getPickChoiceAsset(currentQuestion.targetItem.asset_key);
+    const is4GridMobile = !isTablet && currentQuestion.options.length === 4;
 
     return (
         <View className="flex-1 bg-[#FAFAFA] p-4 sm:p-6 justify-between items-center w-full">
@@ -190,23 +191,23 @@ export default function PickChoiceActivity({
                     }
                 ]}
                 className={`w-full max-w-lg bg-white rounded-3xl items-center justify-center border-2 border-[#E2E8F0] border-b-[5px] border-b-[#CBD5E1] my-auto ${
-                    isTablet ? 'p-8 min-h-[260px]' : 'p-6 min-h-[200px]'
+                    isTablet ? 'p-8 min-h-[260px]' : is4GridMobile ? 'p-4 min-h-[170px]' : 'p-6 min-h-[200px]'
                 }`}
             >
                 {promptAsset ? (
                     <Image
                         source={promptAsset}
                         style={{
-                            width: isTablet ? 200 : 140,
-                            height: isTablet ? 200 : 140,
+                            width: isTablet ? 200 : is4GridMobile ? 120 : 140,
+                            height: isTablet ? 200 : is4GridMobile ? 120 : 140,
                         }}
                         resizeMode="contain"
                     />
                 ) : (
                     <View
                         style={{
-                            width: isTablet ? 200 : 140,
-                            height: isTablet ? 200 : 140,
+                            width: isTablet ? 200 : is4GridMobile ? 120 : 140,
+                            height: isTablet ? 200 : is4GridMobile ? 120 : 140,
                         }}
                         className="bg-[#F8FAFC] rounded-2xl items-center justify-center p-4 border-2 border-dashed border-[#CBD5E1]"
                     >
@@ -218,7 +219,15 @@ export default function PickChoiceActivity({
             </Animated.View>
 
             {/* Tactile 3D Choice Button Cards matching Drag-Drop Aesthetics */}
-            <View className={`w-full max-w-lg ${isTablet ? 'gap-4 mb-4' : 'gap-3 mb-2'}`}>
+            <View
+                className={`w-full max-w-lg ${
+                    is4GridMobile
+                        ? 'flex-row flex-wrap justify-between gap-y-3 mb-2'
+                        : isTablet
+                        ? 'gap-4 mb-4'
+                        : 'gap-3 mb-2'
+                }`}
+            >
                 {currentQuestion.options.map((option) => {
                     const isSelected = selectedOptionId === option.id;
                     const isCorrectAnswer = option.isCorrect;
@@ -250,10 +259,15 @@ export default function PickChoiceActivity({
                             activeOpacity={0.8}
                             disabled={selectedOptionId !== null}
                             onPress={() => handleOptionPress(option)}
-                            className={`w-full ${
-                                isTablet ? 'py-5 px-8 rounded-2xl border-2 border-b-[5px]' : 'py-4 px-6 rounded-2xl border-2 border-b-[4px]'
+                            className={`${
+                                is4GridMobile
+                                    ? 'py-3.5 px-3 rounded-2xl border-2 border-b-[4px] min-h-[56px]'
+                                    : isTablet
+                                    ? 'w-full py-5 px-8 rounded-2xl border-2 border-b-[5px]'
+                                    : 'w-full py-4 px-6 rounded-2xl border-2 border-b-[4px]'
                             } items-center justify-center active:scale-98 transition-transform ${bgStyle}`}
                             style={{
+                                width: is4GridMobile ? '48%' : '100%',
                                 shadowColor: showLevel2Highlight ? '#FFAE02' : '#000',
                                 shadowOffset: { width: 0, height: 2 },
                                 shadowOpacity: showLevel2Highlight ? 0.3 : 0.05,
@@ -262,8 +276,10 @@ export default function PickChoiceActivity({
                             }}
                         >
                             <Text
+                                numberOfLines={1}
+                                adjustsFontSizeToFit
                                 className={`font-quicksand-bold text-center tracking-wide ${
-                                    isTablet ? 'text-2xl' : 'text-xl'
+                                    is4GridMobile ? 'text-lg' : isTablet ? 'text-2xl' : 'text-xl'
                                 } ${textStyle}`}
                             >
                                 {option.label}

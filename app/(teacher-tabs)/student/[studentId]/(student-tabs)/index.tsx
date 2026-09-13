@@ -191,8 +191,16 @@ export default function StudentHome() {
         );
     };
 
+    const isSequencingPath = (path: string) => {
+        const lower = path.toLowerCase();
+        return (
+            lower.includes('sequenc') ||
+            lower.includes('picture sequencing')
+        );
+    };
+
     // 2. PASS THE IDs TO THE LESSON ROUTE
-    const navigateToLesson = (activityType: 'tracing' | 'matching' | 'bubble' | 'pick-n-choose') => {
+    const navigateToLesson = (activityType: 'tracing' | 'matching' | 'bubble' | 'pick-n-choose' | 'sequencing') => {
         const targetStudentId = (studentId as string) || '1';
 
         // Filter to only match the activityType
@@ -203,6 +211,8 @@ export default function StudentHome() {
                 return isMatchingPath(path);
             } else if (activityType === 'bubble') {
                 return isBubblePath(path);
+            } else if (activityType === 'sequencing') {
+                return isSequencingPath(path);
             } else {
                 return isPickChoicePath(path);
             }

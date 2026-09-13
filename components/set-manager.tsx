@@ -238,7 +238,7 @@ export default function SetManager({
     const [errorMode, setErrorMode] = useState(false);
     const [successMode, setSuccessMode] = useState(false);
     const [isActivityDone, setIsActivityDone] = useState(false);
-    const [completedMetrics, setCompletedMetrics] = useState<{ score: number; timeSpent: number; mistakes: number } | null>(null);
+    const [completedMetrics, setCompletedMetrics] = useState<{ score: number; timeSpent: number; mistakes: number; hintsUsed?: number } | null>(null);
     const [savedSetSessionId, setSavedSetSessionId] = useState<string | null>(null);
     const [showFeedbackModal, setShowFeedbackModal] = useState(false);
     const [unlockedBadges, setUnlockedBadges] = useState<UnlockedBadge[]>([]);
@@ -248,6 +248,7 @@ export default function SetManager({
 
     // Accumulator State Trackers
     const [totalMistakesAccumulator, setTotalMistakesAccumulator] = useState(0);
+    const [totalHintsAccumulator, setTotalHintsAccumulator] = useState(0);
     const [totalScoreAccumulator, setTotalScoreAccumulator] = useState(0);
     const [playedActivityPaths, setPlayedActivityPaths] = useState<string[]>([]);
     const [hintSignal, setHintSignal] = useState(0);
@@ -451,12 +452,15 @@ export default function SetManager({
     };
 
     // Callback caught from finished game loop
-    const handleActivityComplete = (score: number, timeSpent: number, mistakes: number) => {
+    const handleActivityComplete = (score: number, timeSpent: number, mistakes: number, hintsUsed?: number) => {
         playCorrectSound(studentPreferences.sfx_enabled);
-        setCompletedMetrics({ score, timeSpent, mistakes });
+        setCompletedMetrics({ score, timeSpent, mistakes, hintsUsed: hintsUsed || 0 });
         // Immediately add activity finished score and mistakes to accumulators
         setTotalScoreAccumulator(prev => prev + score);
         setTotalMistakesAccumulator(prev => prev + mistakes);
+        if (hintsUsed) {
+            setTotalHintsAccumulator(prev => prev + hintsUsed);
+        }
 
         // Choose a random praise message and update confirmation button UI state
         setBearMessage(SUCCESS_MESSAGES[Math.floor(Math.random() * SUCCESS_MESSAGES.length)]);
@@ -566,6 +570,7 @@ export default function SetManager({
 
                 // TASK: Unified Database Payload Insertion on completedCount === 2 (finished 3rd activity)
                 const finalMistakes = totalMistakesAccumulator;
+                const finalHints = Math.max(totalHintsAccumulator + (completedMetrics?.hintsUsed || 0), hintSignal);
                 const finalScore = 15; // Always give 15 stars each session, no matter their performance
                 const totalDuration = 900 - globalTimer; // unified elapsed global session time
                 const allPaths = playedActivityPaths;
@@ -583,6 +588,7 @@ export default function SetManager({
                         duration_seconds: totalDuration, // Final duration
                         status: 'pending', // Hardcoded status string
                         mistakes: finalMistakes, // Combined sum of all hidden mistakes
+                        hints_used: finalHints, // Total manual hints used
                         activity_id: currentActivity.id // Fallback points to final activity UUID
                     };
 

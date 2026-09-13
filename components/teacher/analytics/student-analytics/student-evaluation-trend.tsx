@@ -96,23 +96,25 @@ export default function StudentEvaluationTrend({ studentId, filter: externalFilt
     });
 
     // Group by date YYYY-MM-DD
-    const groups: Record<string, number[]> = {};
+    const groups: Record<string, { scores: number[]; hints: number[] }> = {};
     filtered.forEach((s) => {
       const score = calculateSessionScore(s.rubric_evaluation);
       if (score === null) return;
 
       const dateKey = new Date(s.created_at).toISOString().split('T')[0];
       if (!groups[dateKey]) {
-        groups[dateKey] = [];
+        groups[dateKey] = { scores: [], hints: [] };
       }
-      groups[dateKey].push(score);
+      groups[dateKey].scores.push(score);
+      groups[dateKey].hints.push(s.hints_used ?? 0);
     });
 
-    // Sort and average daily scores
+    // Sort and average daily scores and hints
     const sortedDateKeys = Object.keys(groups).sort();
     return sortedDateKeys.map((dateKey) => {
-      const scores = groups[dateKey];
-      const avg = scores.reduce((sum, val) => sum + val, 0) / scores.length;
+      const { scores, hints } = groups[dateKey];
+      const avgScore = scores.reduce((sum, val) => sum + val, 0) / scores.length;
+      const avgHints = hints.reduce((sum, val) => sum + val, 0) / hints.length;
 
       const d = new Date(dateKey + 'T00:00:00');
       const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
@@ -123,10 +125,18 @@ export default function StudentEvaluationTrend({ studentId, filter: externalFilt
         date: dateKey,
         label,
         shortDate,
-        score: Number(avg.toFixed(2)),
+        score: Number(avgScore.toFixed(2)),
+        hints: Number(avgHints.toFixed(1)),
       };
     });
   }, [sessions, filter]);
+
+  // Dynamic scale ceiling for the right Y-axis (Hints)
+  const maxHintsScale = useMemo(() => {
+    if (chartData.length === 0) return 4;
+    const maxH = Math.max(...chartData.map((d) => d.hints), 0);
+    return Math.max(4, Math.ceil(maxH));
+  }, [chartData]);
 
   // Overall average score calculation
   const averageScore = useMemo(() => {
@@ -158,7 +168,7 @@ export default function StudentEvaluationTrend({ studentId, filter: externalFilt
   // SVG Chart Layout Metrics
   const chartHeight = 185;
   const paddingLeft = 36;
-  const paddingRight = 24;
+  const paddingRight = 36;
   const paddingTop = 20;
   const paddingBottom = 30;
 
@@ -167,14 +177,25 @@ export default function StudentEvaluationTrend({ studentId, filter: externalFilt
   const graphHeight = chartHeight - paddingTop - paddingBottom;
   const baselineY = paddingTop + graphHeight;
 
-  // Generate SVG Points & Smooth Bezier Curves
-  const { linePath, areaPath, forecastLinePath, points, forecastPoints } = useMemo(() => {
-    if (chartData.length === 0) return { linePath: '', areaPath: '', forecastLinePath: '', points: [], forecastPoints: [] };
+  // Generate SVG Points & Smooth Bezier Curves for both Score & Hints
+  const { linePath, areaPath, forecastLinePath, hintsLinePath, points, hintPoints, forecastPoints } = useMemo(() => {
+    if (chartData.length === 0) {
+      return {
+        linePath: '',
+        areaPath: '',
+        forecastLinePath: '',
+        hintsLinePath: '',
+        points: [],
+        hintPoints: [],
+        forecastPoints: [],
+      };
+    }
 
     const hasForecast = showForecast && forecastResult.points.length > chartData.length;
     const futurePtsData = hasForecast ? forecastResult.points.filter((p) => p.isForecast) : [];
     const totalPlotPoints = chartData.length + futurePtsData.length;
 
+    // Score points (scaled 0 to 4)
     const pts = chartData.map((d, i) => {
       const x =
         totalPlotPoints === 1
@@ -184,18 +205,33 @@ export default function StudentEvaluationTrend({ studentId, filter: externalFilt
       const clampedScore = Math.max(0, Math.min(4, d.score));
       const y = paddingTop + graphHeight - (clampedScore / 4) * graphHeight;
 
-      return { x, y, score: d.score, label: d.label, isForecast: false };
+      return { x, y, score: d.score, hints: d.hints, label: d.label, isForecast: false };
     });
 
+    // Hints points (scaled 0 to maxHintsScale)
+    const hPts = chartData.map((d, i) => {
+      const x =
+        totalPlotPoints === 1
+          ? paddingLeft + graphWidth / 2
+          : paddingLeft + (i / (totalPlotPoints - 1)) * graphWidth;
+
+      const clampedHints = Math.max(0, Math.min(maxHintsScale, d.hints));
+      const y = paddingTop + graphHeight - (clampedHints / maxHintsScale) * graphHeight;
+
+      return { x, y, hints: d.hints, score: d.score, label: d.label };
+    });
+
+    // Forecast points
     const fPts = futurePtsData.map((d, i) => {
       const idx = chartData.length + i;
       const x = paddingLeft + (idx / (totalPlotPoints - 1)) * graphWidth;
       const clampedScore = Math.max(0, Math.min(4, d.forecastScore ?? 0));
       const y = paddingTop + graphHeight - (clampedScore / 4) * graphHeight;
 
-      return { x, y, score: d.forecastScore ?? 0, label: d.label, isForecast: true };
+      return { x, y, score: d.forecastScore ?? 0, hints: 0, label: d.label, isForecast: true };
     });
 
+    // Score Line Path
     let lPath = `M ${pts[0].x} ${pts[0].y}`;
     for (let i = 0; i < pts.length - 1; i++) {
       const curr = pts[i];
@@ -211,6 +247,19 @@ export default function StudentEvaluationTrend({ studentId, filter: externalFilt
     const last = pts[pts.length - 1];
     const aPath = `${lPath} L ${last.x} ${baselineY} L ${first.x} ${baselineY} Z`;
 
+    // Hints Line Path
+    let hlPath = `M ${hPts[0].x} ${hPts[0].y}`;
+    for (let i = 0; i < hPts.length - 1; i++) {
+      const curr = hPts[i];
+      const next = hPts[i + 1];
+      const cp1x = curr.x + (next.x - curr.x) / 2;
+      const cp1y = curr.y;
+      const cp2x = curr.x + (next.x - curr.x) / 2;
+      const cp2y = next.y;
+      hlPath += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${next.x} ${next.y}`;
+    }
+
+    // Forecast Line Path
     let fLinePath = '';
     if (fPts.length > 0) {
       const startPt = pts[pts.length - 1];
@@ -220,8 +269,16 @@ export default function StudentEvaluationTrend({ studentId, filter: externalFilt
       });
     }
 
-    return { linePath: lPath, areaPath: aPath, forecastLinePath: fLinePath, points: pts, forecastPoints: fPts };
-  }, [chartData, forecastResult, showForecast, graphWidth, graphHeight, paddingLeft, paddingTop, baselineY]);
+    return {
+      linePath: lPath,
+      areaPath: aPath,
+      forecastLinePath: fLinePath,
+      hintsLinePath: hlPath,
+      points: pts,
+      hintPoints: hPts,
+      forecastPoints: fPts,
+    };
+  }, [chartData, forecastResult, showForecast, graphWidth, graphHeight, paddingLeft, paddingTop, baselineY, maxHintsScale]);
 
   return (
     <View className="flex-col mt-6">
@@ -308,7 +365,7 @@ export default function StudentEvaluationTrend({ studentId, filter: externalFilt
           >
             <Feather name="info" size={isTablet ? 22 : 18} color="#62A9E6" />
             <Text className={`font-quicksand-bold text-[#62A9E6] flex-1 leading-normal ${isTablet ? 'text-sm' : 'text-[11px]'}`}>
-              Average daily evaluation score for this student across all activities (0–4 scale).
+              Dual-axis trend: Blue shows Teacher Evaluation Score (0–4), Amber shows Hints Used per session. Points at zero hints highlight independent mastery.
             </Text>
           </Animated.View>
         )}
@@ -360,297 +417,412 @@ export default function StudentEvaluationTrend({ studentId, filter: externalFilt
         </View>
       )}
 
-      {/* Modern Line Chart Card — matching reference design */}
+      {/* Modern Line Chart Card — Dual Y-Axis */}
       {!isLoading && !error && chartData.length > 0 && (
         <View
-        style={[
-          {
-            width: '100%',
-            backgroundColor: '#FFFFFF',
-            borderWidth: 1,
-            borderColor: '#E5E7EB',
-            borderRadius: isTablet ? 32 : 24,
-            padding: isTablet ? 24 : 20,
-            shadowColor: '#000000',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.03,
-            shadowRadius: 10,
-            elevation: 1,
-          },
-          (isLoading || error || chartData.length === 0) && { display: 'none' },
-        ]}
-      >
-        {/* Metric Header (Big Score + Trend Badge + 2-Week Outlook Green Card) */}
-        <View className="flex-row items-center justify-between mb-2 px-2 flex-wrap gap-2">
-          <View className="flex-col">
-            <View className="flex-row items-center gap-3">
-              <Text className="font-fredoka-one text-[36px] text-[#484A4B] leading-tight">
-                {averageScore}
+          style={[
+            {
+              width: '100%',
+              backgroundColor: '#FFFFFF',
+              borderWidth: 1,
+              borderColor: '#E5E7EB',
+              borderRadius: isTablet ? 32 : 24,
+              padding: isTablet ? 24 : 20,
+              shadowColor: '#000000',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.03,
+              shadowRadius: 10,
+              elevation: 1,
+            },
+            (isLoading || error || chartData.length === 0) && { display: 'none' },
+          ]}
+        >
+          {/* Metric Header (Big Score + Trend Badge + 2-Week Outlook Green Card) */}
+          <View className="flex-row items-center justify-between mb-2 px-2 flex-wrap gap-2">
+            <View className="flex-col">
+              <View className="flex-row items-center gap-3">
+                <Text className="font-fredoka-one text-[36px] text-[#484A4B] leading-tight">
+                  {averageScore}
+                </Text>
+                {trendPercentage !== null && (
+                  <View className={`px-3 py-1 rounded-full flex-row items-center gap-1.5 ${trendPercentage >= 0 ? 'bg-[#E0F2FE]' : 'bg-[#FEE2E2]'}`}>
+                    <Feather
+                      name={trendPercentage >= 0 ? 'trending-up' : 'trending-down'}
+                      size={16}
+                      color={trendPercentage >= 0 ? '#62A9E6' : '#EF4444'}
+                      strokeWidth={2.5}
+                    />
+                    <Text className={`font-quicksand-bold text-sm ${trendPercentage >= 0 ? 'text-[#62A9E6]' : 'text-[#EF4444]'}`}>
+                      {`${Math.abs(trendPercentage).toFixed(1)}%`}
+                    </Text>
+                  </View>
+                )}
+              </View>
+              <Text className="font-fredoka-one text-[11px] text-[#9CA3AF] uppercase tracking-[0.06em] mt-0.5">
+                AVERAGE EVALUATION SCORE
               </Text>
-              {trendPercentage !== null && (
-                <View className={`px-3 py-1 rounded-full flex-row items-center gap-1.5 ${trendPercentage >= 0 ? 'bg-[#E0F2FE]' : 'bg-[#FEE2E2]'}`}>
-                  <Feather
-                    name={trendPercentage >= 0 ? 'trending-up' : 'trending-down'}
-                    size={16}
-                    color={trendPercentage >= 0 ? '#62A9E6' : '#EF4444'}
-                    strokeWidth={2.5}
-                  />
-                  <Text className={`font-quicksand-bold text-sm ${trendPercentage >= 0 ? 'text-[#62A9E6]' : 'text-[#EF4444]'}`}>
-                    {`${Math.abs(trendPercentage).toFixed(1)}%`}
-                  </Text>
-                </View>
-              )}
             </View>
-            <Text className="font-fredoka-one text-[11px] text-[#9CA3AF] uppercase tracking-[0.06em] mt-0.5">
-              AVERAGE EVALUATION SCORE
-            </Text>
+
+            {/* Green 2-Week Outlook Forecast Badge Card when Forecast is ON */}
+            {showForecast && forecastResult.projected14DayScore !== null && (
+              <View className="bg-[#ECFDF5] border border-[#86EFAC] rounded-xl px-3 py-2 items-end">
+                <Text className="font-fredoka-one text-[10px] text-[#059669] uppercase tracking-wide">
+                  2-WEEK OUTLOOK
+                </Text>
+                <Text className="font-fredoka-one text-sm text-[#065F46] mt-0.5">
+                  ~{forecastResult.projected14DayScore} / 4.0 Predicted
+                </Text>
+                <Text className="font-quicksand-bold text-[10px] text-[#059669] mt-0.5">
+                  {forecastResult.estimatedDaysToMastery
+                    ? `~${forecastResult.estimatedDaysToMastery} days to ${forecastResult.targetBenchmark} benchmark`
+                    : 'Based on current trajectory'}
+                </Text>
+              </View>
+            )}
           </View>
 
-          {/* Green 2-Week Outlook Forecast Badge Card when Forecast is ON */}
-          {showForecast && forecastResult.projected14DayScore !== null && (
-            <View className="bg-[#ECFDF5] border border-[#86EFAC] rounded-xl px-3 py-2 items-end">
-              <Text className="font-fredoka-one text-[10px] text-[#059669] uppercase tracking-wide">
-                2-WEEK OUTLOOK
-              </Text>
-              <Text className="font-fredoka-one text-sm text-[#065F46] mt-0.5">
-                ~{forecastResult.projected14DayScore} / 4.0 Predicted
-              </Text>
-              <Text className="font-quicksand-bold text-[10px] text-[#059669] mt-0.5">
-                {forecastResult.estimatedDaysToMastery
-                  ? `~${forecastResult.estimatedDaysToMastery} days to ${forecastResult.targetBenchmark} benchmark`
-                  : 'Based on current trajectory'}
-              </Text>
-            </View>
-          )}
-        </View>
-
-        {/* SVG Chart Area */}
-        <View className="items-center justify-center w-full">
-          <Svg width={svgWidth} height={chartHeight}>
-            <Defs>
-              <LinearGradient id="studentChartGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                <Stop offset="0%" stopColor="#62A9E6" stopOpacity={0.28} />
-                <Stop offset="80%" stopColor="#62A9E6" stopOpacity={0.04} />
-                <Stop offset="100%" stopColor="#62A9E6" stopOpacity={0.0} />
-              </LinearGradient>
-            </Defs>
-
-            {/* Left Y-Axis Legend Scale & Horizontal Gridlines (0 to 4) */}
-            {[0, 1, 2, 3, 4].map((scoreVal) => {
-              const y = paddingTop + graphHeight - (scoreVal / 4) * graphHeight;
-              return (
-                <React.Fragment key={`grid-${scoreVal}`}>
-                  <Line
-                    x1={paddingLeft}
-                    y1={y}
-                    x2={paddingLeft + graphWidth}
-                    y2={y}
-                    stroke="#F3F4F6"
-                    strokeDasharray="4,4"
-                    strokeWidth="1"
-                  />
-                  <SvgText
-                    x={paddingLeft - 8}
-                    y={y + 3}
-                    fill="#9CA3AF"
-                    fontSize="10"
-                    fontFamily="Quicksand-Bold"
-                    textAnchor="end"
-                  >
-                    {scoreVal}
-                  </SvgText>
-                </React.Fragment>
-              );
-            })}
-
-            {/* Gradient Area Fill */}
-            {points.length > 0 && areaPath !== '' && (
-              <Path d={areaPath} fill="url(#studentChartGradient)" />
-            )}
-
-            {/* Smooth Line Graph */}
-            {points.length > 0 && linePath !== '' && (
-              <Path
-                d={linePath}
-                stroke="#62A9E6"
-                strokeWidth="3"
-                fill="none"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            )}
-
-            {/* Dashed Forecast Projection Line */}
-            {showForecast && forecastLinePath !== '' && (
-              <Path
-                d={forecastLinePath}
-                stroke="#34D399"
-                strokeWidth="2.5"
-                strokeDasharray="5,5"
-                fill="none"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            )}
-
-            {/* Interactive Data Points */}
-            {points.map((pt, idx) => {
-              const isSelected = selectedPointIdx === idx;
-              return (
-                <React.Fragment key={`point-${idx}`}>
-                  {/* Outer circle for selected point */}
-                  {isSelected && (
-                    <Circle cx={pt.x} cy={pt.y} r="9" fill="#62A9E6" fillOpacity="0.25" />
-                  )}
-
-                  {/* Standard point dot */}
-                  <Circle
-                    cx={pt.x}
-                    cy={pt.y}
-                    r={isSelected ? 4.5 : 3.5}
-                    fill="#62A9E6"
-                    stroke={isSelected ? '#FFFFFF' : 'none'}
-                    strokeWidth={isSelected ? 1.5 : 0}
-                  />
-
-                  {/* Touch hit target */}
-                  <Circle
-                    cx={pt.x}
-                    cy={pt.y}
-                    r="18"
-                    fill="transparent"
-                    onPress={() => setSelectedPointIdx(isSelected ? null : idx)}
-                  />
-                </React.Fragment>
-              );
-            })}
-
-            {/* Forecast Node Dots */}
-            {showForecast && forecastPoints.map((fp, i) => {
-              const fIdx = points.length + i;
-              const isSelected = selectedPointIdx === fIdx;
-              return (
-                <React.Fragment key={`fpoint-${i}`}>
-                  {isSelected && (
-                    <Circle cx={fp.x} cy={fp.y} r="10" fill="#34D399" fillOpacity="0.25" />
-                  )}
-                  <Circle
-                    cx={fp.x}
-                    cy={fp.y}
-                    r={isSelected ? 5.5 : 4.5}
-                    fill="#FFFFFF"
-                    stroke="#34D399"
-                    strokeWidth={isSelected ? 2.5 : 2}
-                  />
-                  <Circle
-                    cx={fp.x}
-                    cy={fp.y}
-                    r="18"
-                    fill="transparent"
-                    onPress={() => setSelectedPointIdx(isSelected ? null : fIdx)}
-                  />
-                </React.Fragment>
-              );
-            })}
-
-            {/* Selected Point Vertical Guide Line */}
-            {selectedPointIdx !== null && (points[selectedPointIdx] || forecastPoints[selectedPointIdx - points.length]) && (() => {
-              const activePt = points[selectedPointIdx] || forecastPoints[selectedPointIdx - points.length];
-              return (
-                <Line
-                  x1={activePt.x}
-                  y1={activePt.y + 6}
-                  x2={activePt.x}
-                  y2={baselineY}
-                  stroke={selectedPointIdx < points.length ? "#BBE8FB" : "#86EFAC"}
-                  strokeDasharray="3,3"
-                  strokeWidth="1.5"
-                />
-              );
-            })()}
-
-            {/* X-Axis Date Increment Legends (Start, Mid, End) */}
-            {points.length > 0 && (() => {
-              const total = points.length;
-              if (total === 1) {
-                return (
-                  <SvgText
-                    x={points[0].x}
-                    y={baselineY + 20}
-                    fill="#9CA3AF"
-                    fontSize="10"
-                    fontFamily="Quicksand-Bold"
-                    textAnchor="middle"
-                  >
-                    {points[0].label.toUpperCase()}
-                  </SvgText>
-                );
-              }
-
-              const midIdx = Math.floor((total - 1) / 2);
-              const indicesToShow = Array.from(new Set([0, midIdx, total - 1]));
-
-              return indicesToShow.map((idx) => {
-                const pt = points[idx];
-                let anchor: 'start' | 'middle' | 'end' = 'middle';
-                if (idx === 0) anchor = 'start';
-                else if (idx === total - 1) anchor = 'end';
-
-                return (
-                  <SvgText
-                    key={`xaxis-${idx}`}
-                    x={pt.x}
-                    y={baselineY + 20}
-                    fill="#9CA3AF"
-                    fontSize="10"
-                    fontFamily="Quicksand-Bold"
-                    textAnchor={anchor}
-                  >
-                    {pt.label.toUpperCase()}
-                  </SvgText>
-                );
-              });
-            })()}
-          </Svg>
-
-          {/* Microanimated Floating Tooltip Bubble */}
-          {selectedPointIdx !== null && (points[selectedPointIdx] || forecastPoints[selectedPointIdx - points.length]) && (() => {
-            const activePt = points[selectedPointIdx] || forecastPoints[selectedPointIdx - points.length];
-            const isForecast = selectedPointIdx >= points.length;
-            const tooltipWidth = isForecast ? 100 : 80;
-            const rawLeft = activePt.x - tooltipWidth / 2;
-            const clampedLeft = Math.max(8, Math.min(rawLeft, svgWidth - tooltipWidth - 8));
-            const topPos = Math.max(activePt.y - 36, 2);
-
-            return (
-              <Animated.View
-                key={`tooltip-${selectedPointIdx}`}
-                entering={FadeInDown.duration(200)}
-                exiting={FadeOutDown.duration(150)}
-                style={{
-                  position: 'absolute',
-                  left: clampedLeft,
-                  top: topPos,
-                  width: tooltipWidth,
-                  zIndex: 20,
-                  shadowColor: isForecast ? '#34D399' : '#62A9E6',
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.15,
-                  shadowRadius: 4,
-                  elevation: 3,
-                }}
-                className={`border rounded-full py-1 px-2 items-center justify-center pointer-events-none ${
-                  isForecast ? 'bg-[#ECFDF5] border-[#86EFAC]' : 'bg-white border-[#BBE8FB]'
-                }`}
-              >
-                <Text className="font-quicksand-bold text-[11px] text-[#475569]">
-                  {activePt.label}: <Text className={`font-fredoka-one ${isForecast ? 'text-[#059669]' : 'text-[#62A9E6]'}`}>{isForecast ? `~${activePt.score}` : activePt.score}</Text>
+          {/* Dual-Axis Visual Legend */}
+          <View className="flex-row items-center justify-between mb-3 px-2 flex-wrap gap-2">
+            <View className="flex-row items-center gap-4">
+              <View className="flex-row items-center gap-1.5">
+                <View className="w-2.5 h-2.5 rounded-full bg-[#62A9E6]" />
+                <Text className="font-quicksand-bold text-[11px] text-[#64748B]">
+                  Score (0 - 4.0)
                 </Text>
-              </Animated.View>
-            );
-          })()}
+              </View>
+              <View className="flex-row items-center gap-1.5">
+                <View className="w-2.5 h-2.5 rounded-full bg-[#FFAE02]" />
+                <Text className="font-quicksand-bold text-[11px] text-[#D97706]">
+                  Hints (Right Axis)
+                </Text>
+              </View>
+            </View>
+            {showForecast && (
+              <View className="flex-row items-center gap-1.5">
+                <View className="w-2.5 h-1 rounded-sm bg-[#34D399]" />
+                <Text className="font-quicksand-bold text-[11px] text-[#059669]">
+                  Forecast
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* SVG Chart Area */}
+          <View className="items-center justify-center w-full">
+            <Svg width={svgWidth} height={chartHeight}>
+              <Defs>
+                <LinearGradient id="studentChartGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <Stop offset="0%" stopColor="#62A9E6" stopOpacity={0.28} />
+                  <Stop offset="80%" stopColor="#62A9E6" stopOpacity={0.04} />
+                  <Stop offset="100%" stopColor="#62A9E6" stopOpacity={0.0} />
+                </LinearGradient>
+              </Defs>
+
+              {/* Left Y-Axis Legend Scale & Horizontal Gridlines (0 to 4) */}
+              {[0, 1, 2, 3, 4].map((scoreVal) => {
+                const y = paddingTop + graphHeight - (scoreVal / 4) * graphHeight;
+                return (
+                  <React.Fragment key={`grid-${scoreVal}`}>
+                    <Line
+                      x1={paddingLeft}
+                      y1={y}
+                      x2={paddingLeft + graphWidth}
+                      y2={y}
+                      stroke="#F3F4F6"
+                      strokeDasharray="4,4"
+                      strokeWidth="1"
+                    />
+                    <SvgText
+                      x={paddingLeft - 8}
+                      y={y + 3}
+                      fill="#9CA3AF"
+                      fontSize="10"
+                      fontFamily="Quicksand-Bold"
+                      textAnchor="end"
+                    >
+                      {scoreVal}
+                    </SvgText>
+                  </React.Fragment>
+                );
+              })}
+
+              {/* Right Y-Axis Scale (Hints 0 to maxHintsScale) */}
+              {[0, 1, 2, 3, 4].map((stepIdx) => {
+                const fraction = stepIdx / 4;
+                const hintVal = Math.round(fraction * maxHintsScale);
+                const y = paddingTop + graphHeight - fraction * graphHeight;
+                return (
+                  <SvgText
+                    key={`hint-axis-${stepIdx}`}
+                    x={paddingLeft + graphWidth + 8}
+                    y={y + 3}
+                    fill="#D97706"
+                    fontSize="10"
+                    fontFamily="Quicksand-Bold"
+                    textAnchor="start"
+                  >
+                    {hintVal}
+                  </SvgText>
+                );
+              })}
+
+              {/* Gradient Area Fill */}
+              {points.length > 0 && areaPath !== '' && (
+                <Path d={areaPath} fill="url(#studentChartGradient)" />
+              )}
+
+              {/* Smooth Line Graph (Score - Blue) */}
+              {points.length > 0 && linePath !== '' && (
+                <Path
+                  d={linePath}
+                  stroke="#62A9E6"
+                  strokeWidth="3"
+                  fill="none"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              )}
+
+              {/* Hints Line Graph (Amber - Dashed) */}
+              {hintPoints.length > 0 && hintsLinePath !== '' && (
+                <Path
+                  d={hintsLinePath}
+                  stroke="#FFAE02"
+                  strokeWidth="2.5"
+                  strokeDasharray="4,3"
+                  fill="none"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              )}
+
+              {/* Dashed Forecast Projection Line */}
+              {showForecast && forecastLinePath !== '' && (
+                <Path
+                  d={forecastLinePath}
+                  stroke="#34D399"
+                  strokeWidth="2.5"
+                  strokeDasharray="5,5"
+                  fill="none"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              )}
+
+              {/* Score Interactive Data Points */}
+              {points.map((pt, idx) => {
+                const isSelected = selectedPointIdx === idx;
+                return (
+                  <React.Fragment key={`point-${idx}`}>
+                    {/* Outer circle for selected point */}
+                    {isSelected && (
+                      <Circle cx={pt.x} cy={pt.y} r="9" fill="#62A9E6" fillOpacity="0.25" />
+                    )}
+
+                    {/* Standard point dot */}
+                    <Circle
+                      cx={pt.x}
+                      cy={pt.y}
+                      r={isSelected ? 4.5 : 3.5}
+                      fill="#62A9E6"
+                      stroke={isSelected ? '#FFFFFF' : 'none'}
+                      strokeWidth={isSelected ? 1.5 : 0}
+                    />
+
+                    {/* Touch hit target */}
+                    <Circle
+                      cx={pt.x}
+                      cy={pt.y}
+                      r="18"
+                      fill="transparent"
+                      onPress={() => setSelectedPointIdx(isSelected ? null : idx)}
+                    />
+                  </React.Fragment>
+                );
+              })}
+
+              {/* Hints Interactive Data Points (Amber) */}
+              {hintPoints.map((hpt, idx) => {
+                const isSelected = selectedPointIdx === idx;
+                return (
+                  <React.Fragment key={`hint-point-${idx}`}>
+                    {/* Outer circle for selected hint point */}
+                    {isSelected && (
+                      <Circle cx={hpt.x} cy={hpt.y} r="9" fill="#FFAE02" fillOpacity="0.25" />
+                    )}
+
+                    {/* Amber hint marker */}
+                    <Circle
+                      cx={hpt.x}
+                      cy={hpt.y}
+                      r={isSelected ? 4.5 : 3.5}
+                      fill="#FFAE02"
+                      stroke={isSelected ? '#FFFFFF' : 'none'}
+                      strokeWidth={isSelected ? 1.5 : 0}
+                    />
+
+                    {/* Touch hit target */}
+                    <Circle
+                      cx={hpt.x}
+                      cy={hpt.y}
+                      r="18"
+                      fill="transparent"
+                      onPress={() => setSelectedPointIdx(isSelected ? null : idx)}
+                    />
+                  </React.Fragment>
+                );
+              })}
+
+              {/* Forecast Node Dots */}
+              {showForecast && forecastPoints.map((fp, i) => {
+                const fIdx = points.length + i;
+                const isSelected = selectedPointIdx === fIdx;
+                return (
+                  <React.Fragment key={`fpoint-${i}`}>
+                    {isSelected && (
+                      <Circle cx={fp.x} cy={fp.y} r="10" fill="#34D399" fillOpacity="0.25" />
+                    )}
+                    <Circle
+                      cx={fp.x}
+                      cy={fp.y}
+                      r={isSelected ? 5.5 : 4.5}
+                      fill="#FFFFFF"
+                      stroke="#34D399"
+                      strokeWidth={isSelected ? 2.5 : 2}
+                    />
+                    <Circle
+                      cx={fp.x}
+                      cy={fp.y}
+                      r="18"
+                      fill="transparent"
+                      onPress={() => setSelectedPointIdx(isSelected ? null : fIdx)}
+                    />
+                  </React.Fragment>
+                );
+              })}
+
+              {/* Selected Point Vertical Guide Line */}
+              {selectedPointIdx !== null && (points[selectedPointIdx] || forecastPoints[selectedPointIdx - points.length]) && (() => {
+                const activePt = points[selectedPointIdx] || forecastPoints[selectedPointIdx - points.length];
+                return (
+                  <Line
+                    x1={activePt.x}
+                    y1={activePt.y + 6}
+                    x2={activePt.x}
+                    y2={baselineY}
+                    stroke={selectedPointIdx < points.length ? "#BBE8FB" : "#86EFAC"}
+                    strokeDasharray="3,3"
+                    strokeWidth="1.5"
+                  />
+                );
+              })()}
+
+              {/* X-Axis Date Increment Legends (Start, Mid, End) */}
+              {points.length > 0 && (() => {
+                const total = points.length;
+                if (total === 1) {
+                  return (
+                    <SvgText
+                      x={points[0].x}
+                      y={baselineY + 20}
+                      fill="#9CA3AF"
+                      fontSize="10"
+                      fontFamily="Quicksand-Bold"
+                      textAnchor="middle"
+                    >
+                      {points[0].label.toUpperCase()}
+                    </SvgText>
+                  );
+                }
+
+                const midIdx = Math.floor((total - 1) / 2);
+                const indicesToShow = Array.from(new Set([0, midIdx, total - 1]));
+
+                return indicesToShow.map((idx) => {
+                  const pt = points[idx];
+                  let anchor: 'start' | 'middle' | 'end' = 'middle';
+                  if (idx === 0) anchor = 'start';
+                  else if (idx === total - 1) anchor = 'end';
+
+                  return (
+                    <SvgText
+                      key={`xaxis-${idx}`}
+                      x={pt.x}
+                      y={baselineY + 20}
+                      fill="#9CA3AF"
+                      fontSize="10"
+                      fontFamily="Quicksand-Bold"
+                      textAnchor={anchor}
+                    >
+                      {pt.label.toUpperCase()}
+                    </SvgText>
+                  );
+                });
+              })()}
+            </Svg>
+
+            {/* Microanimated Floating Tooltip Bubble with Clear Dual Metrics */}
+            {selectedPointIdx !== null && (points[selectedPointIdx] || forecastPoints[selectedPointIdx - points.length]) && (() => {
+              const isForecast = selectedPointIdx >= points.length;
+              const activePt = isForecast ? forecastPoints[selectedPointIdx - points.length] : points[selectedPointIdx];
+              const activeHint = isForecast ? null : hintPoints[selectedPointIdx];
+
+              const tooltipWidth = isForecast ? 130 : (isTablet ? 250 : 210);
+              const rawLeft = activePt.x - tooltipWidth / 2;
+              const clampedLeft = Math.max(8, Math.min(rawLeft, svgWidth - tooltipWidth - 8));
+              const topPos = Math.max(Math.min(activePt.y, activeHint ? activeHint.y : activePt.y) - 56, 2);
+
+              const hintCount = activeHint?.hints ?? 0;
+              const hintDescriptor = hintCount === 0
+                ? 'Independent'
+                : hintCount === 1
+                ? '1 Audio Prompt'
+                : `${hintCount} Visual Prompts`;
+
+              return (
+                <Animated.View
+                  key={`tooltip-${selectedPointIdx}`}
+                  entering={FadeInDown.duration(200)}
+                  exiting={FadeOutDown.duration(150)}
+                  style={{
+                    position: 'absolute',
+                    left: clampedLeft,
+                    top: topPos,
+                    width: tooltipWidth,
+                    zIndex: 30,
+                    shadowColor: '#000000',
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.12,
+                    shadowRadius: 6,
+                    elevation: 4,
+                  }}
+                  className={`border rounded-2xl py-1.5 px-3 items-center justify-center pointer-events-none ${
+                    isForecast ? 'bg-[#ECFDF5] border-[#86EFAC]' : 'bg-white border-[#BBE8FB]'
+                  }`}
+                >
+                  <Text className="font-fredoka-one text-[11px] text-[#475569] mb-0.5">
+                    {activePt.label}
+                  </Text>
+                  {isForecast ? (
+                    <Text className="font-quicksand-bold text-[11px] text-[#059669]">
+                      Predicted Score: ~{activePt.score} / 4.0
+                    </Text>
+                  ) : (
+                    <View className="flex-row items-center gap-2 flex-wrap justify-center">
+                      <Text className="font-quicksand-bold text-[11px] text-[#62A9E6]">
+                        ★ {activePt.score} / 4.0
+                      </Text>
+                      <Text className="text-[#CBD5E1] text-[10px]">•</Text>
+                      <Text className="font-quicksand-bold text-[11px] text-[#D97706]">
+                        💡 {hintDescriptor}
+                      </Text>
+                    </View>
+                  )}
+                </Animated.View>
+              );
+            })()}
+          </View>
         </View>
-      </View>
       )}
     </View>
   );

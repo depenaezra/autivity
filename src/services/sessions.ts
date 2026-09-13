@@ -12,6 +12,7 @@ interface SessionPayload {
     stars?: number;
     duration_seconds: number;
     mistakes?: number;
+    hints_used?: number;
 }
 
 export const saveStudentSession = async (sessionData: SessionPayload) => {

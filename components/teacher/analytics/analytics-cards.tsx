@@ -81,7 +81,11 @@ function AnalyticsCardSkeletonItem({ card, isTablet }: { card: (typeof CARD_CONF
   );
 }
 
-export function AnalyticsCards() {
+interface AnalyticsCardsProps {
+  refreshTrigger?: number;
+}
+
+export function AnalyticsCards({ refreshTrigger }: AnalyticsCardsProps = {}) {
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
 
@@ -95,7 +99,7 @@ export function AnalyticsCards() {
 
   useEffect(() => {
     fetchKpiData();
-  }, []);
+  }, [refreshTrigger]);
 
   const fetchKpiData = async () => {
     setIsLoading(true);

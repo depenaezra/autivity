@@ -10,7 +10,6 @@ import { DashboardHeader } from '../../../components/teacher/home/dashboard-head
 import { StatsSection } from '../../../components/teacher/home/stats-section';
 import { ClassesSection } from '../../../components/teacher/home/classes-section';
 import { LessonsSection } from '../../../components/teacher/home/lessons-section';
-import { StudentsSection } from '../../../components/teacher/home/students-section';
 import { useTeacherDashboard } from '../../../hooks/use-teacher-dashboard';
 
 export default function HomeScreen() {
@@ -104,15 +103,6 @@ export default function HomeScreen() {
             onPress={() => router.push('/lesson-materials' as any)} 
           />
         </Animated.View>
-
-        {/* STUDENTS SECTION */}
-        <Animated.View key={`students-${focusKey}`} entering={FadeInRight.delay(250).duration(300)}>
-          <StudentsSection
-            studentsData={studentsData}
-            isTablet={isTablet}
-            onPress={() => router.push('/student-list' as any)}
-          />
-        </Animated.View>
       </ScrollView>
 
       {/* ADD CLASS MODAL */}
@@ -131,6 +121,9 @@ export default function HomeScreen() {
         setNewClassTheme={setNewClassTheme}
         onSubmit={handleAddClass}
         isEditing={!!editingClassId}
+        existingClassNames={[...classesData, ...archivedClasses]
+          .filter((c) => c.id !== editingClassId)
+          .map((c) => c.title)}
       />
 
       {/* ARCHIVED CLASSES MODAL */}

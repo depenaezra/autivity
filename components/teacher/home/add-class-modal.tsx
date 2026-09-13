@@ -103,6 +103,7 @@ interface AddClassModalProps {
   
   onSubmit: () => void;
   isEditing?: boolean;
+  existingClassNames?: string[];
 }
 
 export function AddClassModal({
@@ -120,11 +121,19 @@ export function AddClassModal({
   setNewClassTheme,
   onSubmit,
   isEditing = false,
+  existingClassNames = [],
 }: AddClassModalProps) {
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
   const [selectedTime, setSelectedTime] = useState('08:00 AM');
   const [tempTime, setTempTime] = useState('08:00 AM');
   const [showTimePicker, setShowTimePicker] = useState(false);
+
+  const isDuplicateName = Boolean(
+    newClassName.trim() &&
+    existingClassNames.some(
+      (name) => name.trim().toLowerCase() === newClassName.trim().toLowerCase()
+    )
+  );
 
   // Sync prop to local state on modal open
   useEffect(() => {
@@ -148,7 +157,7 @@ export function AddClassModal({
       isTablet={isTablet}
       onSubmit={onSubmit}
       submitLabel="SAVE"
-      submitDisabled={!newClassName.trim() || selectedDays.length === 0 || isCreating}
+      submitDisabled={!newClassName.trim() || selectedDays.length === 0 || isCreating || isDuplicateName}
       isSubmitting={isCreating}
       cancelLabel="CANCEL"
     >
@@ -160,8 +169,15 @@ export function AddClassModal({
           onChangeText={setNewClassName}
           placeholder="Class Name"
           placeholderTextColor="#9CA3AF"
-          className="bg-[#F1F1F1] rounded-xl px-4 py-3 font-quicksand-medium text-[#4B5563]"
+          className={`bg-[#F1F1F1] rounded-xl px-4 py-3 font-quicksand-medium text-[#4B5563] ${
+            isDuplicateName ? 'border-[2px] border-[#FF8870]' : ''
+          }`}
         />
+        {isDuplicateName && (
+          <Text className="font-fredoka-one text-[#FF8870] text-xs mt-1.5 ml-1">
+            A class with this name already exists.
+          </Text>
+        )}
       </View>
 
       {/* GRADE SELECTOR */}

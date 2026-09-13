@@ -6,6 +6,7 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  StyleSheet,
   Text,
   View,
   PanResponder,
@@ -123,8 +124,12 @@ export function BaseModal({
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         className="flex-1 justify-end bg-black/40"
       >
-        {/* Backdrop overlay */}
-        <Pressable className="flex-1" onPress={onClose} />
+        {/* Backdrop overlay covering the full screen */}
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={onClose}
+          accessibilityLabel="Close modal overlay"
+        />
 
         {/* Modal Container */}
         <Animated.View
@@ -140,15 +145,21 @@ export function BaseModal({
           </View>
 
           {/* Centered Title */}
-          <Text className="font-fredoka-one text-[24px] text-[#484A4B] text-center mb-6">
-            {title}
-          </Text>
+          {typeof title === 'string' ? (
+            <Text className="font-fredoka-one text-[24px] text-[#484A4B] text-center mb-6">
+              {title}
+            </Text>
+          ) : (
+            <View className="items-center mb-6">{title}</View>
+          )}
 
           {/* Form Content area */}
           <ScrollView 
-            showsVerticalScrollIndicator={false} 
+            showsVerticalScrollIndicator={true}
+            nestedScrollEnabled={true}
+            keyboardShouldPersistTaps="handled"
             className="flex-1"
-            contentContainerStyle={{ paddingBottom: 20 }}
+            contentContainerStyle={{ paddingBottom: 28, flexGrow: 1 }}
           >
             {children}
           </ScrollView>

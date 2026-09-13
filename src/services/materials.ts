@@ -59,6 +59,11 @@ export const getActivitiesBySubcategories = async (subcategories: string[]) => {
             expandedSubcategories.add('Free Pop');
             return;
         }
+        if (lower.includes('sequenc')) {
+            expandedSubcategories.add('Picture Sequencing');
+            expandedSubcategories.add('Sequencing');
+            return;
+        }
         expandedSubcategories.add(s);
     });
 

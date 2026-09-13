@@ -163,9 +163,11 @@ export const getClassDevelopmentalSkillsExposure = async (
 
   // Setup domain maps from DB
   const domainColorMap: Record<string, string> = {};
+  const masterDomainNameMap: Record<string, string> = {};
   for (const dom of domainsData) {
     if (dom.name) {
       domainColorMap[dom.name] = dom.color || '#62A9E6';
+      masterDomainNameMap[dom.name.trim().toLowerCase()] = dom.name;
       const subSkills = dom.sub_skills || [];
       for (const sub of subSkills) {
         if (sub.name) {
@@ -177,23 +179,29 @@ export const getClassDevelopmentalSkillsExposure = async (
     }
   }
 
-  // Accumulate counts
+  // Accumulate counts for registered sub-skills or sub-skill tags
+  const masterDomainNamesLower = new Set(Object.keys(masterDomainNameMap));
+
   for (const [path, count] of Object.entries(pathCounts)) {
     const norm = normalizePath(path);
     const skills = skillDomainMap[norm] || [];
     for (const skill of skills) {
       const key = skill.trim().toLowerCase();
+      // Skip adding master domain name itself as a sub-skill if it matches a top-level domain name
+      if (masterDomainNamesLower.has(key)) {
+        continue;
+      }
       const dbName = exactSkillNameMap[key] || skill;
       skillCounts[dbName] = (skillCounts[dbName] || 0) + count;
     }
   }
 
-  // 6. Group by master domain
+  // 6. Group sub-skills by master domain
   const grouped: Record<string, DevelopmentalSkillExposure[]> = {};
   for (const [skillName, count] of Object.entries(skillCounts)) {
     if (count > 0) {
       const key = skillName.trim().toLowerCase();
-      const masterDomain = skillToDomainMap[key] || 'Other';
+      const masterDomain = skillToDomainMap[key] || 'General Skills';
       if (!grouped[masterDomain]) {
         grouped[masterDomain] = [];
       }

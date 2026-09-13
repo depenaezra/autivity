@@ -7,7 +7,7 @@ import Animated, { useAnimatedStyle, withTiming, Easing, useSharedValue } from '
 import ActivitySectionIcon from '@/assets/images/teacher/class/icon-class.svg';
 
 export interface ActivityCardItem {
-  id: 'tracing' | 'matching' | 'bubble' | 'pick-n-choose';
+  id: 'tracing' | 'matching' | 'bubble' | 'pick-n-choose' | 'sequencing';
   title: string;
   imageSource: any;
   headerBgColor: string;
@@ -136,7 +136,7 @@ interface ActivitiesSectionProps {
   assignedPaths: string[];
   isLoading: boolean;
   isTablet: boolean;
-  onNavigateToLesson: (type: 'tracing' | 'matching' | 'bubble' | 'pick-n-choose') => void;
+  onNavigateToLesson: (type: 'tracing' | 'matching' | 'bubble' | 'pick-n-choose' | 'sequencing') => void;
 }
 
 export function ActivitiesSection({
@@ -189,6 +189,14 @@ export function ActivitiesSection({
     );
   };
 
+  const isSequencingPath = (path: string) => {
+    const lower = path.toLowerCase();
+    return (
+      lower.includes('sequenc') ||
+      lower.includes('picture sequencing')
+    );
+  };
+
   const allActivities: ActivityCardItem[] = [
     {
       id: 'tracing',
@@ -226,6 +234,15 @@ export function ActivitiesSection({
       themeFontColor: '#15803D',
       themeFillColor: '#F0FDF4',
     },
+    {
+      id: 'sequencing',
+      title: 'Sequencing',
+      imageSource: require('@/assets/images/activities/sequencing-header.png'),
+      headerBgColor: '#FEF9C3',
+      themeColor: '#EAB308',
+      themeFontColor: '#CA8A04',
+      themeFillColor: '#FEFCE8',
+    },
   ];
 
   const assignedActivities = allActivities.filter((item) => {
@@ -233,6 +250,7 @@ export function ActivitiesSection({
     if (item.id === 'matching') return assignedPaths.some(isMatchingPath);
     if (item.id === 'bubble') return assignedPaths.some(isBubblePath);
     if (item.id === 'pick-n-choose') return assignedPaths.some(isPickChoicePath);
+    if (item.id === 'sequencing') return assignedPaths.some(isSequencingPath);
     return false;
   });
 

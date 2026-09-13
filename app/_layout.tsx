@@ -31,7 +31,10 @@ configureReanimatedLogger({
   strict: false,
 });
 
-LogBox.ignoreLogs(['[Reanimated] Reading from `value` during component render']);
+LogBox.ignoreLogs([
+  '[Reanimated] Reading from `value` during component render',
+  'No native splash screen registered for given view controller',
+]);
 
 
 SplashScreen.preventAutoHideAsync().catch(() => { });
