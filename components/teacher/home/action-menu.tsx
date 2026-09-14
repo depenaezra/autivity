@@ -38,7 +38,18 @@ export function ActionMenu({
 
   if (!coords) return null;
 
-  const menuWidth = isTablet ? 280 : 190;
+  const buttonCount = [onEdit, onArchive, onDelete].filter(Boolean).length || 1;
+  const menuWidth = isTablet
+    ? buttonCount === 2
+      ? 200
+      : buttonCount === 1
+      ? 120
+      : 280
+    : buttonCount === 2
+    ? 135
+    : buttonCount === 1
+    ? 80
+    : 190;
   const menuHeight = isTablet ? 84 : 70;
   const menuLeft = coords.x + coords.width - menuWidth;
   const menuTop = coords.y + coords.height + 12;
@@ -65,46 +76,52 @@ export function ActionMenu({
       ]}
     >
       {/* EDIT BUTTON */}
-      <Pressable
-        onPress={() => {
-          onClose();
-          onEdit?.();
-        }}
-        className="flex-col items-center justify-center flex-1 active:scale-95 transition-transform"
-      >
-        <EditIcon width={isTablet ? 28 : 20} height={isTablet ? 28 : 20} />
-        <Text className={`font-fredoka-one text-[#62A9E6] ${isTablet ? 'text-[12px] mt-2' : 'text-[10px] mt-1.5'}`}>
-          EDIT
-        </Text>
-      </Pressable>
+      {onEdit && (
+        <Pressable
+          onPress={() => {
+            onClose();
+            onEdit();
+          }}
+          className="flex-col items-center justify-center flex-1 active:scale-95 transition-transform"
+        >
+          <EditIcon width={isTablet ? 28 : 20} height={isTablet ? 28 : 20} />
+          <Text className={`font-fredoka-one text-[#62A9E6] ${isTablet ? 'text-[12px] mt-2' : 'text-[10px] mt-1.5'}`}>
+            EDIT
+          </Text>
+        </Pressable>
+      )}
 
       {/* ARCHIVE BUTTON */}
-      <Pressable
-        onPress={() => {
-          onClose();
-          onArchive?.();
-        }}
-        className="flex-col items-center justify-center flex-1 active:scale-95 transition-transform"
-      >
-        <ArchiveIcon width={isTablet ? 28 : 20} height={isTablet ? 28 : 20} />
-        <Text className={`font-fredoka-one text-[#62A9E6] ${isTablet ? 'text-[12px] mt-2' : 'text-[10px] mt-1.5'}`}>
-          ARCHIVE
-        </Text>
-      </Pressable>
+      {onArchive && (
+        <Pressable
+          onPress={() => {
+            onClose();
+            onArchive();
+          }}
+          className="flex-col items-center justify-center flex-1 active:scale-95 transition-transform"
+        >
+          <ArchiveIcon width={isTablet ? 28 : 20} height={isTablet ? 28 : 20} />
+          <Text className={`font-fredoka-one text-[#62A9E6] ${isTablet ? 'text-[12px] mt-2' : 'text-[10px] mt-1.5'}`}>
+            ARCHIVE
+          </Text>
+        </Pressable>
+      )}
 
       {/* DELETE BUTTON */}
-      <Pressable
-        onPress={() => {
-          onClose();
-          onDelete?.();
-        }}
-        className="flex-col items-center justify-center flex-1 active:scale-95 transition-transform"
-      >
-        <DeleteIcon width={isTablet ? 28 : 20} height={isTablet ? 28 : 20} />
-        <Text className={`font-fredoka-one text-[#FF3B3F] ${isTablet ? 'text-[12px] mt-2' : 'text-[10px] mt-1.5'}`}>
-          DELETE
-        </Text>
-      </Pressable>
+      {onDelete && (
+        <Pressable
+          onPress={() => {
+            onClose();
+            onDelete();
+          }}
+          className="flex-col items-center justify-center flex-1 active:scale-95 transition-transform"
+        >
+          <DeleteIcon width={isTablet ? 28 : 20} height={isTablet ? 28 : 20} />
+          <Text className={`font-fredoka-one text-[#FF3B3F] ${isTablet ? 'text-[12px] mt-2' : 'text-[10px] mt-1.5'}`}>
+            DELETE
+          </Text>
+        </Pressable>
+      )}
     </Animated.View>
   );
 }

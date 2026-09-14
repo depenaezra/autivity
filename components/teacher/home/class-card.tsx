@@ -288,7 +288,7 @@ export function ClassCard({
         coords={coords}
         onClose={() => setIsLongPressed(false)}
         isTablet={isTablet}
-        onEdit={() => console.log('Edit class placeholder')}
+        onEdit={() => onEditClass(item)}
         onArchive={() => onArchiveClass(item.id)}
         onDelete={() => onDeleteClass(item.id)}
       >
