@@ -79,6 +79,7 @@ export default function RootLayout() {
           <Stack.Screen name="(auth)" />
           <Stack.Screen name="(teacher-tabs)" />
           <Stack.Screen name="(parent-tabs)" />
+          <Stack.Screen name="activities/turn-taking" />
         </Stack>
         <StatusBar style="auto" />
       </ThemeProvider>

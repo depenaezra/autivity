@@ -1,13 +1,32 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
+import {
+  ActivityIndicator,
+  Image,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { useAnimatedStyle, withTiming, Easing, useSharedValue } from 'react-native-reanimated';
+import Animated, {
+  useAnimatedStyle,
+  withTiming,
+  Easing,
+  useSharedValue,
+} from 'react-native-reanimated';
 
 // SVG Icon
 import ActivitySectionIcon from '@/assets/images/teacher/class/icon-class.svg';
 
 export interface ActivityCardItem {
-  id: 'tracing' | 'matching' | 'bubble' | 'pick-n-choose' | 'sequencing';
+  id:
+    | 'tracing'
+    | 'matching'
+    | 'bubble'
+    | 'pick-n-choose'
+    | 'sequencing'
+    | 'turn-taking';
   title: string;
   imageSource: any;
   headerBgColor: string;
@@ -23,7 +42,12 @@ interface ActivityCardProps {
   onPress: () => void;
 }
 
-function SingleActivityCard({ item, isTablet, isActive, onPress }: ActivityCardProps) {
+function SingleActivityCard({
+  item,
+  isTablet,
+  isActive,
+  onPress,
+}: ActivityCardProps) {
   const pressScale = useSharedValue(1);
 
   const handlePressIn = () => {
@@ -77,7 +101,7 @@ function SingleActivityCard({ item, isTablet, isActive, onPress }: ActivityCardP
           animatedCardStyle,
         ]}
       >
-        {/* Top Half: Activity Header Image with top rounded corners */}
+        {/* Top Half: Activity Header Image */}
         <View
           className={`w-full h-[58%] overflow-hidden ${
             isTablet ? 'rounded-t-[26px]' : 'rounded-t-[14px]'
@@ -91,10 +115,14 @@ function SingleActivityCard({ item, isTablet, isActive, onPress }: ActivityCardP
           />
         </View>
 
-        {/* Bottom Half: Name & Start Button with bottom rounded corners */}
-        <View className={`flex-1 flex-row items-center justify-between bg-white ${
-          isTablet ? 'px-6 py-3 rounded-b-[26px]' : 'px-4 py-2 rounded-b-[14px]'
-        }`}>
+        {/* Bottom Half: Name & Start Button */}
+        <View
+          className={`flex-1 flex-row items-center justify-between bg-white ${
+            isTablet
+              ? 'px-6 py-3 rounded-b-[26px]'
+              : 'px-4 py-2 rounded-b-[14px]'
+          }`}
+        >
           <Text
             className={`font-fredoka-one text-[#484A4B] flex-1 mr-2 ${
               isTablet ? 'text-[28px]' : 'text-[18px]'
@@ -104,7 +132,7 @@ function SingleActivityCard({ item, isTablet, isActive, onPress }: ActivityCardP
             {item.title}
           </Text>
 
-          {/* Start Button matching "VIEW" button design */}
+          {/* Start Button */}
           <View
             className={`bg-white border-[2px] rounded-[8px] flex-row justify-center items-center ${
               isTablet ? 'px-4 py-2 gap-1.5' : 'px-3 py-1.5 gap-1'
@@ -119,12 +147,19 @@ function SingleActivityCard({ item, isTablet, isActive, onPress }: ActivityCardP
             }}
           >
             <Text
-              className={`font-fredoka-one uppercase ${isTablet ? 'text-sm' : 'text-[11px]'}`}
+              className={`font-fredoka-one uppercase ${
+                isTablet ? 'text-sm' : 'text-[11px]'
+              }`}
               style={{ color: item.themeFontColor }}
             >
               START
             </Text>
-            <Ionicons name="play" size={isTablet ? 14 : 11} color={item.themeFontColor} />
+
+            <Ionicons
+              name="play"
+              size={isTablet ? 14 : 11}
+              color={item.themeFontColor}
+            />
           </View>
         </View>
       </Animated.View>
@@ -136,7 +171,15 @@ interface ActivitiesSectionProps {
   assignedPaths: string[];
   isLoading: boolean;
   isTablet: boolean;
-  onNavigateToLesson: (type: 'tracing' | 'matching' | 'bubble' | 'pick-n-choose' | 'sequencing') => void;
+  onNavigateToLesson: (
+    type:
+      | 'tracing'
+      | 'matching'
+      | 'bubble'
+      | 'pick-n-choose'
+      | 'sequencing'
+      | 'turn-taking'
+  ) => void;
 }
 
 export function ActivitiesSection({
@@ -147,15 +190,27 @@ export function ActivitiesSection({
 }: ActivitiesSectionProps) {
   const { width } = useWindowDimensions();
   const [activeIndex, setActiveIndex] = useState(0);
-  const snapToInterval = isTablet ? 420 + 14 : 290 + 8; // 434 (tablet) and 298 (mobile)
+
+  const snapToInterval = isTablet ? 420 + 14 : 290 + 8;
+  // 434 tablet / 298 mobile
+
+  /* =========================
+     ACTIVITY PATH DETECTORS
+  ========================= */
 
   const isTracingPath = (path: string) => {
-    if (['lines', 'shapes', 'letters', 'numbers'].includes(path.toLowerCase())) {
+    if (
+      ['lines', 'shapes', 'letters', 'numbers'].includes(
+        path.toLowerCase()
+      )
+    ) {
       return true;
     }
+
     const cleanPath = path.startsWith('activity/tracing/')
       ? path.replace('activity/tracing/', '')
       : path;
+
     return (
       cleanPath.startsWith('lines/') ||
       cleanPath.startsWith('shapes/') ||
@@ -166,11 +221,19 @@ export function ActivitiesSection({
 
   const isMatchingPath = (path: string) => {
     const lower = path.toLowerCase();
-    return lower === 'matching fruits' || lower === 'matching colors' || lower.includes('drag-drop') || lower.includes('matching') || lower.includes('drag');
+
+    return (
+      lower === 'matching fruits' ||
+      lower === 'matching colors' ||
+      lower.includes('drag-drop') ||
+      lower.includes('matching') ||
+      lower.includes('drag')
+    );
   };
 
   const isBubblePath = (path: string) => {
     const lower = path.toLowerCase();
+
     return (
       lower === 'free pop' ||
       lower === 'color pop' ||
@@ -181,6 +244,7 @@ export function ActivitiesSection({
 
   const isPickChoicePath = (path: string) => {
     const lower = path.toLowerCase();
+
     return (
       lower.includes('pick') ||
       lower.includes('choice') ||
@@ -191,11 +255,25 @@ export function ActivitiesSection({
 
   const isSequencingPath = (path: string) => {
     const lower = path.toLowerCase();
+
     return (
       lower.includes('sequenc') ||
       lower.includes('picture sequencing')
     );
   };
+
+  // NEW: Turn-Taking detector
+  const isTurnTakingPath = (path: string) => {
+    const normalizedPath = path
+      .toLowerCase()
+      .replace(/[\s_-]/g, '');
+
+    return normalizedPath === 'turntaking';
+  };
+
+  /* =========================
+     ALL ACTIVITY CARDS
+  ========================= */
 
   const allActivities: ActivityCardItem[] = [
     {
@@ -207,6 +285,7 @@ export function ActivitiesSection({
       themeFontColor: '#FB923C',
       themeFillColor: '#FFF7ED',
     },
+
     {
       id: 'matching',
       title: 'Drag and Drop',
@@ -216,6 +295,7 @@ export function ActivitiesSection({
       themeFontColor: '#F7890F',
       themeFillColor: '#FFF3E0',
     },
+
     {
       id: 'bubble',
       title: 'Bubble Pop',
@@ -225,6 +305,7 @@ export function ActivitiesSection({
       themeFontColor: '#8A57BE',
       themeFillColor: '#E6D8F2',
     },
+
     {
       id: 'pick-n-choose',
       title: "Pick 'n Choose",
@@ -234,6 +315,7 @@ export function ActivitiesSection({
       themeFontColor: '#15803D',
       themeFillColor: '#F0FDF4',
     },
+
     {
       id: 'sequencing',
       title: 'Sequencing',
@@ -243,39 +325,87 @@ export function ActivitiesSection({
       themeFontColor: '#CA8A04',
       themeFillColor: '#FEFCE8',
     },
+
+    // NEW: TURN-TAKING
+    {
+      id: 'turn-taking',
+      title: 'Turn-Taking',
+      imageSource: require('@/assets/images/activities/sequencing-header.png'),
+      headerBgColor: '#E0F2FE',
+      themeColor: '#62A9E6',
+      themeFontColor: '#3B82F6',
+      themeFillColor: '#EFF6FF',
+    },
   ];
 
+  /* =========================
+     SHOW ONLY ASSIGNED ACTIVITIES
+  ========================= */
+
   const assignedActivities = allActivities.filter((item) => {
-    if (item.id === 'tracing') return assignedPaths.some(isTracingPath);
-    if (item.id === 'matching') return assignedPaths.some(isMatchingPath);
-    if (item.id === 'bubble') return assignedPaths.some(isBubblePath);
-    if (item.id === 'pick-n-choose') return assignedPaths.some(isPickChoicePath);
-    if (item.id === 'sequencing') return assignedPaths.some(isSequencingPath);
+    if (item.id === 'tracing') {
+      return assignedPaths.some(isTracingPath);
+    }
+
+    if (item.id === 'matching') {
+      return assignedPaths.some(isMatchingPath);
+    }
+
+    if (item.id === 'bubble') {
+      return assignedPaths.some(isBubblePath);
+    }
+
+    if (item.id === 'pick-n-choose') {
+      return assignedPaths.some(isPickChoicePath);
+    }
+
+    if (item.id === 'sequencing') {
+      return assignedPaths.some(isSequencingPath);
+    }
+
+    // NEW: Turn-Taking
+    if (item.id === 'turn-taking') {
+      return assignedPaths.some(isTurnTakingPath);
+    }
+
     return false;
   });
 
   return (
     <View className={`w-full ${isTablet ? 'mt-10' : 'mt-8'}`}>
-      {/* Title Header Row with icon on left matching ClassCard section */}
-      <View className={`flex-row items-center justify-between ${isTablet ? 'px-12 mb-6' : 'px-6 mb-4'}`}>
+      {/* Title Header Row */}
+      <View
+        className={`flex-row items-center justify-between ${
+          isTablet ? 'px-12 mb-6' : 'px-6 mb-4'
+        }`}
+      >
         <View className="flex-row items-center gap-2">
           <ActivitySectionIcon
             width={isTablet ? 32 : 22}
             height={isTablet ? 32 : 22}
           />
-          <Text className={`font-fredoka-one text-[#484A4B] ${isTablet ? 'text-[32px]' : 'text-[22px]'}`}>
+
+          <Text
+            className={`font-fredoka-one text-[#484A4B] ${
+              isTablet ? 'text-[32px]' : 'text-[22px]'
+            }`}
+          >
             Activities
           </Text>
         </View>
       </View>
 
-      {/* Cards List or Loading State */}
+      {/* Cards List / Loading State */}
       {isLoading ? (
         <View className="py-8 items-center justify-center">
           <ActivityIndicator size="large" color="#62A9E6" />
         </View>
       ) : assignedActivities.length === 0 ? (
-        <View className={`bg-white border-[2px] border-dashed border-[#E5E7EB] rounded-2xl p-6 items-center justify-center ${isTablet ? 'mx-12 mt-2' : 'mx-6 mt-2'}`}>
+        <View
+          className={`bg-white border-[2px] border-dashed border-[#E5E7EB] rounded-2xl p-6 items-center justify-center ${
+            isTablet ? 'mx-12 mt-2' : 'mx-6 mt-2'
+          }`}
+        >
           <Text className="font-quicksand-medium text-gray-400 text-sm text-center">
             No activities currently assigned.
           </Text>
@@ -286,7 +416,10 @@ export function ActivitiesSection({
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{
             paddingLeft: isTablet ? 48 : 24,
-            paddingRight: Math.max(isTablet ? 48 : 24, width - (isTablet ? 420 : 290)),
+            paddingRight: Math.max(
+              isTablet ? 48 : 24,
+              width - (isTablet ? 420 : 290)
+            ),
             paddingBottom: 8,
           }}
           scrollEventThrottle={16}
@@ -294,16 +427,36 @@ export function ActivitiesSection({
           decelerationRate="fast"
           snapToAlignment="start"
           onScroll={(e) => {
-            const { contentOffset, layoutMeasurement, contentSize } = e.nativeEvent;
+            const {
+              contentOffset,
+              layoutMeasurement,
+              contentSize,
+            } = e.nativeEvent;
+
             const x = contentOffset?.x;
+
             if (typeof x === 'number' && !isNaN(x)) {
-              const isAtEnd = x + layoutMeasurement.width >= contentSize.width - 20;
+              const isAtEnd =
+                x + layoutMeasurement.width >=
+                contentSize.width - 20;
+
               if (isAtEnd) {
                 setActiveIndex(assignedActivities.length - 1);
               } else {
-                const nextIndex = Math.round(x / snapToInterval);
+                const nextIndex = Math.round(
+                  x / snapToInterval
+                );
+
                 if (!isNaN(nextIndex)) {
-                  setActiveIndex(Math.max(0, Math.min(assignedActivities.length - 1, nextIndex)));
+                  setActiveIndex(
+                    Math.max(
+                      0,
+                      Math.min(
+                        assignedActivities.length - 1,
+                        nextIndex
+                      )
+                    )
+                  );
                 }
               }
             }
@@ -311,7 +464,10 @@ export function ActivitiesSection({
         >
           {assignedActivities.map((item, index) => {
             const isCardActive =
-              index === activeIndex || (index === 0 && (activeIndex === 0 || isNaN(activeIndex)));
+              index === activeIndex ||
+              (index === 0 &&
+                (activeIndex === 0 || isNaN(activeIndex)));
+
             return (
               <SingleActivityCard
                 key={item.id}
