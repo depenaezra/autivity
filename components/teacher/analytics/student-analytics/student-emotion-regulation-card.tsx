@@ -13,6 +13,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import Animated, { FadeInUp, FadeOutUp } from 'react-native-reanimated';
+import { ActivityTypeFilter } from '../../../../src/services/analytics';
 import { getStudentCheckInsHistory } from '../../../../src/services/check-ins';
 import { getStudentValidatedSessionsEvaluations } from '../../../../src/services/student-analytics';
 import {
@@ -28,6 +29,7 @@ interface StudentEmotionRegulationCardProps {
   studentName?: string;
   filter?: string;
   refreshTrigger?: number;
+  activityType?: ActivityTypeFilter;
 }
 
 const TOTAL_PAST_WEEKS = 12; // Pre-cache up to 12 past weeks for instant scrolling
@@ -36,6 +38,7 @@ export default function StudentEmotionRegulationCard({
   studentId,
   studentName = 'Learner',
   refreshTrigger = 0,
+  activityType,
 }: StudentEmotionRegulationCardProps) {
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
@@ -63,7 +66,7 @@ export default function StudentEmotionRegulationCard({
       try {
         const [checkIns, evals] = await Promise.all([
           getStudentCheckInsHistory(studentId),
-          getStudentValidatedSessionsEvaluations(studentId).catch(() => []),
+          getStudentValidatedSessionsEvaluations(studentId, activityType).catch(() => []),
         ]);
 
         setRawCheckIns(checkIns);
@@ -76,7 +79,7 @@ export default function StudentEmotionRegulationCard({
     }
 
     loadData();
-  }, [studentId, refreshTrigger]);
+  }, [studentId, refreshTrigger, activityType]);
 
   // Pre-generate all week data across the pre-cached window (from -12 to 0)
   const cachedWeeks = useMemo(() => {

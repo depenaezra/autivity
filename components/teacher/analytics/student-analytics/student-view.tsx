@@ -2,12 +2,14 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { Ionicons, Feather } from '@expo/vector-icons';
 
+import { ActivityTypeFilter } from '../../../../src/services/analytics';
 import { getStudentHeaderDetails, getStudentValidatedSessionsEvaluations, getStudentDevelopmentalSkillsExposure, StudentHeaderDetails } from '../../../../src/services/student-analytics';
 import {
   exportStudentAnalyticsReportPdf,
   exportStudentAnalyticsReportExcel,
 } from '../../../../src/services/exportReport';
 import { ExportFormatModal } from '../export-format-modal';
+import LogClassroomActivityModal from '../log-classroom-activity-modal';
 import { FilterPeriod, getFilterLabel } from '../../../../src/utils/dashboardFilters';
 import { ParentFilterModal } from '../../../parent/parent-filter-modal';
 import { ScreenLayout } from '../../../screen-layout';
@@ -52,7 +54,9 @@ export default function StudentView({ studentId, onBack }: StudentViewProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [globalFilter, setGlobalFilter] = useState<FilterPeriod>('overall');
+  const [activityType, setActivityType] = useState<ActivityTypeFilter>('all');
   const [isFilterModalVisible, setFilterModalVisible] = useState(false);
+  const [isLogModalVisible, setLogModalVisible] = useState(false);
   const [isExportModalVisible, setExportModalVisible] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [recommendations, setRecommendations] = useState<StudentRecommendation[]>([]);
@@ -67,8 +71,8 @@ export default function StudentView({ studentId, onBack }: StudentViewProps) {
     async function loadAnalyticsData() {
       try {
         const [evals, domainExposures] = await Promise.all([
-          getStudentValidatedSessionsEvaluations(studentId).catch(() => []),
-          getStudentDevelopmentalSkillsExposure(studentId, globalFilter as any).catch(() => []),
+          getStudentValidatedSessionsEvaluations(studentId, activityType).catch(() => []),
+          getStudentDevelopmentalSkillsExposure(studentId, globalFilter as any, activityType).catch(() => []),
         ]);
         const recs = generateStudentRecommendations(evals, domainExposures, studentData?.name || 'Student');
         setRecommendations(recs);
@@ -85,7 +89,7 @@ export default function StudentView({ studentId, onBack }: StudentViewProps) {
     if (studentId) {
       loadAnalyticsData();
     }
-  }, [studentId, globalFilter, studentData?.name, refreshKey]);
+  }, [studentId, globalFilter, activityType, studentData?.name, refreshKey]);
 
   useEffect(() => {
     async function fetchDetails() {
@@ -113,14 +117,16 @@ export default function StudentView({ studentId, onBack }: StudentViewProps) {
           studentId,
           studentData,
           globalFilter as any,
-          getFilterLabel(globalFilter)
+          getFilterLabel(globalFilter),
+          activityType
         );
       } else {
         await exportStudentAnalyticsReportExcel(
           studentId,
           studentData,
           globalFilter as any,
-          getFilterLabel(globalFilter)
+          getFilterLabel(globalFilter),
+          activityType
         );
       }
       setExportModalVisible(false);
@@ -155,6 +161,14 @@ export default function StudentView({ studentId, onBack }: StudentViewProps) {
     return null;
   };
 
+  const activityTypeOptions: { label: string; value: ActivityTypeFilter; icon: keyof typeof Feather.glyphMap }[] = [
+    { label: 'All Activities', value: 'all', icon: 'grid' },
+    { label: 'App Activities', value: 'app', icon: 'tablet' },
+    { label: 'Classroom Activities', value: 'classroom', icon: 'book-open' },
+  ];
+
+  const currentActivityOption = activityTypeOptions.find((o) => o.value === activityType) || activityTypeOptions[0];
+
   return (
     <ScreenLayout
       headerBackground={renderHeaderBackground()}
@@ -188,7 +202,7 @@ export default function StudentView({ studentId, onBack }: StudentViewProps) {
           </View>
         ) : (
           <View className="flex-col gap-4">
-            {/* CONTROL ROW: RANGE FILTER & DOWNLOAD REPORT */}
+            {/* CONTROL ROW: RANGE FILTER, LOG CLASSROOM ACTIVITY & DOWNLOAD REPORT */}
             <View className="flex-row items-center justify-end gap-2 flex-wrap sm:flex-nowrap mb-1">
               {/* Range Filter Selector */}
               <Pressable
@@ -208,6 +222,25 @@ export default function StudentView({ studentId, onBack }: StudentViewProps) {
                   RANGE: {getFilterLabel(globalFilter).toUpperCase()}
                 </Text>
                 <Feather name="chevron-down" size={13} color="#62A9E6" />
+              </Pressable>
+
+              {/* Log Classroom Activity Button */}
+              <Pressable
+                onPress={() => setLogModalVisible(true)}
+                className="flex-row items-center justify-center gap-1.5 bg-white border-[2px] border-[#CBFAC4] px-3 h-[36px] rounded-xl active:scale-95 transition-transform"
+                style={{
+                  borderColor: '#CBFAC4',
+                  shadowColor: '#CBFAC4',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 1,
+                  shadowRadius: 0,
+                  elevation: 2,
+                }}
+              >
+                <Feather name="plus-circle" size={13} color="#179D33" />
+                <Text className="font-fredoka-one text-[#179D33] text-[11px] uppercase" numberOfLines={1}>
+                  + LOG CLASSROOM ACTIVITY
+                </Text>
               </Pressable>
 
               {/* Master Download Report Button */}
@@ -259,11 +292,52 @@ export default function StudentView({ studentId, onBack }: StudentViewProps) {
               </View>
             )}
 
-            {/* Student Details Card */}
+            {/* Student Details Card (Learner Info) */}
             <StudentDetailsCard student={studentData} needsIntervention={needsIntervention} />
 
+            {/* ACTIVITY SOURCE SWITCHER (Icon Capsule Bar) */}
+            <View className="flex-row items-center justify-between px-1 pt-1 pb-0.5 mt-1">
+              <Text className="font-fredoka-one text-[15px] sm:text-[17px] text-[#484A4B]">
+                {currentActivityOption.label}
+              </Text>
+
+              {/* Capsule Container with 3 Icons */}
+              <View className="flex-row items-center bg-[#ECEFF3] p-1 rounded-full border border-[#E2E8F0]">
+                {activityTypeOptions.map((opt) => {
+                  const isActive = activityType === opt.value;
+                  return (
+                    <Pressable
+                      key={opt.value}
+                      onPress={() => setActivityType(opt.value)}
+                      className={`w-9 h-8 sm:w-10 sm:h-9 items-center justify-center rounded-full transition-all active:scale-90 ${
+                        isActive ? 'bg-[#62A9E6]' : 'bg-transparent'
+                      }`}
+                      style={
+                        isActive
+                          ? {
+                              shadowColor: '#62A9E6',
+                              shadowOffset: { width: 0, height: 1 },
+                              shadowOpacity: 0.35,
+                              shadowRadius: 2,
+                              elevation: 2,
+                            }
+                          : undefined
+                      }
+                      accessibilityLabel={opt.label}
+                    >
+                      <Feather
+                        name={opt.icon}
+                        size={isTablet ? 18 : 16}
+                        color={isActive ? '#FFFFFF' : '#8E9DAE'}
+                      />
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+
             {/* Student Performance KPI Cards */}
-            <StudentPerformanceCards studentId={studentId} filter={globalFilter} refreshTrigger={refreshKey} />
+            <StudentPerformanceCards studentId={studentId} filter={globalFilter} refreshTrigger={refreshKey} activityType={activityType} />
 
             {/* Student Recommendations Card */}
             <StudentRecommendationsCard recommendations={recommendations} />
@@ -274,19 +348,27 @@ export default function StudentView({ studentId, onBack }: StudentViewProps) {
               studentName={studentData.name}
               filter={globalFilter}
               refreshTrigger={refreshKey}
+              activityType={activityType}
             />
 
             {/* Student Evaluation Trend Chart */}
-            <StudentEvaluationTrend studentId={studentId} filter={globalFilter} refreshTrigger={refreshKey} />
+            <StudentEvaluationTrend studentId={studentId} filter={globalFilter} refreshTrigger={refreshKey} activityType={activityType} />
 
             {/* Student Developmental Domain Practice */}
-            <StudentDevelopmentalDomainPractice studentId={studentId} filter={globalFilter} refreshTrigger={refreshKey} />
+            <StudentDevelopmentalDomainPractice studentId={studentId} filter={globalFilter} refreshTrigger={refreshKey} activityType={activityType} />
 
             {/* Milestones */}
             <Milestones studentId={studentId} />
 
             {/* Completed Sessions */}
-            <Sessions studentId={studentId} studentName={studentData.name} filter={globalFilter} onEvaluationValidated={handleEvaluationValidated} />
+            <Sessions
+              studentId={studentId}
+              studentName={studentData.name}
+              filter={globalFilter}
+              refreshTrigger={refreshKey}
+              activityType={activityType}
+              onEvaluationValidated={handleEvaluationValidated}
+            />
           </View>
         )}
       </View>
@@ -298,6 +380,15 @@ export default function StudentView({ studentId, onBack }: StudentViewProps) {
         isTablet={isTablet}
         selectedFilter={globalFilter}
         onSelectFilter={setGlobalFilter}
+      />
+      {/* LOG CLASSROOM ACTIVITY MODAL */}
+      <LogClassroomActivityModal
+        visible={isLogModalVisible}
+        onClose={() => setLogModalVisible(false)}
+        onSuccess={handleEvaluationValidated}
+        isTablet={isTablet}
+        initialStudentId={studentId}
+        initialStudentName={studentData?.name}
       />
       {/* EXPORT FORMAT MODAL */}
       <ExportFormatModal

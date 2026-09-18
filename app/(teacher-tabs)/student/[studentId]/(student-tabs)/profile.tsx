@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, ScrollView, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { useFocusEffect, useGlobalSearchParams, useRouter } from 'expo-router';
+import { Feather } from '@expo/vector-icons';
 
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -9,6 +10,7 @@ import { StudentProfileHeader } from '@/components/student/profile/student-profi
 import { StudentStatsSection } from '@/components/student/profile/student-stats-section';
 import { StudentMenuSection } from '@/components/student/profile/student-menu-section';
 import { StudentProfileActions } from '@/components/student/profile/student-profile-actions';
+import { LogClassroomActivityModal } from '@/components/teacher/analytics/log-classroom-activity-modal';
 
 // Services
 import { supabase } from '../../../../../src/lib/supabase';
@@ -23,6 +25,7 @@ export default function StudentProfile() {
 
   const [studentData, setStudentData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showLogModal, setShowLogModal] = useState(false);
   const [preferences, setPreferences] = useState<StudentPreferences>({
     sfx_enabled: true,
     music_enabled: true,
@@ -189,6 +192,31 @@ export default function StudentProfile() {
             bio={studentData?.bio}
           />
 
+          {/* LOG CLASSROOM ACTIVITY BUTTON */}
+          <Pressable
+            onPress={() => setShowLogModal(true)}
+            className={`w-full bg-white border-[2px] rounded-[12px] justify-center items-center active:scale-95 transition-transform mb-3 flex-row gap-2 ${
+              isTablet ? 'py-4' : 'py-3'
+            }`}
+            style={{
+              borderColor: '#CBFAC4',
+              shadowColor: '#CBFAC4',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 1,
+              shadowRadius: 0,
+              elevation: 2,
+            }}
+          >
+            <Feather name="plus-circle" size={isTablet ? 20 : 16} color="#179D33" />
+            <Text
+              className={`font-fredoka-one text-[#179D33] uppercase ${
+                isTablet ? 'text-lg' : 'text-base'
+              }`}
+            >
+              + LOG CLASSROOM ACTIVITY
+            </Text>
+          </Pressable>
+
           {/* ACTIONS (SWITCH STUDENT BUTTON) */}
           <StudentProfileActions
             onSwitchStudent={() => router.back()}
@@ -196,6 +224,15 @@ export default function StudentProfile() {
           />
         </View>
       </ScrollView>
+
+      {/* LOG CLASSROOM ACTIVITY MODAL */}
+      <LogClassroomActivityModal
+        visible={showLogModal}
+        onClose={() => setShowLogModal(false)}
+        initialStudentId={Array.isArray(studentId) ? studentId[0] : (studentId as string)}
+        initialStudentName={studentData?.name || (studentName as string)}
+        isTablet={isTablet}
+      />
     </SafeAreaView>
   );
 }

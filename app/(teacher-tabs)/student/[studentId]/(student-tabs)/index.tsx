@@ -7,6 +7,7 @@ import { ActivitiesSection } from '@/components/student/activities-section';
 import { RecentActivityCard } from '@/components/student/recent-activity-card';
 import { StudentHeader } from '@/components/student/student-header';
 import { DailyCheckInModal } from '@/components/student/daily-check-in-modal';
+import { LogClassroomActivityModal } from '@/components/teacher/analytics/log-classroom-activity-modal';
 
 // Import your student services
 import { getLatestStudentSession } from '../../../../../src/services/sessions';
@@ -44,6 +45,7 @@ export default function StudentHome() {
 
     // Daily Emotion Check-In state
     const [showCheckInModal, setShowCheckInModal] = useState(false);
+    const [showLogClassroomModal, setShowLogClassroomModal] = useState(false);
     const [isSubmittingCheckIn, setIsSubmittingCheckIn] = useState(false);
     const [todayEmotion, setTodayEmotion] = useState<string | null>(null);
 
@@ -249,6 +251,24 @@ export default function StudentHome() {
 
                 {/* MAIN CONTENT WRAPPER */}
                 <View className="px-6">
+                    {/* LOG CLASSROOM ACTIVITY BUTTON */}
+                    <Pressable
+                        onPress={() => setShowLogClassroomModal(true)}
+                        className="flex-row items-center justify-center gap-2 bg-white border-[2px] border-[#CBFAC4] py-3.5 px-4 rounded-2xl mb-4 active:scale-98 transition-transform"
+                        style={{
+                            shadowColor: '#CBFAC4',
+                            shadowOffset: { width: 0, height: 2 },
+                            shadowOpacity: 1,
+                            shadowRadius: 0,
+                            elevation: 2,
+                        }}
+                    >
+                        <Feather name="plus-circle" size={isTablet ? 20 : 16} color="#179D33" />
+                        <Text className={`font-fredoka-one text-[#179D33] uppercase ${isTablet ? 'text-base' : 'text-sm'}`}>
+                            + Log Classroom Activity
+                        </Text>
+                    </Pressable>
+
                     {/* RECENT ACTIVITY CARD */}
                     <RecentActivityCard
                         latestSession={latestSession}
@@ -273,6 +293,22 @@ export default function StudentHome() {
                 onBackPress={() => router.back()}
                 onClose={() => setShowCheckInModal(false)}
                 isSubmitting={isSubmittingCheckIn}
+            />
+
+            {/* LOG CLASSROOM ACTIVITY MODAL */}
+            <LogClassroomActivityModal
+                visible={showLogClassroomModal}
+                onClose={() => setShowLogClassroomModal(false)}
+                initialStudentId={Array.isArray(studentId) ? studentId[0] : (studentId as string)}
+                initialStudentName={studentName}
+                onSuccess={async () => {
+                    const safeStudentId = Array.isArray(studentId) ? studentId[0] : (studentId as string);
+                    if (safeStudentId) {
+                        const session = await getLatestStudentSession(safeStudentId);
+                        setLatestSession(session);
+                    }
+                }}
+                isTablet={isTablet}
             />
         </View>
     );

@@ -35,9 +35,9 @@ export default function AnalyticsDraftScreen() {
     try {
       const [profile, kpi, classes, recentActivity] = await Promise.all([
         getUserProfile().catch(() => null),
-        getKpiData().catch(() => ({ pendingEvaluations: 0, totalStudents: 0, totalClasses: 0, completedSessions: 0 })),
-        getClassPerformance(true).catch(() => []),
-        getRecentActivity(globalFilter === 'today' ? 'today' : globalFilter === 'week' ? 'week' : 'month').catch(() => []),
+        getKpiData('all').catch(() => ({ pendingEvaluations: 0, totalStudents: 0, totalClasses: 0, completedSessions: 0 })),
+        getClassPerformance(true, 'all').catch(() => []),
+        getRecentActivity(globalFilter === 'today' ? 'today' : globalFilter === 'week' ? 'week' : 'month', 'all').catch(() => []),
       ]);
 
       const teacherName = profile?.first_name ? `${profile.first_name} ${profile.last_name || ''}`.trim() : 'Teacher';
@@ -46,7 +46,8 @@ export default function AnalyticsDraftScreen() {
         kpi,
         classes,
         recentActivity,
-        getFilterLabel(globalFilter)
+        getFilterLabel(globalFilter),
+        'all'
       );
     } catch (err: any) {
       Alert.alert('Could not export report', err.message || 'Error creating PDF report.');
@@ -130,7 +131,7 @@ export default function AnalyticsDraftScreen() {
 
         {/* ANALYTICS CARDS */}
         <Animated.View key={`cards-${focusKey}`} entering={FadeInRight.delay(100).duration(300)}>
-          <AnalyticsCards refreshTrigger={refreshKey} />
+          <AnalyticsCards refreshTrigger={refreshKey} activityType="all" />
         </Animated.View>
 
         {/* STUDENT PERFORMANCE / ANALYTICS SECTION */}
@@ -140,7 +141,10 @@ export default function AnalyticsDraftScreen() {
 
         {/* RECENT ACTIVITY SECTION */}
         <Animated.View key={`activity-${focusKey}`} entering={FadeInRight.delay(200).duration(300)}>
-          <RecentActivitySection onEvaluationValidated={() => setRefreshKey((prev) => prev + 1)} />
+          <RecentActivitySection
+            activityType="all"
+            onEvaluationValidated={() => setRefreshKey((prev) => prev + 1)}
+          />
         </Animated.View>
       </ScrollView>
 

@@ -213,6 +213,42 @@ export function generateStudentRecommendations(
         textColor: '#7C3AED',
       });
     }
+    // Score-based domain performance analysis
+    const evaluatedDomains = domainExposures.filter((d) => d.averageScore !== null && d.averageScore !== undefined);
+    if (evaluatedDomains.length > 0) {
+      const sortedByScore = [...evaluatedDomains].sort((a, b) => (b.averageScore || 0) - (a.averageScore || 0));
+      const topScoreDomain = sortedByScore[0];
+      if (topScoreDomain && (topScoreDomain.averageScore || 0) >= 3.0) {
+        recommendations.push({
+          id: 'student_score_strength_rec',
+          type: 'strength',
+          title: `Mastery Strength: ${topScoreDomain.masterDomain}`,
+          description: `${studentName} exhibits highest evaluation score in ${topScoreDomain.masterDomain} (${topScoreDomain.averageScore?.toFixed(1)} / 4.0 average).`,
+          badgeLabel: 'TOP PERFORMANCE',
+          accentColor: '#179D33',
+          bgColor: '#F0FDF4',
+          borderColor: '#CBFAC4',
+          textColor: '#15803D',
+        });
+      }
+
+      if (sortedByScore.length > 1) {
+        const lowestScoreDomain = sortedByScore[sortedByScore.length - 1];
+        if (lowestScoreDomain && (lowestScoreDomain.averageScore || 0) < 3.0) {
+          recommendations.push({
+            id: 'student_score_focus_rec',
+            type: 'focus',
+            title: `Needs Support: ${lowestScoreDomain.masterDomain}`,
+            description: `${lowestScoreDomain.masterDomain} has an average evaluation score of ${lowestScoreDomain.averageScore?.toFixed(1)} / 4.0. Provide guided prompts and scaffolded practice.`,
+            badgeLabel: 'NEEDS SUPPORT',
+            accentColor: '#FF8870',
+            bgColor: '#FFF7ED',
+            borderColor: '#FFDBD4',
+            textColor: '#C2410C',
+          });
+        }
+      }
+    }
   }
 
   // 2. Evaluation Score Analysis

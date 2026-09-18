@@ -2,6 +2,7 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as XLSX from 'xlsx';
 import * as FileSystem from 'expo-file-system/legacy';
+import { ActivityTypeFilter } from './analytics';
 import {
   getClassDevelopmentalSkillsExposure,
   getValidatedSessionsEvaluations,
@@ -602,7 +603,8 @@ export const exportStudentAnalyticsReportPdf = async (
   studentId: string,
   studentDetails: StudentHeaderDetails,
   filter: 'today' | 'week' | 'month' | 'overall' = 'overall',
-  timeframeLabel: string = 'Overall'
+  timeframeLabel: string = 'Overall',
+  activityType: ActivityTypeFilter = 'all'
 ) => {
   const generatedOn = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
@@ -616,10 +618,10 @@ export const exportStudentAnalyticsReportPdf = async (
 
   try {
     const [statsRes, evalsRes, domRes, sessRes, milestonesRes, checkInsRes] = await Promise.all([
-      getStudentSessionStats(studentId, filter).catch(() => ({ averageDuration: 0, averageMistakes: 0, totalSessions: 0 })),
-      getStudentValidatedSessionsEvaluations(studentId).catch(() => []),
-      getStudentDevelopmentalSkillsExposure(studentId, filter).catch(() => []),
-      getStudentSessions(studentId).catch(() => []),
+      getStudentSessionStats(studentId, filter, activityType).catch(() => ({ averageDuration: 0, averageMistakes: 0, totalSessions: 0 })),
+      getStudentValidatedSessionsEvaluations(studentId, activityType).catch(() => []),
+      getStudentDevelopmentalSkillsExposure(studentId, filter, activityType).catch(() => []),
+      getStudentSessions(studentId, activityType).catch(() => []),
       getStudentMilestones(studentId).catch(() => []),
       getStudentCheckInsForFilter(studentId, filter).catch(() => []),
     ]);
@@ -714,6 +716,7 @@ export const exportStudentAnalyticsReportPdf = async (
   const validatedSessionsHtml = validatedSessionsList.length > 0 ? validatedSessionsList.map((s: any) => {
     const rubricObj = s.rubric_evaluation || {};
     const totalPoints = Object.values(rubricObj).reduce((sum: number, val: any) => sum + (Number(val) || 0), 0);
+    const isClassroom = s.activity_type === 'classroom';
     const rubricRowsHtml = RUBRIC_CRITERIA.map((criterion) => {
       const score = Number((rubricObj as any)?.[criterion.key]) || 0;
       const scaleInfo = RUBRIC_SCALE[score] || RUBRIC_SCALE[0];
@@ -733,8 +736,14 @@ export const exportStudentAnalyticsReportPdf = async (
       <div style="background:#FFFFFF; border:2px solid #CBD5E1; border-radius:20px; padding:18px; margin-bottom:20px; page-break-inside:avoid;">
         <div style="background:#F1F5F9; border-radius:12px; padding:12px 16px; display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
           <div>
-            <div style="font-weight:700; font-size:15px; color:#1E293B;">Category: ${escapeHtml(s.category || 'General')}</div>
-            <div style="font-size:12px; color:#475569; font-weight:500; margin-top:2px;">Validated on ${s.date}</div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-weight:700; font-size:15px; color:#1E293B;">Category: ${escapeHtml(s.category || 'General')}</span>
+              <span style="font-weight:800; font-size:10px; text-transform:uppercase; padding:2px 8px; border-radius:6px; border:1px solid ${isClassroom ? '#E9D5FF' : '#BBE8FB'}; background:${isClassroom ? '#FAF5FF' : '#EFF6FF'}; color:${isClassroom ? '#A855F7' : '#0284C7'};">
+                ${isClassroom ? '🏫 CLASSROOM' : '📱 APP'}
+              </span>
+            </div>
+            ${s.title || s.activityName ? `<div style="font-size:13px; color:#475569; font-weight:700; margin-top:3px;">${escapeHtml(s.title || s.activityName)}</div>` : ''}
+            <div style="font-size:12px; color:#64748B; font-weight:500; margin-top:2px;">Validated on ${s.date}</div>
           </div>
           <div style="background:#F0FDF4; border:2px solid #86EFAC; border-radius:8px; padding:6px 14px; text-align:center;">
             <div style="font-weight:700; font-size:15px; color:#15803D;">${totalPoints} / 20</div>
@@ -773,8 +782,9 @@ export const exportStudentAnalyticsReportPdf = async (
         Learner Code: #${escapeHtml(studentDetails.learnerCode || 'AUT-000')} &nbsp;•&nbsp;
         Parent Account: ${studentDetails.isLinked ? 'LINKED' : 'NOT LINKED'} &nbsp;•&nbsp;
         Generated ${generatedOn}
-        <div style="margin-top:8px;">
+        <div style="margin-top:8px; display:flex; gap:8px;">
           <span style="background:#E0F2FE; border:1px solid #BBE8FB; color:#0284C7; border-radius:6px; padding:4px 10px; font-weight:700; font-size:11px; text-transform:uppercase;">RANGE: ${escapeHtml(timeframeLabel.toUpperCase())}</span>
+          ${activityType !== 'all' ? `<span style="background:${activityType === 'classroom' ? '#FAF5FF' : '#EFF6FF'}; border:1px solid ${activityType === 'classroom' ? '#E9D5FF' : '#BBE8FB'}; color:${activityType === 'classroom' ? '#A855F7' : '#0284C7'}; border-radius:6px; padding:4px 10px; font-weight:700; font-size:11px; text-transform:uppercase;">SOURCE: ${activityType === 'classroom' ? 'CLASSROOM ONLY' : 'APP ONLY'}</span>` : ''}
         </div>
       </div>
 
@@ -1025,7 +1035,8 @@ export const exportStudentAnalyticsReportExcel = async (
   studentId: string,
   studentDetails: StudentHeaderDetails,
   filter: 'today' | 'week' | 'month' | 'overall' = 'overall',
-  timeframeLabel: string = 'Overall'
+  timeframeLabel: string = 'Overall',
+  activityType: ActivityTypeFilter = 'all'
 ) => {
   const generatedOn = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
@@ -1038,10 +1049,10 @@ export const exportStudentAnalyticsReportExcel = async (
 
   try {
     const [statsRes, evalsRes, domRes, sessRes, milestonesRes, checkInsRes] = await Promise.all([
-      getStudentSessionStats(studentId, filter).catch(() => ({ averageDuration: 0, averageMistakes: 0, totalSessions: 0 })),
-      getStudentValidatedSessionsEvaluations(studentId).catch(() => []),
-      getStudentDevelopmentalSkillsExposure(studentId, filter).catch(() => []),
-      getStudentSessions(studentId).catch(() => []),
+      getStudentSessionStats(studentId, filter, activityType).catch(() => ({ averageDuration: 0, averageMistakes: 0, totalSessions: 0 })),
+      getStudentValidatedSessionsEvaluations(studentId, activityType).catch(() => []),
+      getStudentDevelopmentalSkillsExposure(studentId, filter, activityType).catch(() => []),
+      getStudentSessions(studentId, activityType).catch(() => []),
       getStudentMilestones(studentId).catch(() => []),
       getStudentCheckInsForFilter(studentId, filter).catch(() => []),
     ]);
@@ -1080,6 +1091,7 @@ export const exportStudentAnalyticsReportExcel = async (
     ['Grade', studentDetails.grade || 'SPED'],
     ['Parent Account Linked', studentDetails.isLinked ? 'YES' : 'NO'],
     ['Timeframe Range', timeframeLabel],
+    ['Activity Source Filter', activityType === 'all' ? 'All Activities' : activityType === 'classroom' ? 'Classroom Only' : 'App Only'],
     ['Overall Rubric Score Average', avgRubricScore !== null ? avgRubricScore.toFixed(2) : 'No evaluations'],
     ['Status', needsIntervention ? 'ATTENTION REQUIRED (< 3.0)' : 'ON TRACK'],
     [''],
@@ -1168,20 +1180,22 @@ export const exportStudentAnalyticsReportExcel = async (
 
   const validatedSessionsList = rawSessions.filter((s: any) => s.status === 'validated' && s.rubric_evaluation);
   const valRows = [
-    ['Session Date', 'Activity Title', 'Looking at Objects', 'Concentrating', 'Performing Task', 'Following Instructions', 'Completed Work', 'Average Rubric Score', 'Teacher Remarks'],
+    ['Session Date', 'Activity Source', 'Category', 'Activity Title', 'Looking at Objects', 'Concentrating', 'Performing Task', 'Following Instructions', 'Completed Work', 'Average Rubric Score', 'Teacher Remarks'],
     ...validatedSessionsList.map((s: any) => {
       const r = s.rubric_evaluation || {};
       const score = calculateRubricScore(r);
       return [
         new Date(s.created_at).toLocaleDateString('en-US'),
-        s.activity_title || s.activityTitle || 'Practice Session',
+        s.activity_type === 'classroom' ? 'Classroom' : 'App',
+        s.category || 'General',
+        s.title || s.activity_title || s.activityTitle || s.activityName || 'Practice Session',
         r.looking_at_objects ?? 'N/A',
         r.concentrating ?? 'N/A',
         r.performing_task ?? 'N/A',
         r.following_instructions ?? 'N/A',
         r.completed_work ?? 'N/A',
         score !== null ? score.toFixed(2) : 'N/A',
-        s.teacher_remarks || s.feedback || '',
+        s.teacher_remarks || s.feedback || s.teacher_feedback || '',
       ];
     }),
   ];
@@ -1398,8 +1412,9 @@ export const exportTeacherAnalyticsReportPdf = async (
   teacherName: string,
   kpi: { pendingEvaluations: number; totalStudents: number; totalClasses: number; completedSessions: number },
   classes: { title: string; grade: string; studentsCount: number; completedSessions: number; pendingEvaluations: number; evaluatedPercentage: number }[],
-  recentActivity: { studentName: string; category: string; status: string; createdAt: string }[],
-  timeframeLabel?: string
+  recentActivity: { studentName: string; category: string; status: string; createdAt: string; activityType?: string; activityTitle?: string }[],
+  timeframeLabel?: string,
+  activityType: ActivityTypeFilter = 'all'
 ) => {
   const generatedOn = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
@@ -1415,17 +1430,26 @@ export const exportTeacherAnalyticsReportPdf = async (
     </div>
   `).join('') : '<div style="color:#64748B; font-size:13px;">No classes found.</div>';
 
-  const activityRowsHtml = recentActivity.length > 0 ? recentActivity.slice(0, 10).map((a) => `
+  const activityRowsHtml = recentActivity.length > 0 ? recentActivity.slice(0, 10).map((a) => {
+    const isClassroom = a.activityType === 'classroom';
+    return `
     <div style="background:#F9FAFB; border:1px solid #F3F4F6; border-radius:10px; padding:10px 14px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
       <div>
-        <div style="font-weight:700; font-size:13px; color:#374151;">${escapeHtml(a.studentName)} — ${escapeHtml(a.category)}</div>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <span style="font-weight:700; font-size:13px; color:#374151;">${escapeHtml(a.studentName)} — ${escapeHtml(a.category)}</span>
+          <span style="font-size:9px; font-weight:800; text-transform:uppercase; padding:1px 6px; border-radius:4px; border:1px solid ${isClassroom ? '#E9D5FF' : '#BBE8FB'}; background:${isClassroom ? '#FAF5FF' : '#EFF6FF'}; color:${isClassroom ? '#A855F7' : '#3B82F6'};">
+            ${isClassroom ? '🏫 CLASSROOM' : '📱 APP'}
+          </span>
+        </div>
+        ${a.activityTitle ? `<div style="font-size:12px; color:#64748B; font-weight:600; margin-top:2px;">${escapeHtml(a.activityTitle)}</div>` : ''}
         <div style="font-size:11px; color:#9CA3AF; margin-top:2px;">${new Date(a.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
       </div>
       <span style="font-weight:700; font-size:10px; text-transform:uppercase; padding:3px 8px; border-radius:6px; background:${a.status === 'validated' ? '#DCFCE7' : '#FEF3C7'}; color:${a.status === 'validated' ? '#15803D' : '#D97706'};">
         ${escapeHtml(a.status)}
       </span>
     </div>
-  `).join('') : '<div style="color:#64748B; font-size:13px;">No recent activity in this timeframe.</div>';
+  `;
+  }).join('') : '<div style="color:#64748B; font-size:13px;">No recent activity in this timeframe.</div>';
 
   const html = `
   <html>
@@ -1447,7 +1471,10 @@ export const exportTeacherAnalyticsReportPdf = async (
       <h1>Teacher Analytics Report</h1>
       <div class="meta">
         Teacher: ${escapeHtml(teacherName || 'Teacher')} &nbsp;•&nbsp; Generated ${generatedOn}
-        ${timeframeLabel ? `<br/><span style="background:#E0F2FE; border:1px solid #BBE8FB; color:#0284C7; border-radius:6px; padding:3px 8px; font-weight:700; font-size:11px; text-transform:uppercase; display:inline-block; margin-top:6px;">TIMEFRAME: ${escapeHtml(timeframeLabel)}</span>` : ''}
+        <div style="margin-top:8px; display:flex; gap:8px;">
+          ${timeframeLabel ? `<span style="background:#E0F2FE; border:1px solid #BBE8FB; color:#0284C7; border-radius:6px; padding:3px 8px; font-weight:700; font-size:11px; text-transform:uppercase;">TIMEFRAME: ${escapeHtml(timeframeLabel)}</span>` : ''}
+          ${activityType !== 'all' ? `<span style="background:${activityType === 'classroom' ? '#FAF5FF' : '#EFF6FF'}; border:1px solid ${activityType === 'classroom' ? '#E9D5FF' : '#BBE8FB'}; color:${activityType === 'classroom' ? '#A855F7' : '#0284C7'}; border-radius:6px; padding:3px 8px; font-weight:700; font-size:11px; text-transform:uppercase;">SOURCE: ${activityType === 'classroom' ? 'CLASSROOM ONLY' : 'APP ONLY'}</span>` : ''}
+        </div>
       </div>
 
       <div class="stat-row">

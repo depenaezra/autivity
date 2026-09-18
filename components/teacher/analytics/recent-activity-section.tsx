@@ -8,7 +8,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { Feather, Ionicons } from '@expo/vector-icons';
-import { getRecentActivity, RecentActivityData } from '../../../src/services/analytics';
+import { getRecentActivity, RecentActivityData, ActivityTypeFilter } from '../../../src/services/analytics';
 import EvaluationReviewModal from './evaluation-review-modal';
 import FeedbackModal from '../../feedback-modal';
 import RecentIcon from '../../../assets/images/teacher/analytics/icon-recent.svg';
@@ -61,9 +61,10 @@ function RecentActivitySkeletonItem({ isTablet }: { isTablet: boolean }) {
 
 interface RecentActivitySectionProps {
   onEvaluationValidated?: () => void;
+  activityType?: ActivityTypeFilter;
 }
 
-export function RecentActivitySection({ onEvaluationValidated }: RecentActivitySectionProps = {}) {
+export function RecentActivitySection({ onEvaluationValidated, activityType = 'all' }: RecentActivitySectionProps = {}) {
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
 
@@ -80,12 +81,12 @@ export function RecentActivitySection({ onEvaluationValidated }: RecentActivityS
   useEffect(() => {
     setIsExpanded(false);
     fetchRecentActivity();
-  }, [filter]);
+  }, [filter, activityType]);
 
   const fetchRecentActivity = async () => {
     setIsLoading(true);
     try {
-      const data = await getRecentActivity(filter);
+      const data = await getRecentActivity(filter, activityType);
       setActivities(data);
     } catch (err) {
       console.error('RecentActivitySection: failed to fetch recent activity', err);
@@ -191,12 +192,13 @@ export function RecentActivitySection({ onEvaluationValidated }: RecentActivityS
           <View className="gap-3">
             {visibleActivities.map((item) => {
               const isPending = item.status === 'pending';
+              const isClassroom = item.activityType === 'classroom';
               const timeDisplay =
                 filter === 'today'
                   ? formatTime(item.createdAt)
                   : `${formatDateShort(item.createdAt)}, ${formatTime(item.createdAt)}`;
 
-              const accentColor = isPending ? '#FF8870' : '#179D33';
+              const accentColor = isPending ? '#FF8870' : isClassroom ? '#A855F7' : '#179D33';
               const statusBg = isPending ? '#FFDBD4' : '#CBFAC4';
               const statusBorder = isPending ? '#FF8870' : '#179D33';
               const statusText = isPending ? '#FF8870' : '#179D33';
@@ -231,6 +233,28 @@ export function RecentActivitySection({ onEvaluationValidated }: RecentActivityS
                         <Text className={`font-fredoka-one text-[#484A4B] ${isTablet ? 'text-lg' : 'text-base'}`}>
                           {item.studentName}
                         </Text>
+                        
+                        {/* Activity Source Badge */}
+                        <View
+                          className="px-2 py-0.5 rounded-[6px] border flex-row items-center gap-1"
+                          style={{
+                            backgroundColor: isClassroom ? '#FAF5FF' : '#EFF6FF',
+                            borderColor: isClassroom ? '#E9D5FF' : '#BBE8FB',
+                          }}
+                        >
+                          <Feather
+                            name={isClassroom ? 'book-open' : 'tablet'}
+                            size={isTablet ? 11 : 9}
+                            color={isClassroom ? '#A855F7' : '#3B82F6'}
+                          />
+                          <Text
+                            className={`font-fredoka-one uppercase ${isTablet ? 'text-xs' : 'text-[9px]'}`}
+                            style={{ color: isClassroom ? '#A855F7' : '#3B82F6' }}
+                          >
+                            {isClassroom ? 'CLASSROOM' : 'APP'}
+                          </Text>
+                        </View>
+
                         <View className="bg-[#F1F1F1] px-2 py-0.5 rounded-[6px]">
                           <Text className={`font-fredoka-one text-[#62A9E6] ${isTablet ? 'text-xs' : 'text-[10px]'}`}>
                             {item.category.toUpperCase()}
@@ -238,7 +262,12 @@ export function RecentActivitySection({ onEvaluationValidated }: RecentActivityS
                         </View>
                       </View>
 
-                      <Text className={`font-quicksand-medium text-[#9CA3AF] mt-0.5 ${isTablet ? 'text-sm' : 'text-xs'}`}>
+                      {/* Activity Title Subtitle if present */}
+                      <Text className={`font-quicksand-bold text-[#4B5563] mt-0.5 ${isTablet ? 'text-sm' : 'text-xs'}`} numberOfLines={1}>
+                        {item.activityTitle}
+                      </Text>
+
+                      <Text className={`font-quicksand-medium text-[#9CA3AF] mt-0.5 ${isTablet ? 'text-xs' : 'text-[11px]'}`}>
                         {timeDisplay}
                       </Text>
                     </View>
