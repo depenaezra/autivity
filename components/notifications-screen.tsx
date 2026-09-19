@@ -15,6 +15,10 @@ import IconUnread from '../assets/images/parent/icon-unread.svg';
 
 import ParentEvaluationReviewModal from './parent/parent-evaluation-review-modal';
 import ParentMilestoneDetailModal, { ParentMilestoneItem } from './parent/parent-milestone-detail-modal';
+import { ParentEmotionModal, ParentEmotionData } from './parent/parent-emotion-modal';
+import { EvaluationReviewModal } from './teacher/analytics/evaluation-review-modal';
+import FeedbackModal from './feedback-modal';
+import { getUserProfile } from '../src/services/profile';
 import { supabase } from '../src/lib/supabase';
 import {
   clearAllNotifications,
@@ -52,8 +56,8 @@ interface NotificationCardProps {
   onMarkUnread: (id: string) => void;
   onDelete: (id: string) => void;
   onSwipeableWillOpen: (ref: any) => void;
-  getTypeIcon: (type?: string) => React.ReactNode;
-  getTypeBgColor: (type?: string) => string;
+  getTypeIcon: (type?: string, item?: NotificationItem) => React.ReactNode;
+  getTypeBgColor: (type?: string, item?: NotificationItem) => string;
 }
 
 function NotificationCard({
@@ -251,10 +255,11 @@ function NotificationCard({
         <View className="flex-row items-start gap-3.5">
           <View
             className={`rounded-xl border-2 items-center justify-center ${getTypeBgColor(
-              item.type
+              item.type,
+              item
             )} ${isTablet ? 'w-12 h-12' : 'w-10 h-10'}`}
           >
-            {getTypeIcon(item.type)}
+            {getTypeIcon(item.type, item)}
           </View>
 
           <View className="flex-1">
@@ -307,15 +312,38 @@ export function NotificationsScreen({
 
   const [items, setItems] = useState<NotificationItem[]>(notifications);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [userRole, setUserRole] = useState<'parent' | 'teacher' | null>(null);
+
+  // Parent Modals
   const [selectedFeedbackSessionId, setSelectedFeedbackSessionId] = useState<string | null>(null);
   const [selectedMilestoneItem, setSelectedMilestoneItem] = useState<ParentMilestoneItem | null>(null);
+  const [selectedEmotionData, setSelectedEmotionData] = useState<ParentEmotionData | null>(null);
+
+  // Teacher Modals
+  const [teacherEvalSessionId, setTeacherEvalSessionId] = useState<string | null>(null);
+  const [teacherFeedbackModalData, setTeacherFeedbackModalData] = useState<{
+    visible: boolean;
+    sessionId: string | null;
+    activityTitle?: string;
+    studentName?: string;
+  }>({
+    visible: false,
+    sessionId: null,
+  });
+
   const openSwipeableRef = useRef<any>(null);
 
   const fetchUserNotifications = async () => {
     setIsLoading(true);
     try {
-      const data = await getNotificationsForUser();
+      const [data, profile] = await Promise.all([
+        getNotificationsForUser(),
+        getUserProfile().catch(() => null),
+      ]);
       setItems(data);
+      if (profile?.role) {
+        setUserRole(profile.role === 'teacher' ? 'teacher' : 'parent');
+      }
     } catch (err) {
       console.error('[NOTIFICATIONS] Error loading notifications:', err);
     } finally {
@@ -420,7 +448,72 @@ export function NotificationsScreen({
       ? (() => { try { return JSON.parse(item.metadata); } catch { return {}; } })()
       : (item.metadata || {});
 
-    // 3. If feedback type, open ParentEvaluationReviewModal
+    // Handle Teacher Notification Interactions
+    if (userRole === 'teacher') {
+      // A. Session Evaluation / Feedback notifications
+      if (item.type === 'feedback' || item.type === 'activity') {
+        const sessionId = meta?.session_id;
+        if (sessionId) {
+          try {
+            const { data: session } = await supabase
+              .from('student_sessions')
+              .select('id, status, category, student_id, students(name)')
+              .eq('id', sessionId)
+              .maybeSingle();
+
+            if (session) {
+              const studentName = (session.students as any)?.name || 'Learner';
+              const activityTitle = session.category || item.title || 'Activity';
+
+              if (session.status === 'validated') {
+                setTeacherEvalSessionId(sessionId);
+              } else {
+                setTeacherFeedbackModalData({
+                  visible: true,
+                  sessionId,
+                  activityTitle,
+                  studentName,
+                });
+              }
+              return;
+            }
+          } catch (err) {
+            console.error('[NOTIFICATIONS] Error checking session for teacher:', err);
+          }
+        }
+      }
+
+      // B. Alerts, Milestones, General connections -> Navigate to Student Analytics
+      const targetStudentId = item.studentId || meta?.student_id;
+      if (targetStudentId) {
+        router.push(`/(teacher-tabs)/student/${targetStudentId}/(student-tabs)` as any);
+        return;
+      }
+      return;
+    }
+
+    // Handle Parent Notification Interactions
+    // 3. Emotion Check-in Notification
+    if (meta?.emotion || item.title?.toLowerCase().includes('emotion') || item.title?.toLowerCase().includes('mood')) {
+      const emotionKey = meta?.emotion || 'happy';
+      let studentName = meta?.student_name;
+      if (!studentName && item.message) {
+        const nameMatch = item.message.match(/^(\S+)\s+checked in/i);
+        if (nameMatch && nameMatch[1]) {
+          studentName = nameMatch[1];
+        }
+      }
+
+      setSelectedEmotionData({
+        emotion: emotionKey,
+        studentName: studentName || 'Learner',
+        checkInDate: meta?.check_in_date || meta?.date,
+        timestamp: item.timestamp,
+      });
+      return;
+    }
+
+    // 4. If feedback type, open ParentEvaluationReviewModal
     if (item.type === 'feedback') {
       const sessionId = meta?.session_id;
       if (sessionId) {
@@ -428,7 +521,7 @@ export function NotificationsScreen({
       }
     }
 
-    // 4. If milestone type, open ParentMilestoneDetailModal
+    // 5. If milestone type, open ParentMilestoneDetailModal
     if (item.type === 'milestone') {
       const mId = meta?.milestone_id || meta?.goal_id;
 
@@ -494,7 +587,25 @@ export function NotificationsScreen({
     }
   };
 
-  const getTypeIcon = (type?: string) => {
+  const getTypeIcon = (type?: string, item?: NotificationItem) => {
+    const meta = typeof item?.metadata === 'string'
+      ? (() => { try { return JSON.parse(item.metadata); } catch { return {}; } })()
+      : (item?.metadata || {});
+
+    if (meta?.emotion || item?.title?.toLowerCase().includes('emotion') || item?.title?.toLowerCase().includes('mood')) {
+      const emotionKey = meta?.emotion?.toLowerCase();
+      if (emotionKey === 'happy' || emotionKey === 'calm') {
+        return <Ionicons name="happy" size={isTablet ? 24 : 20} color="#179D33" />;
+      }
+      if (emotionKey === 'excited' || emotionKey === 'nervous') {
+        return <Ionicons name="flash" size={isTablet ? 24 : 20} color="#FF8870" />;
+      }
+      if (emotionKey === 'tired' || emotionKey === 'sad') {
+        return <Ionicons name="heart" size={isTablet ? 24 : 20} color="#62A9E6" />;
+      }
+      return <Ionicons name="heart-circle" size={isTablet ? 24 : 20} color="#62A9E6" />;
+    }
+
     switch (type) {
       case 'feedback':
         return <Ionicons name="chatbubble-ellipses" size={isTablet ? 24 : 20} color="#62A9E6" />;
@@ -514,7 +625,25 @@ export function NotificationsScreen({
     }
   };
 
-  const getTypeBgColor = (type?: string) => {
+  const getTypeBgColor = (type?: string, item?: NotificationItem) => {
+    const meta = typeof item?.metadata === 'string'
+      ? (() => { try { return JSON.parse(item.metadata); } catch { return {}; } })()
+      : (item?.metadata || {});
+
+    if (meta?.emotion || item?.title?.toLowerCase().includes('emotion') || item?.title?.toLowerCase().includes('mood')) {
+      const emotionKey = meta?.emotion?.toLowerCase();
+      if (emotionKey === 'happy' || emotionKey === 'calm') {
+        return 'bg-[#E8F8E5] border-[#CBFAC4]';
+      }
+      if (emotionKey === 'excited' || emotionKey === 'nervous') {
+        return 'bg-[#FFF7ED] border-[#FFDBD4]';
+      }
+      if (emotionKey === 'tired' || emotionKey === 'sad') {
+        return 'bg-[#EFF6FF] border-[#BBE8FB]';
+      }
+      return 'bg-[#EBF5FF] border-[#BBE8FB]';
+    }
+
     switch (type) {
       case 'feedback':
         return 'bg-[#EBF5FF] border-[#BBE8FB]';
@@ -617,6 +746,14 @@ export function NotificationsScreen({
         )}
       </View>
 
+      {/* Parent Emotion Check-in Modal */}
+      <ParentEmotionModal
+        visible={!!selectedEmotionData}
+        data={selectedEmotionData}
+        onClose={() => setSelectedEmotionData(null)}
+        isTablet={isTablet}
+      />
+
       {/* Parent Evaluation Review Modal */}
       <ParentEvaluationReviewModal
         visible={!!selectedFeedbackSessionId}
@@ -632,6 +769,28 @@ export function NotificationsScreen({
         onClose={() => setSelectedMilestoneItem(null)}
         isTablet={isTablet}
       />
+
+      {/* Teacher Evaluation Review Modal */}
+      <EvaluationReviewModal
+        visible={!!teacherEvalSessionId}
+        sessionId={teacherEvalSessionId}
+        onClose={() => setTeacherEvalSessionId(null)}
+        isTablet={isTablet}
+      />
+
+      {/* Teacher Pending Rubric Evaluation Modal */}
+      <FeedbackModal
+        visible={teacherFeedbackModalData.visible}
+        sessionId={teacherFeedbackModalData.sessionId}
+        activityTitle={teacherFeedbackModalData.activityTitle}
+        studentName={teacherFeedbackModalData.studentName}
+        onClose={() => setTeacherFeedbackModalData({ visible: false, sessionId: null })}
+        onSuccess={() => {
+          setTeacherFeedbackModalData({ visible: false, sessionId: null });
+          fetchUserNotifications();
+        }}
+      />
     </ScreenLayout>
   );
 }
+

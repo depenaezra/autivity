@@ -25,7 +25,7 @@ export default function InstructionSpeakerButton({
     size,
     iconSize,
     color = '#62A9E6',
-    autoPlay = false,
+    autoPlay = true,
     className = '',
 }: InstructionSpeakerButtonProps) {
     const { width } = useWindowDimensions();
@@ -56,24 +56,17 @@ export default function InstructionSpeakerButton({
         scaleAnim.value = withTiming(1.0, { duration: 200 });
     };
 
-    const handleSpeak = async () => {
+    const playSpeech = async (textToSpeak: string) => {
+        if (!textToSpeak) return;
+
         try {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-        } catch {}
-
-        if (isPlaying) {
             await stopSpeech();
-            setIsPlaying(false);
-            stopPulseAnimation();
-            return;
-        }
-
-        if (!text) return;
+        } catch {}
 
         setIsPlaying(true);
         startPulseAnimation();
 
-        await speakInstruction(text, {
+        await speakInstruction(textToSpeak, {
             onDone: () => {
                 setIsPlaying(false);
                 stopPulseAnimation();
@@ -85,21 +78,38 @@ export default function InstructionSpeakerButton({
         });
     };
 
-    // Optional autoplay when text changes if enabled
+    const handlePress = async () => {
+        try {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+        } catch {}
+
+        if (isPlaying) {
+            await stopSpeech();
+            setIsPlaying(false);
+            stopPulseAnimation();
+        } else if (text) {
+            await playSpeech(text);
+        }
+    };
+
+    // Automatically read instructions/mistake feedback when text updates
     useEffect(() => {
         if (autoPlay && text) {
-            handleSpeak();
+            playSpeech(text);
         }
+    }, [text, autoPlay]);
 
+    // Clean up speech when component unmounts
+    useEffect(() => {
         return () => {
             stopSpeech().catch(() => {});
         };
-    }, [text]);
+    }, []);
 
     return (
         <Animated.View style={animatedStyle}>
             <Pressable
-                onPress={handleSpeak}
+                onPress={handlePress}
                 className={`bg-white border-[2px] border-[#BBE8FB] rounded-xl items-center justify-center active:scale-95 transition-transform ${className}`}
                 style={{
                     width: buttonSize,
