@@ -8,8 +8,8 @@ import { speakElevenLabs, stopElevenLabsSpeech } from '@/src/services/elevenlabs
 export const cleanTextForSpeech = (text: string): string => {
     if (!text) return '';
     return text
-        // Remove common emojis and symbols
-        .replace(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu, '')
+        // Remove all common emojis, symbols, and pictographs (e.g. ⭐, 💡, 🎉, etc.)
+        .replace(/[\p{Extended_Pictographic}\u{1F300}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{2B50}]/gu, '')
         // Clean double spaces
         .replace(/\s+/g, ' ')
         .trim();

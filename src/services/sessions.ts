@@ -42,6 +42,97 @@ export interface RubricEvaluation {
     completed_work: number;
 }
 
+export interface ClassroomActivityPayload {
+    student_id: string;
+    class_id: string;
+    teacher_id: string;
+    title: string;
+    master_domain: string;
+    sub_skills?: string[];
+    duration_seconds?: number;
+    rubric_evaluation: RubricEvaluation;
+    teacher_feedback?: string;
+    session_date?: string;
+}
+
+export const recordClassroomActivitySession = async (payload: ClassroomActivityPayload) => {
+    const combinedSkillDomains = Array.from(
+        new Set([
+            payload.master_domain,
+            ...(payload.sub_skills || [])
+        ])
+    ).filter(Boolean);
+
+    // Compute average star percentage score (0 - 100) based on 20 total rubric points
+    const totalRubricScore = Object.values(payload.rubric_evaluation).reduce(
+        (sum, val) => sum + (Number(val) || 0),
+        0
+    );
+    const calculatedStars = Math.round((totalRubricScore / 20) * 100);
+
+    const nowIso = payload.session_date
+        ? new Date(payload.session_date).toISOString()
+        : new Date().toISOString();
+
+    const insertData: any = {
+        student_id: payload.student_id,
+        class_id: payload.class_id,
+        teacher_id: payload.teacher_id,
+        activity_type: 'classroom',
+        title: payload.title.trim(),
+        category: 'Classroom',
+        activity_path: ['classroom/' + payload.master_domain.toLowerCase().replace(/\s+/g, '-')],
+        skill_domain: combinedSkillDomains,
+        stars: calculatedStars,
+        duration_seconds: payload.duration_seconds || 600,
+        rubric_evaluation: payload.rubric_evaluation,
+        teacher_feedback: payload.teacher_feedback ? payload.teacher_feedback.trim() : '',
+        status: 'validated',
+        validated_at: nowIso,
+        created_at: nowIso,
+    };
+
+    const { data, error } = await supabase
+        .from('student_sessions')
+        .insert([insertData])
+        .select()
+        .single();
+
+    if (error) {
+        console.error("Error recording classroom activity session:", error);
+        throw new Error(error.message || "Failed to record classroom session");
+    }
+
+    // Trigger Notification for Parent
+    if (data?.student_id) {
+        try {
+            const { data: student } = await supabase
+                .from('students')
+                .select('name')
+                .eq('id', data.student_id)
+                .maybeSingle();
+
+            const studentName = student?.name || 'your child';
+            const activityTitle = payload.title.trim() || 'Classroom Activity';
+            const feedbackText = payload.teacher_feedback?.trim()
+                ? `"${payload.teacher_feedback.trim().slice(0, 90)}${payload.teacher_feedback.length > 90 ? '...' : ''}"`
+                : 'Teacher completed classroom rubric evaluation.';
+
+            await createNotification({
+                studentId: data.student_id,
+                title: 'New Classroom Evaluation',
+                message: `Teacher evaluated ${studentName} on classroom task "${activityTitle}": ${feedbackText}`,
+                type: 'feedback',
+                metadata: { session_id: data.id, activity_type: 'classroom' },
+            });
+        } catch (notifErr) {
+            console.error('[NOTIFICATIONS] Failed sending classroom feedback notification:', notifErr);
+        }
+    }
+
+    return data;
+};
+
 export const validateSession = async (
     sessionId: string,
     rubricEvaluation: RubricEvaluation,

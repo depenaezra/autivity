@@ -47,56 +47,60 @@ export const formatRelativeTime = (isoString: string): string => {
 };
 
 /**
- * Create a new notification.
- * If userId is not provided, it looks up student.parent_id using studentId.
+ * Create one or more notifications in the database.
+ * If userId is not provided, it resolves parent_id and/or teacher_id using studentId and targetRole.
  */
 export const createNotification = async (params: {
   userId?: string;
   studentId?: string;
+  targetRole?: 'parent' | 'teacher' | 'both';
   title: string;
   message: string;
   type: 'feedback' | 'activity' | 'achievement' | 'milestone' | 'announcement' | 'alert' | 'general';
   metadata?: any;
 }) => {
   try {
-    let targetUserId = params.userId;
+    const targetUserIds: string[] = [];
 
-    // If userId not explicitly provided, look up parent_id from student record
-    if (!targetUserId && params.studentId) {
+    if (params.userId) {
+      targetUserIds.push(params.userId);
+    } else if (params.studentId) {
       const { data: student, error: studentError } = await supabase
         .from('students')
-        .select('parent_id')
+        .select('parent_id, teacher_id')
         .eq('id', params.studentId)
         .maybeSingle();
 
       if (studentError) {
-        console.error('[NOTIFICATIONS] Error fetching student parent_id:', studentError.message);
+        console.error('[NOTIFICATIONS] Error fetching student info:', studentError.message);
       }
 
-      if (student?.parent_id) {
-        targetUserId = student.parent_id;
+      const role = params.targetRole || 'parent';
+      if ((role === 'parent' || role === 'both') && student?.parent_id) {
+        targetUserIds.push(student.parent_id);
+      }
+      if ((role === 'teacher' || role === 'both') && student?.teacher_id) {
+        targetUserIds.push(student.teacher_id);
       }
     }
 
-    if (!targetUserId) {
+    if (targetUserIds.length === 0) {
       console.warn(
-        `[NOTIFICATIONS] Cannot send notification for student (${params.studentId || 'unknown'}): No parent is linked to this student (parent_id is null). Please link a parent using learner code.`
+        `[NOTIFICATIONS] Cannot send notification for student (${params.studentId || 'unknown'}): No target user found for role ${params.targetRole || 'parent'}.`
       );
       return null;
     }
 
-    const { error } = await supabase
-      .from('notifications')
-      .insert([
-        {
-          user_id: targetUserId,
-          student_id: params.studentId || null,
-          title: params.title,
-          message: params.message,
-          type: params.type,
-          metadata: params.metadata || {},
-        },
-      ]);
+    const rows = targetUserIds.map((uid) => ({
+      user_id: uid,
+      student_id: params.studentId || null,
+      title: params.title,
+      message: params.message,
+      type: params.type,
+      metadata: params.metadata || {},
+    }));
+
+    const { error } = await supabase.from('notifications').insert(rows);
 
     if (error) {
       console.error('[NOTIFICATIONS] Supabase insert error:', error.message, error);
@@ -111,6 +115,100 @@ export const createNotification = async (params: {
 };
 
 /**
+ * Check and sync upcoming or overdue milestone deadline notifications for a teacher.
+ */
+export const syncMilestoneDeadlinesForTeacher = async (teacherId: string) => {
+  try {
+    // 1. Fetch all students belonging to this teacher
+    const { data: students, error: stError } = await supabase
+      .from('students')
+      .select('id, name')
+      .eq('teacher_id', teacherId);
+
+    if (stError || !students || students.length === 0) return;
+
+    const studentMap = new Map(students.map((s) => [s.id, s.name]));
+    const studentIds = students.map((s) => s.id);
+
+    // 2. Fetch active milestones with a target date
+    const { data: milestones, error: msError } = await supabase
+      .from('student_milestones')
+      .select('id, student_id, title, status, target_date')
+      .in('student_id', studentIds)
+      .neq('status', 'Achieved')
+      .not('target_date', 'is', null);
+
+    if (msError || !milestones || milestones.length === 0) return;
+
+    // 3. Check existing milestone notifications to prevent duplicates
+    const { data: existingNotifs } = await supabase
+      .from('notifications')
+      .select('metadata')
+      .eq('user_id', teacherId)
+      .eq('type', 'milestone');
+
+    const notifiedMilestoneIds = new Set<string>();
+    for (const notif of existingNotifs || []) {
+      const meta = typeof notif.metadata === 'string'
+        ? (() => { try { return JSON.parse(notif.metadata); } catch { return {}; } })()
+        : (notif.metadata || {});
+      if (meta?.milestone_id) {
+        notifiedMilestoneIds.add(meta.milestone_id);
+      }
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    for (const ms of milestones) {
+      if (!ms.target_date || notifiedMilestoneIds.has(ms.id)) continue;
+
+      const targetDate = new Date(ms.target_date);
+      targetDate.setHours(0, 0, 0, 0);
+
+      const diffTime = targetDate.getTime() - today.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      // Trigger if due in <= 3 days or overdue within 7 days
+      if (diffDays <= 3 && diffDays >= -7) {
+        const studentName = studentMap.get(ms.student_id) || 'Student';
+        const formattedDate = targetDate.toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        });
+
+        const isOverdue = diffDays < 0;
+        const title = isOverdue ? 'Milestone Overdue ⚠️' : 'Milestone Due Soon 🎯';
+        const dueText = isOverdue
+          ? `was due on ${formattedDate}`
+          : diffDays === 0
+          ? `is due today (${formattedDate})`
+          : `is due in ${diffDays} day${diffDays > 1 ? 's' : ''} (${formattedDate})`;
+
+        const message = `Milestone "${ms.title}" for ${studentName} ${dueText}.`;
+
+        await createNotification({
+          userId: teacherId,
+          studentId: ms.student_id,
+          title,
+          message,
+          type: 'milestone',
+          metadata: {
+            milestone_id: ms.id,
+            student_id: ms.student_id,
+            target_date: ms.target_date,
+            status: ms.status,
+          },
+        });
+      }
+    }
+  } catch (err) {
+    console.error('[NOTIFICATIONS] Error syncing milestone deadlines for teacher:', err);
+  }
+};
+
+/**
  * Get all notifications for the logged in user or a specified user_id.
  */
 export const getNotificationsForUser = async (userId?: string): Promise<NotificationItem[]> => {
@@ -121,6 +219,11 @@ export const getNotificationsForUser = async (userId?: string): Promise<Notifica
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return [];
       resolvedUserId = user.id;
+    }
+
+    if (resolvedUserId) {
+      // Best-effort background check for teacher milestone deadlines
+      syncMilestoneDeadlinesForTeacher(resolvedUserId).catch(() => {});
     }
 
     const { data, error } = await supabase

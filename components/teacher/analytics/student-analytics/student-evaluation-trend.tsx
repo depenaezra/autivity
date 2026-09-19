@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, Text, useWindowDimensions, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp, FadeOutDown, FadeOutUp } from 'react-native-reanimated';
 import Svg, { Circle, Defs, Line, LinearGradient, Path, Stop, Text as SvgText } from 'react-native-svg';
+import { ActivityTypeFilter } from '../../../../src/services/analytics';
 import { getStudentValidatedSessionsEvaluations, SessionEvaluation } from '../../../../src/services/student-analytics';
 import { calculateStudentProgressForecast } from '../../../../src/services/studentAnalyticsEngine';
 
@@ -10,11 +11,12 @@ interface StudentEvaluationTrendProps {
   studentId: string;
   filter?: string;
   refreshTrigger?: number;
+  activityType?: ActivityTypeFilter;
 }
 
 type FilterType = 'today' | 'week' | 'month' | 'overall';
 
-export default function StudentEvaluationTrend({ studentId, filter: externalFilter, refreshTrigger }: StudentEvaluationTrendProps) {
+export default function StudentEvaluationTrend({ studentId, filter: externalFilter, refreshTrigger, activityType }: StudentEvaluationTrendProps) {
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
 
@@ -40,7 +42,7 @@ export default function StudentEvaluationTrend({ studentId, filter: externalFilt
     async function loadData() {
       setIsLoading(true);
       try {
-        const data = await getStudentValidatedSessionsEvaluations(studentId);
+        const data = await getStudentValidatedSessionsEvaluations(studentId, activityType);
         setSessions(data);
         setError(null);
       } catch (err: any) {
@@ -51,7 +53,7 @@ export default function StudentEvaluationTrend({ studentId, filter: externalFilt
       }
     }
     loadData();
-  }, [studentId, refreshTrigger]);
+  }, [studentId, refreshTrigger, activityType]);
 
   // Helper to compute average rubric evaluation score (0-4)
   const calculateSessionScore = (rubric: any): number | null => {

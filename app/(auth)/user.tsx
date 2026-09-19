@@ -88,7 +88,7 @@ export default function User() {
             }}
           >
             <Image
-              source={require('../../assets/images/polar-bear.png')}
+              source={require('../../assets/images/family.png')}
               className={isTablet ? 'w-32 h-32 mb-4' : 'w-20 h-20 mb-3'}
               resizeMode="contain"
             />
@@ -127,7 +127,7 @@ export default function User() {
             }}
           >
             <Image
-              source={require('../../assets/images/bear.png')}
+              source={require('../../assets/images/teacher.png')}
               className={isTablet ? 'w-32 h-32 mb-4' : 'w-20 h-20 mb-3'}
               resizeMode="contain"
             />

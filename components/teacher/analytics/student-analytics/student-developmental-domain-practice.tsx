@@ -3,12 +3,14 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, useWindowDimensions, View } from 'react-native';
 import Animated, { FadeInUp, FadeOutUp } from 'react-native-reanimated';
 import Svg, { Defs, Line, LinearGradient, Rect, Stop } from 'react-native-svg';
+import { ActivityTypeFilter } from '../../../../src/services/analytics';
 import { getStudentDevelopmentalSkillsExposure, MasterDomainExposure } from '../../../../src/services/student-analytics';
 
 interface StudentDevelopmentalDomainPracticeProps {
   studentId: string;
   filter?: string;
   refreshTrigger?: number;
+  activityType?: ActivityTypeFilter;
 }
 
 type FilterType = 'today' | 'week' | 'month' | 'overall';
@@ -80,7 +82,7 @@ function calculateAxisTicks(maxVal: number) {
   return { ticks, maxScale };
 }
 
-export default function StudentDevelopmentalDomainPractice({ studentId, filter: externalFilter, refreshTrigger }: StudentDevelopmentalDomainPracticeProps) {
+export default function StudentDevelopmentalDomainPractice({ studentId, filter: externalFilter, refreshTrigger, activityType }: StudentDevelopmentalDomainPracticeProps) {
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
 
@@ -101,7 +103,7 @@ export default function StudentDevelopmentalDomainPractice({ studentId, filter: 
     async function loadData() {
       setIsLoading(true);
       try {
-        const result = await getStudentDevelopmentalSkillsExposure(studentId, filter);
+        const result = await getStudentDevelopmentalSkillsExposure(studentId, filter, activityType);
         setData(result);
         setError(null);
       } catch (err: any) {
@@ -112,7 +114,7 @@ export default function StudentDevelopmentalDomainPractice({ studentId, filter: 
       }
     }
     loadData();
-  }, [studentId, filter, refreshTrigger]);
+  }, [studentId, filter, refreshTrigger, activityType]);
 
   // Find global maximum count across all domains and skills
   const maxCount = useMemo(() => {
@@ -213,7 +215,7 @@ export default function StudentDevelopmentalDomainPractice({ studentId, filter: 
           >
             <Feather name="info" size={isTablet ? 22 : 18} color="#62A9E6" />
             <Text className={`font-quicksand-bold text-[#62A9E6] flex-1 leading-normal ${isTablet ? 'text-sm' : 'text-[11px]'}`}>
-              Total activity practices counted across developmental domain skills for this student.
+              Tracks total practices alongside rubric evaluations (0.0 to 4.0). High mastery areas (≥3.5) and support areas (&lt;3.0) are labeled to quickly identify where the learner excels or needs guidance.
             </Text>
           </Animated.View>
         )}
@@ -287,6 +289,11 @@ export default function StudentDevelopmentalDomainPractice({ studentId, filter: 
               const totalDomainExposures = domain.skills.reduce((sum, s) => sum + s.count, 0);
               const isExpanded = !!expandedDomains[domain.masterDomain];
 
+              const score = domain.averageScore;
+              const hasScore = score !== null && score !== undefined;
+              const isStrength = hasScore && score >= 3.5;
+              const isNeedsSupport = hasScore && score < 3.0;
+
               return (
                 <View
                   key={domain.masterDomain}
@@ -315,15 +322,9 @@ export default function StudentDevelopmentalDomainPractice({ studentId, filter: 
                       />
                     </View>
 
-                    {/* Row 2: Sub-row containing Focus Badge & Practices Count Pill */}
+                    {/* Row 2: Sub-row containing Focus Badge, Practices Count Pill & Score Rating */}
                     <View className="flex-row items-center gap-2 mt-2.5 ml-6 flex-wrap">
-                      {domain.masterDomain === lowestExposureDomainName && (
-                        <View className="bg-[#FFF3C4] border border-[#FFAE02] px-2.5 py-0.5 rounded-full">
-                          <Text className="font-fredoka-one text-[10px] text-[#D97706] uppercase tracking-wider">
-                            FOCUS NEEDED
-                          </Text>
-                        </View>
-                      )}
+                      {/* Practices Count Pill */}
                       <View
                         style={{
                           backgroundColor: theme.pillBg,
@@ -338,9 +339,49 @@ export default function StudentDevelopmentalDomainPractice({ studentId, filter: 
                           style={{ color: theme.accentText }}
                           className="font-fredoka-one text-[11px] uppercase"
                         >
-                          {totalDomainExposures} Practices
+                          {totalDomainExposures} {totalDomainExposures === 1 ? 'Practice' : 'Practices'}
                         </Text>
                       </View>
+
+                      {/* Domain Score Badge (High / Low / Proficient) */}
+                      {hasScore ? (
+                        <View
+                          className="flex-row items-center gap-1.5 px-2.5 py-1 rounded-full border"
+                          style={{
+                            backgroundColor: isStrength ? '#F0FDF4' : isNeedsSupport ? '#FFF7ED' : '#F0F9FF',
+                            borderColor: isStrength ? '#CBFAC4' : isNeedsSupport ? '#FFDBD4' : '#BBE8FB',
+                          }}
+                        >
+                          <Feather
+                            name={isStrength ? 'check-circle' : isNeedsSupport ? 'alert-circle' : 'award'}
+                            size={12}
+                            color={isStrength ? '#16A34A' : isNeedsSupport ? '#FF8870' : '#62A9E6'}
+                          />
+                          <Text
+                            className="font-fredoka-one text-[10px] uppercase tracking-wider"
+                            style={{
+                              color: isStrength ? '#16A34A' : isNeedsSupport ? '#FF8870' : '#62A9E6',
+                            }}
+                          >
+                            {score.toFixed(1)} / 4.0 • {isStrength ? 'Strength' : isNeedsSupport ? 'Needs Support' : 'Proficient'}
+                          </Text>
+                        </View>
+                      ) : (
+                        <View className="bg-[#F3F4F6] border border-[#E5E7EB] px-2 py-0.5 rounded-full">
+                          <Text className="font-quicksand-bold text-[10px] text-[#9CA3AF] uppercase">
+                            No Evaluations Yet
+                          </Text>
+                        </View>
+                      )}
+
+                      {/* Focus Needed Alert if Lowest Exposure */}
+                      {domain.masterDomain === lowestExposureDomainName && (
+                        <View className="bg-[#FFF3C4] border border-[#FFAE02] px-2.5 py-0.5 rounded-full">
+                          <Text className="font-fredoka-one text-[10px] text-[#D97706] uppercase tracking-wider">
+                            LOWEST EXPOSURE
+                          </Text>
+                        </View>
+                      )}
                     </View>
                   </Pressable>
 
@@ -357,12 +398,17 @@ export default function StudentDevelopmentalDomainPractice({ studentId, filter: 
                           const barWidthPercent = (skill.count / maxScale) * 100;
                           const gradientId = `grad-${domainIdx}-${skillIdx}`;
 
+                          const skillScore = skill.averageScore;
+                          const hasSkillScore = skillScore !== null && skillScore !== undefined;
+                          const isSkillStrength = hasSkillScore && skillScore >= 3.5;
+                          const isSkillNeedsSupport = hasSkillScore && skillScore < 3.0;
+
                           return (
                             <View key={skill.name} className="flex-col">
-                              {/* Skill Row: Category Label | Dashed Grid & Bar | Count Value */}
-                              <View className="flex-row items-center gap-3">
+                              {/* Skill Row: Category Label | Dashed Grid & Bar | Count & Score Value */}
+                              <View className="flex-row items-center gap-2 sm:gap-3">
                                 {/* Y-Axis Category Label */}
-                                <View className="w-28 sm:w-36 pr-2">
+                                <View className="w-24 sm:w-36 pr-1 sm:pr-2">
                                   <Text
                                     numberOfLines={2}
                                     className="font-quicksand-bold text-xs text-[#374151]"
@@ -420,14 +466,36 @@ export default function StudentDevelopmentalDomainPractice({ studentId, filter: 
                                   </View>
                                 </View>
 
-                                {/* Value Label Pill beside Bar */}
-                                <View className="w-10 items-end">
+                                {/* Value Label & Score Pill beside Bar */}
+                                <View className="w-20 sm:w-24 items-end justify-center">
                                   <Text
                                     style={{ color: theme.accentText }}
                                     className="font-fredoka-one text-xs"
                                   >
-                                    {skill.count}
+                                    {skill.count} {skill.count === 1 ? 'practice' : 'practices'}
                                   </Text>
+                                  {hasSkillScore ? (
+                                    <View
+                                      className="flex-row items-center gap-1 mt-0.5 px-1.5 py-0.2 rounded-[4px] border"
+                                      style={{
+                                        backgroundColor: isSkillStrength ? '#F0FDF4' : isSkillNeedsSupport ? '#FFF7ED' : '#F0F9FF',
+                                        borderColor: isSkillStrength ? '#CBFAC4' : isSkillNeedsSupport ? '#FFDBD4' : '#BBE8FB',
+                                      }}
+                                    >
+                                      <Text
+                                        className="font-fredoka-one text-[9px] uppercase"
+                                        style={{
+                                          color: isSkillStrength ? '#16A34A' : isSkillNeedsSupport ? '#FF8870' : '#62A9E6',
+                                        }}
+                                      >
+                                        ★ {skillScore.toFixed(1)}
+                                      </Text>
+                                    </View>
+                                  ) : (
+                                    <Text className="font-quicksand-medium text-[9px] text-[#9CA3AF] mt-0.5">
+                                      unrated
+                                    </Text>
+                                  )}
                                 </View>
                               </View>
                             </View>
@@ -438,7 +506,7 @@ export default function StudentDevelopmentalDomainPractice({ studentId, filter: 
                       {/* Perfect Pixel Aligned Horizontal X-Axis Ticks & Grid Labels */}
                       <View className="flex-row items-center mt-5 pt-2 border-t border-[#E5E7EB]">
                         {/* Y-Axis Label Margin Spacer */}
-                        <View className="w-28 sm:w-36 pr-2" />
+                        <View className="w-24 sm:w-36 pr-1 sm:pr-2" />
 
                         {/* Middle Scale Container matching the exact Bar Canvas flex-1 area */}
                         <View className="flex-1 h-5 relative">
@@ -471,7 +539,7 @@ export default function StudentDevelopmentalDomainPractice({ studentId, filter: 
                         </View>
 
                         {/* Right Value Label Margin Spacer */}
-                        <View className="w-10" />
+                        <View className="w-20 sm:w-24" />
                       </View>
                     </Animated.View>
                   )}

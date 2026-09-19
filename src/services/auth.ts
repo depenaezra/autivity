@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { createNotification } from './notifications';
 
 // Log in an existing user
 export const login = async (email: string, password: string) => {
@@ -44,7 +45,51 @@ export const linkParentToLearner = async (code: string) => {
         throw new Error(error.message);
     }
 
-    return data as { success: boolean; message: string; student_id?: string };
+    const res = data as { success: boolean; message: string; student_id?: string };
+    if (res.success && res.student_id) {
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            let parentName = 'A parent';
+            if (user) {
+                const { data: parentProfile } = await supabase
+                    .from('profiles')
+                    .select('first_name, last_name')
+                    .eq('id', user.id)
+                    .maybeSingle();
+                if (parentProfile?.first_name) {
+                    parentName = `${parentProfile.first_name} ${parentProfile.last_name || ''}`.trim();
+                }
+            }
+
+            const { data: student } = await supabase
+                .from('students')
+                .select('name, teacher_id')
+                .eq('id', res.student_id)
+                .maybeSingle();
+
+            const studentName = student?.name || 'student';
+
+            if (student?.teacher_id) {
+                await createNotification({
+                    userId: student.teacher_id,
+                    studentId: res.student_id,
+                    title: 'Parent Connected 👨‍👩‍👧',
+                    message: `${parentName} linked to ${studentName} via learner code.`,
+                    type: 'general',
+                    metadata: {
+                        student_id: res.student_id,
+                        parent_id: user?.id,
+                        student_name: studentName,
+                        parent_name: parentName,
+                    },
+                });
+            }
+        } catch (notifErr) {
+            console.error('[NOTIFICATIONS] Failed sending parent-linked notification to teacher:', notifErr);
+        }
+    }
+
+    return res;
 };
 
 // If the logged-in user is a parent who hasn't been linked yet, but their

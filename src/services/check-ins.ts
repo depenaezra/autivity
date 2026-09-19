@@ -1,4 +1,6 @@
 import { supabase } from '../lib/supabase';
+import { createNotification } from './notifications';
+import { getEmotionMeta } from '../utils/emotionZones';
 
 export interface StudentCheckIn {
   id?: string;
@@ -62,6 +64,7 @@ export const saveDailyCheckIn = async (studentId: string, emotion: string): Prom
   };
 
   try {
+    let savedRecord: StudentCheckIn | null = null;
     const { data, error } = await supabase
       .from('student_check_ins')
       .upsert([payload], { onConflict: 'student_id,check_in_date' })
@@ -80,10 +83,64 @@ export const saveDailyCheckIn = async (studentId: string, emotion: string): Prom
         console.error('[CHECK-IN] Error saving daily check-in:', insertErr.message);
         return null;
       }
-      return insertData;
+      savedRecord = insertData;
+    } else {
+      savedRecord = data;
     }
 
-    return data;
+    // Trigger Notification for Parent
+    if (savedRecord && studentId) {
+      try {
+        const { data: student } = await supabase
+          .from('students')
+          .select('name')
+          .eq('id', studentId)
+          .maybeSingle();
+
+        const studentName = student?.name || 'Learner';
+        const meta = getEmotionMeta(emotion);
+        const emotionLabel = meta?.label || emotion.toUpperCase();
+        const tagalogLabel = meta?.tagalogLabel ? ` (${meta.tagalogLabel})` : '';
+        const zoneKey = meta?.zone || 'optimal';
+
+        let title = 'Daily Emotion Check-in 😊';
+        let contextNote = 'ready and focused for learning!';
+
+        if (zoneKey === 'heightened') {
+          title = 'Daily Emotion Check-in ⚡';
+          contextNote = emotion.toLowerCase() === 'nervous'
+            ? 'feeling nervous and may benefit from gentle encouragement.'
+            : 'in a high-energy, excited state!';
+        } else if (zoneKey === 'low_energy') {
+          title = 'Daily Emotion Check-in 💙';
+          contextNote = emotion.toLowerCase() === 'tired'
+            ? 'feeling tired and may need extra rest or quiet moments.'
+            : 'feeling sad today and may need extra warmth and comfort.';
+        }
+
+        const message = `${studentName} checked in feeling ${emotionLabel}${tagalogLabel} today — ${contextNote}`;
+
+        await createNotification({
+          studentId,
+          targetRole: 'parent',
+          title,
+          message,
+          type: 'general',
+          metadata: {
+            check_in_id: savedRecord.id,
+            student_id: studentId,
+            student_name: studentName,
+            emotion: emotion.toLowerCase(),
+            zone: zoneKey,
+            check_in_date: todayStr,
+          },
+        });
+      } catch (notifErr) {
+        console.error('[CHECK-IN] Failed sending emotion check-in notification to parent:', notifErr);
+      }
+    }
+
+    return savedRecord;
   } catch (err) {
     console.error('[CHECK-IN] Exception saving daily check-in:', err);
     return null;

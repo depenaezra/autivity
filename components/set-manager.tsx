@@ -592,6 +592,8 @@ export default function SetManager({
                         activity_id: currentActivity.id // Fallback points to final activity UUID
                     };
 
+                    let insertedSessionId: string | undefined = undefined;
+
                     const { data, error } = await supabase
                         .from('student_sessions')
                         .insert([payload])
@@ -609,10 +611,12 @@ export default function SetManager({
                             console.error("[DATABASE] Fallback student_sessions insertion failed:", fbErr.message);
                         } else if (fbData && fbData.length > 0) {
                             console.log("[DATABASE] Fallback session insertion succeeded:", fbData[0]);
+                            insertedSessionId = fbData[0].id;
                             setSavedSetSessionId(fbData[0].id);
                         }
                     } else if (data && data.length > 0) {
                         console.log("[DATABASE] Session insertion succeeded:", data[0]);
+                        insertedSessionId = data[0].id;
                         setSavedSetSessionId(data[0].id);
                     }
 
@@ -628,7 +632,9 @@ export default function SetManager({
                                 .maybeSingle();
 
                             const studentName = student?.name || 'Learner';
+                            const sessionId = insertedSessionId;
 
+                            // 1. Notify Parent: Activity Completed
                             await createNotification({
                                 studentId,
                                 userId: student?.parent_id || undefined,
@@ -636,12 +642,48 @@ export default function SetManager({
                                 message: `${studentName} completed ${categoryName} activity set with ${accuracy}% accuracy!`,
                                 type: 'activity',
                                 metadata: {
+                                    session_id: sessionId,
                                     category: categoryName,
                                     accuracy,
                                     mistakes: finalMistakes,
                                     duration_seconds: totalDuration,
                                 },
                             });
+
+                            // 2. Notify Teacher: New Session to Evaluate
+                            await createNotification({
+                                studentId,
+                                targetRole: 'teacher',
+                                title: 'New Session to Evaluate',
+                                message: `${studentName} completed ${categoryName} activity (${accuracy}% accuracy). Ready for evaluation.`,
+                                type: 'feedback',
+                                metadata: {
+                                    session_id: sessionId,
+                                    student_id: studentId,
+                                    category: categoryName,
+                                    accuracy,
+                                    mistakes: finalMistakes,
+                                    duration_seconds: totalDuration,
+                                },
+                            });
+
+                            // 3. Notify Teacher: Student Struggle Alert (if low accuracy or high mistakes)
+                            if (accuracy < 60 || finalMistakes >= 5) {
+                                await createNotification({
+                                    studentId,
+                                    targetRole: 'teacher',
+                                    title: 'Performance Alert ⚠️',
+                                    message: `${studentName} had high mistakes (${finalMistakes}) in ${categoryName} (${accuracy}% accuracy). Review activity analytics.`,
+                                    type: 'alert',
+                                    metadata: {
+                                        session_id: sessionId,
+                                        student_id: studentId,
+                                        category: categoryName,
+                                        accuracy,
+                                        mistakes: finalMistakes,
+                                    },
+                                });
+                            }
                         } catch (notifErr) {
                             console.error('[NOTIFICATIONS] Error sending activity notification:', notifErr);
                         }
@@ -831,7 +873,12 @@ export default function SetManager({
                             size={isTablet ? 44 : 36}
                             iconSize={isTablet ? 22 : 18}
                         />
-                        <InstructionSpeakerButton text={bearMessage} size={isTablet ? 44 : 36} iconSize={isTablet ? 22 : 18} />
+                        <InstructionSpeakerButton
+                            text={bearMessage}
+                            autoPlay={true}
+                            size={isTablet ? 44 : 36}
+                            iconSize={isTablet ? 22 : 18}
+                        />
                         <View className="flex-row items-center ml-1">
                             <Feather name="clock" size={20} color="#69AEE3" />
                             <Text

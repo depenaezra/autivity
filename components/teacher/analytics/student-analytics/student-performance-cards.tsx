@@ -11,12 +11,14 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { StudentSessionStats, getStudentSessionStats } from '../../../../src/services/student-analytics';
+import { ActivityTypeFilter } from '../../../../src/services/analytics';
 import { StudentKpiCalculationModal, MetricKey } from './student-kpi-calculation-modal';
 
 interface StudentPerformanceCardsProps {
   studentId: string;
   filter?: string;
   refreshTrigger?: number;
+  activityType?: ActivityTypeFilter;
 }
 
 type FilterType = 'today' | 'week' | 'month' | 'overall';
@@ -105,7 +107,12 @@ const CARDS: CardConfig[] = [
   },
 ];
 
-export default function StudentPerformanceCards({ studentId, filter: externalFilter, refreshTrigger }: StudentPerformanceCardsProps) {
+export default function StudentPerformanceCards({
+  studentId,
+  filter: externalFilter,
+  refreshTrigger,
+  activityType = 'all',
+}: StudentPerformanceCardsProps) {
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
 
@@ -127,7 +134,7 @@ export default function StudentPerformanceCards({ studentId, filter: externalFil
     async function loadStats() {
       setIsLoading(true);
       try {
-        const data = await getStudentSessionStats(studentId, filter);
+        const data = await getStudentSessionStats(studentId, filter, activityType);
         if (active) {
           setStats(data);
           setError(null);
@@ -147,7 +154,7 @@ export default function StudentPerformanceCards({ studentId, filter: externalFil
     return () => {
       active = false;
     };
-  }, [studentId, filter, refreshTrigger]);
+  }, [studentId, filter, refreshTrigger, activityType]);
 
   const filterButtons: { label: string; value: FilterType }[] = [
     { label: 'Today', value: 'today' },

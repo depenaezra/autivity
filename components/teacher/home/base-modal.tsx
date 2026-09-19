@@ -157,7 +157,7 @@ export function BaseModal({
           <ScrollView 
             showsVerticalScrollIndicator={true}
             nestedScrollEnabled={true}
-            keyboardShouldPersistTaps="handled"
+            keyboardShouldPersistTaps="always"
             className="flex-1"
             contentContainerStyle={{ paddingBottom: 28, flexGrow: 1 }}
           >

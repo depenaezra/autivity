@@ -114,8 +114,8 @@ export function ParentHeader({
             }`}
           >
             <View className="flex-1 rounded-full border-[2px] border-white overflow-hidden bg-white">
-              <Image
-                source={require('../../assets/images/bear.png')}
+              <Image 
+                source={require('../../assets/images/family.png')}
                 className="w-full h-full"
                 resizeMode="cover"
               />

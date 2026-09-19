@@ -1,6 +1,8 @@
 import { supabase } from '../lib/supabase';
 import { formatActivityTitle } from '../utils/format';
 
+export type ActivityTypeFilter = 'all' | 'app' | 'classroom';
+
 export interface KpiData {
   pendingEvaluations: number;
   totalStudents: number;
@@ -8,9 +10,25 @@ export interface KpiData {
   completedSessions: number;
 }
 
-export const getKpiData = async (): Promise<KpiData> => {
+export const getKpiData = async (activityType: ActivityTypeFilter = 'all'): Promise<KpiData> => {
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) throw new Error('User not logged in');
+
+  let pendingQuery = supabase
+    .from('student_sessions')
+    .select('*', { count: 'exact', head: true })
+    .eq('teacher_id', user.id)
+    .eq('status', 'pending');
+
+  let completedQuery = supabase
+    .from('student_sessions')
+    .select('*', { count: 'exact', head: true })
+    .eq('teacher_id', user.id);
+
+  if (activityType !== 'all') {
+    pendingQuery = pendingQuery.eq('activity_type', activityType);
+    completedQuery = completedQuery.eq('activity_type', activityType);
+  }
 
   const [
     pendingRes,
@@ -18,20 +36,16 @@ export const getKpiData = async (): Promise<KpiData> => {
     classesRes,
     completedRes
   ] = await Promise.all([
-    supabase
-      .from('student_sessions')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'pending'),
+    pendingQuery,
     supabase
       .from('students')
       .select('*', { count: 'exact', head: true })
       .eq('teacher_id', user.id),
     supabase
       .from('classes')
-      .select('*', { count: 'exact', head: true }),
-    supabase
-      .from('student_sessions')
-      .select('*', { count: 'exact', head: true }),
+      .select('*', { count: 'exact', head: true })
+      .eq('teacher_id', user.id),
+    completedQuery,
   ]);
 
   if (pendingRes.error) throw new Error(pendingRes.error.message);
@@ -62,7 +76,10 @@ export interface ClassPerformanceData {
   isArchived: boolean;
 }
 
-export const getClassPerformance = async (includeArchived: boolean = false): Promise<ClassPerformanceData[]> => {
+export const getClassPerformance = async (
+  includeArchived: boolean = false,
+  activityType: ActivityTypeFilter = 'all'
+): Promise<ClassPerformanceData[]> => {
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) throw new Error('User not logged in');
 
@@ -71,10 +88,15 @@ export const getClassPerformance = async (includeArchived: boolean = false): Pro
     classesQuery = classesQuery.eq('is_archived', false);
   }
 
+  let sessionsQuery = supabase.from('student_sessions').select('id, class_id, status, activity_type').eq('teacher_id', user.id);
+  if (activityType !== 'all') {
+    sessionsQuery = sessionsQuery.eq('activity_type', activityType);
+  }
+
   const [classesRes, studentsRes, sessionsRes] = await Promise.all([
     classesQuery,
     supabase.from('students').select('id, class_id').eq('teacher_id', user.id),
-    supabase.from('student_sessions').select('id, class_id, status').eq('teacher_id', user.id),
+    sessionsQuery,
   ]);
 
   if (classesRes.error) throw new Error(classesRes.error.message);
@@ -118,6 +140,7 @@ export interface RecentActivityData {
   createdAt: string;
   studentName: string;
   category: string;
+  activityType: 'app' | 'classroom';
   status: 'pending' | 'validated';
   validatedAt: string | null;
   rubricEvaluation?: any;
@@ -125,7 +148,8 @@ export interface RecentActivityData {
 }
 
 export const getRecentActivity = async (
-  filter: 'today' | 'week' | 'month'
+  filter: 'today' | 'week' | 'month',
+  activityType: ActivityTypeFilter = 'all'
 ): Promise<RecentActivityData[]> => {
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) throw new Error('User not logged in');
@@ -143,13 +167,19 @@ export const getRecentActivity = async (
 
   const thresholdISO = thresholdDate.toISOString();
 
+  let sessionsQuery = supabase
+    .from('student_sessions')
+    .select('*')
+    .eq('teacher_id', user.id)
+    .gte('created_at', thresholdISO)
+    .order('created_at', { ascending: false });
+
+  if (activityType !== 'all') {
+    sessionsQuery = sessionsQuery.eq('activity_type', activityType);
+  }
+
   const [sessionsRes, studentsRes] = await Promise.all([
-    supabase
-      .from('student_sessions')
-      .select('*')
-      .eq('teacher_id', user.id)
-      .gte('created_at', thresholdISO)
-      .order('created_at', { ascending: false }),
+    sessionsQuery,
     supabase
       .from('students')
       .select('id, name')
@@ -171,19 +201,23 @@ export const getRecentActivity = async (
     id: s.id,
     studentId: s.student_id,
     activityTitle: (() => {
+      if (s.title && s.title.trim()) {
+        return s.title.trim();
+      }
       if (Array.isArray(s.activity_path)) {
         return s.activity_path.length > 0
           ? s.activity_path.map((path: string) => formatActivityTitle(path)).join(', ')
-          : (s.category || 'General');
+          : (s.category || 'Classroom Activity');
       }
-      if (typeof s.activity_path === 'string') {
+      if (typeof s.activity_path === 'string' && s.activity_path.trim()) {
         return formatActivityTitle(s.activity_path);
       }
-      return s.category || 'General';
+      return s.category || 'Classroom Activity';
     })(),
     createdAt: s.created_at,
     studentName: studentNameMap[s.student_id] || 'Unknown Student',
     category: s.category || 'General',
+    activityType: (s.activity_type || 'app') as 'app' | 'classroom',
     status: s.status as 'pending' | 'validated',
     validatedAt: s.validated_at || null,
     rubricEvaluation: s.rubric_evaluation || null,

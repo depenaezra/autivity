@@ -56,7 +56,7 @@ export function ProfileHeader({
                 source={
                   avatarUrl
                     ? { uri: avatarUrl }
-                    : require('@/assets/images/bear.png')
+                    : require('@/assets/images/teacher.png')
                 }
                 className="w-full h-full"
                 resizeMode="cover"

@@ -12,6 +12,7 @@ import AnimatedReanimated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
+import { ActivityTypeFilter } from '../../../../src/services/analytics';
 import { getStudentSessions, SessionRecord } from '../../../../src/services/student-analytics';
 import { filterSessionsByPeriod } from '../../../../src/utils/dashboardFilters';
 import FeedbackModal from '../../../feedback-modal';
@@ -22,6 +23,8 @@ interface SessionsProps {
   studentId: string;
   studentName: string;
   filter?: string;
+  refreshTrigger?: number;
+  activityType?: ActivityTypeFilter;
   onEvaluationValidated?: () => void;
 }
 
@@ -71,7 +74,14 @@ function SessionSkeletonItem({ isTablet }: { isTablet: boolean }) {
   );
 }
 
-export default function Sessions({ studentId, studentName, filter, onEvaluationValidated }: SessionsProps) {
+export default function Sessions({
+  studentId,
+  studentName,
+  filter,
+  refreshTrigger,
+  activityType,
+  onEvaluationValidated,
+}: SessionsProps) {
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
 
@@ -102,7 +112,7 @@ export default function Sessions({ studentId, studentName, filter, onEvaluationV
   const fetchSessions = async () => {
     setIsLoading(true);
     try {
-      const data = await getStudentSessions(studentId);
+      const data = await getStudentSessions(studentId, activityType);
       setSessions(data);
       setError(null);
     } catch (err: any) {
@@ -115,7 +125,7 @@ export default function Sessions({ studentId, studentName, filter, onEvaluationV
 
   useEffect(() => {
     fetchSessions();
-  }, [studentId]);
+  }, [studentId, activityType, refreshTrigger]);
 
   const handleCardPress = (session: SessionRecord) => {
     if (session.status === 'validated') {
@@ -344,9 +354,32 @@ export default function Sessions({ studentId, studentName, filter, onEvaluationV
 
                   {/* Session Details */}
                   <View className="flex-1 pr-2">
-                    <Text className={`font-fredoka-one text-[#484A4B] ${isTablet ? 'text-lg' : 'text-base'}`}>
-                      {session.activityName}
-                    </Text>
+                    <View className="flex-row items-center gap-2 flex-wrap">
+                      <Text className={`font-fredoka-one text-[#484A4B] ${isTablet ? 'text-lg' : 'text-base'}`}>
+                        {session.activityName}
+                      </Text>
+
+                      {/* Activity Source Badge */}
+                      <View
+                        className="px-2 py-0.5 rounded-[6px] border flex-row items-center gap-1"
+                        style={{
+                          backgroundColor: session.activityType === 'classroom' ? '#FAF5FF' : '#EFF6FF',
+                          borderColor: session.activityType === 'classroom' ? '#E9D5FF' : '#BBE8FB',
+                        }}
+                      >
+                        <Feather
+                          name={session.activityType === 'classroom' ? 'book-open' : 'tablet'}
+                          size={isTablet ? 11 : 9}
+                          color={session.activityType === 'classroom' ? '#A855F7' : '#3B82F6'}
+                        />
+                        <Text
+                          className={`font-fredoka-one uppercase ${isTablet ? 'text-xs' : 'text-[9px]'}`}
+                          style={{ color: session.activityType === 'classroom' ? '#A855F7' : '#3B82F6' }}
+                        >
+                          {session.activityType === 'classroom' ? 'CLASSROOM' : 'APP'}
+                        </Text>
+                      </View>
+                    </View>
 
                     {/* Optically-aligned Date & Duration Row */}
                     <View className="flex-row items-center gap-2.5 mt-1 flex-wrap">

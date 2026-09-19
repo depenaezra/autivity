@@ -229,8 +229,6 @@ export default function FeedbackModal({
             contentContainerStyle={{ paddingBottom: 32 }}
             showsVerticalScrollIndicator={true}
             keyboardShouldPersistTaps="always"
-            keyboardDismissMode="none"
-            automaticallyAdjustKeyboardInsets={true}
             bounces={false}
           >
             {step === 'draft' ? (

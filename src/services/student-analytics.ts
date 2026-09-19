@@ -2,7 +2,7 @@ import { supabase } from '../lib/supabase';
 import { createNotification } from './notifications';
 import { formatActivityTitle } from '../utils/format';
 import { calculateRubricScore } from './classAnalyticsEngine';
-
+import { ActivityTypeFilter } from './analytics';
 
 export interface ParentInfo {
   name: string;
@@ -114,7 +114,8 @@ export interface StudentSessionStats {
 
 export const getStudentSessionStats = async (
   studentId: string,
-  filter: 'today' | 'week' | 'month' | 'overall' = 'overall'
+  filter: 'today' | 'week' | 'month' | 'overall' = 'overall',
+  activityType: ActivityTypeFilter = 'all'
 ): Promise<StudentSessionStats> => {
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) throw new Error('User not logged in');
@@ -136,9 +137,13 @@ export const getStudentSessionStats = async (
 
   let query = supabase
     .from('student_sessions')
-    .select('duration_seconds, mistakes, hints_used, created_at')
+    .select('duration_seconds, mistakes, hints_used, created_at, activity_type')
     .eq('student_id', studentId)
     .eq('teacher_id', user.id);
+
+  if (activityType !== 'all') {
+    query = query.eq('activity_type', activityType);
+  }
 
   if (thresholdDate) {
     query = query.gte('created_at', thresholdDate.toISOString());
@@ -180,17 +185,22 @@ export const getStudentSessionStats = async (
 export interface DevelopmentalSkillExposure {
   name: string;
   count: number;
+  averageScore?: number | null;
+  evaluatedCount?: number;
 }
 
 export interface MasterDomainExposure {
   masterDomain: string;
   color: string;
+  averageScore?: number | null;
+  evaluatedCount?: number;
   skills: DevelopmentalSkillExposure[];
 }
 
 export const getStudentDevelopmentalSkillsExposure = async (
   studentId: string,
-  filter: 'today' | 'week' | 'month' | 'overall' = 'overall'
+  filter: 'today' | 'week' | 'month' | 'overall' = 'overall',
+  activityType: ActivityTypeFilter = 'all'
 ): Promise<MasterDomainExposure[]> => {
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) throw new Error('User not logged in');
@@ -204,17 +214,23 @@ export const getStudentDevelopmentalSkillsExposure = async (
   } else if (filter === 'week') {
     thresholdDate = new Date();
     thresholdDate.setDate(now.getDate() - 7);
+    thresholdDate.setHours(0, 0, 0, 0);
   } else if (filter === 'month') {
     thresholdDate = new Date();
     thresholdDate.setDate(now.getDate() - 30);
+    thresholdDate.setHours(0, 0, 0, 0);
   }
 
   // 2. Retrieve student sessions for the student and teacher
   let sessionsQuery = supabase
     .from('student_sessions')
-    .select('activity_path, created_at')
+    .select('activity_path, skill_domain, activity_type, created_at, rubric_evaluation, status')
     .eq('student_id', studentId)
     .eq('teacher_id', user.id);
+
+  if (activityType !== 'all') {
+    sessionsQuery = sessionsQuery.eq('activity_type', activityType);
+  }
 
   if (thresholdDate) {
     sessionsQuery = sessionsQuery.gte('created_at', thresholdDate.toISOString());
@@ -243,38 +259,36 @@ export const getStudentDevelopmentalSkillsExposure = async (
   }
 
   const allPaths = Object.keys(pathCounts);
-  if (allPaths.length === 0) {
-    return [];
-  }
 
   // 4. Retrieve activities' skill_domains
-  // Expand paths for matching in Supabase (with/without activity/tracing/ prefix)
-  const expandedPaths = Array.from(new Set([
-    ...allPaths,
-    ...allPaths.map(p => p.startsWith('activity/tracing/') ? p.replace(/^activity\/tracing\//, '') : `activity/tracing/${p}`)
-  ]));
+  let skillDomainMap: Record<string, string[]> = {};
+  if (allPaths.length > 0) {
+    const expandedPaths = Array.from(new Set([
+      ...allPaths,
+      ...allPaths.map(p => p.startsWith('activity/tracing/') ? p.replace(/^activity\/tracing\//, '') : `activity/tracing/${p}`)
+    ]));
 
-  const { data: activities, error: actError } = await supabase
-    .from('activities')
-    .select('path, skill_domain')
-    .in('path', expandedPaths);
+    const { data: activities, error: actError } = await supabase
+      .from('activities')
+      .select('path, skill_domain')
+      .in('path', expandedPaths);
 
-  if (actError) throw new Error(actError.message);
+    if (actError) throw new Error(actError.message);
 
-  // Helper to normalize path for mapping
-  const normalizePath = (p: string) => p.startsWith('activity/tracing/') ? p.replace(/^activity\/tracing\//, '') : p;
-
-  const skillDomainMap: Record<string, string[]> = {};
-  for (const act of activities || []) {
-    if (act.path) {
-      const norm = normalizePath(act.path);
-      const skills = parseSkillDomain(act.skill_domain);
-      skillDomainMap[norm] = skills;
+    const normalizePath = (p: string) => p.startsWith('activity/tracing/') ? p.replace(/^activity\/tracing\//, '') : p;
+    for (const act of activities || []) {
+      if (act.path) {
+        const norm = normalizePath(act.path);
+        const skills = parseSkillDomain(act.skill_domain);
+        skillDomainMap[norm] = skills;
+      }
     }
   }
 
-  // 5. Build skill counts
+  // 5. Build skill counts & score tracking
   const skillCounts: Record<string, number> = {};
+  const skillScores: Record<string, number[]> = {};
+  const domainScores: Record<string, number[]> = {};
   const skillToDomainMap: Record<string, string> = {};
   const exactSkillNameMap: Record<string, string> = {};
 
@@ -296,20 +310,63 @@ export const getStudentDevelopmentalSkillsExposure = async (
     }
   }
 
-  // Accumulate counts for registered sub-skills or sub-skill tags
+  // Accumulate counts and scores for registered sub-skills or sub-skill tags
   const masterDomainNamesLower = new Set(Object.keys(masterDomainNameMap));
 
-  for (const [path, count] of Object.entries(pathCounts)) {
-    const norm = normalizePath(path);
-    const skills = skillDomainMap[norm] || [];
-    for (const skill of skills) {
-      const key = skill.trim().toLowerCase();
-      // Skip adding master domain name itself as a sub-skill if it matches a top-level domain name
-      if (masterDomainNamesLower.has(key)) {
-        continue;
+  for (const session of sessions) {
+    const sessionRubricScore = calculateRubricScore(session.rubric_evaluation);
+    const sessionSkills: string[] = [];
+
+    // Check if session has direct skill_domain
+    const directSkills = parseSkillDomain(session.skill_domain);
+    if (directSkills.length > 0) {
+      for (const skill of directSkills) {
+        const key = skill.trim().toLowerCase();
+        if (masterDomainNamesLower.has(key)) {
+          // If direct tag is a master domain name, accumulate to domain directly
+          if (sessionRubricScore !== null) {
+            const domName = masterDomainNameMap[key] || skill;
+            if (!domainScores[domName]) domainScores[domName] = [];
+            domainScores[domName].push(sessionRubricScore);
+          }
+          continue;
+        }
+        const dbName = exactSkillNameMap[key] || skill;
+        sessionSkills.push(dbName);
       }
-      const dbName = exactSkillNameMap[key] || skill;
-      skillCounts[dbName] = (skillCounts[dbName] || 0) + count;
+    } else if (session.activity_path) {
+      const paths = parseActivityPath(session.activity_path);
+      for (const path of paths) {
+        const norm = path.startsWith('activity/tracing/') ? path.replace(/^activity\/tracing\//, '') : path;
+        const skills = skillDomainMap[norm] || [];
+        for (const skill of skills) {
+          const key = skill.trim().toLowerCase();
+          if (masterDomainNamesLower.has(key)) {
+            if (sessionRubricScore !== null) {
+              const domName = masterDomainNameMap[key] || skill;
+              if (!domainScores[domName]) domainScores[domName] = [];
+              domainScores[domName].push(sessionRubricScore);
+            }
+            continue;
+          }
+          const dbName = exactSkillNameMap[key] || skill;
+          sessionSkills.push(dbName);
+        }
+      }
+    }
+
+    // De-duplicate skills for this session so we don't count duplicate tags twice per session
+    const uniqueSkills = Array.from(new Set(sessionSkills));
+    for (const dbName of uniqueSkills) {
+      skillCounts[dbName] = (skillCounts[dbName] || 0) + 1;
+      if (sessionRubricScore !== null) {
+        if (!skillScores[dbName]) skillScores[dbName] = [];
+        skillScores[dbName].push(sessionRubricScore);
+
+        const mDom = skillToDomainMap[dbName.trim().toLowerCase()] || 'General Skills';
+        if (!domainScores[mDom]) domainScores[mDom] = [];
+        domainScores[mDom].push(sessionRubricScore);
+      }
     }
   }
 
@@ -322,16 +379,33 @@ export const getStudentDevelopmentalSkillsExposure = async (
       if (!grouped[masterDomain]) {
         grouped[masterDomain] = [];
       }
-      grouped[masterDomain].push({ name: skillName, count });
+      const scores = skillScores[skillName] || [];
+      const averageScore = scores.length > 0
+        ? Number((scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1))
+        : null;
+
+      grouped[masterDomain].push({
+        name: skillName,
+        count,
+        averageScore,
+        evaluatedCount: scores.length,
+      });
     }
   }
 
   // Convert to array and sort
   const result: MasterDomainExposure[] = Object.entries(grouped).map(([masterDomain, skills]) => {
     skills.sort((a, b) => b.count - a.count);
+    const domScores = domainScores[masterDomain] || [];
+    const averageScore = domScores.length > 0
+      ? Number((domScores.reduce((a, b) => a + b, 0) / domScores.length).toFixed(1))
+      : null;
+
     return {
       masterDomain,
       color: domainColorMap[masterDomain] || '#62A9E6',
+      averageScore,
+      evaluatedCount: domScores.length,
       skills,
     };
   });
@@ -379,16 +453,25 @@ export interface SessionEvaluation {
   hints_used?: number;
 }
 
-export const getStudentValidatedSessionsEvaluations = async (studentId: string): Promise<SessionEvaluation[]> => {
+export const getStudentValidatedSessionsEvaluations = async (
+  studentId: string,
+  activityType: ActivityTypeFilter = 'all'
+): Promise<SessionEvaluation[]> => {
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) throw new Error('User not logged in');
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('student_sessions')
-    .select('id, created_at, rubric_evaluation, hints_used')
+    .select('id, created_at, rubric_evaluation, hints_used, activity_type')
     .eq('student_id', studentId)
     .eq('status', 'validated')
     .order('created_at', { ascending: true });
+
+  if (activityType !== 'all') {
+    query = query.eq('activity_type', activityType);
+  }
+
+  const { data, error } = await query;
 
   if (error) throw new Error(error.message);
   return data || [];
@@ -587,6 +670,7 @@ export interface SessionRecord {
   activityName: string;
   category: string;
   skill_domain: string[];
+  activityType: 'app' | 'classroom';
   date: string;
   duration: string;
   stars: number;
@@ -616,16 +700,25 @@ const normalizeDepEdScore = (rawScore: any): number => {
   return Math.min(100, Math.max(0, numericScore));
 };
 
-export const getStudentSessions = async (studentId: string): Promise<SessionRecord[]> => {
+export const getStudentSessions = async (
+  studentId: string,
+  activityType: ActivityTypeFilter = 'all'
+): Promise<SessionRecord[]> => {
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) throw new Error('User not logged in');
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('student_sessions')
     .select('*')
     .eq('student_id', studentId)
     .eq('teacher_id', user.id)
     .order('created_at', { ascending: false });
+
+  if (activityType !== 'all') {
+    query = query.eq('activity_type', activityType);
+  }
+
+  const { data, error } = await query;
 
   if (error) throw new Error(error.message);
 
@@ -636,17 +729,21 @@ export const getStudentSessions = async (studentId: string): Promise<SessionReco
       id: s.id,
       studentId: s.student_id,
       activityName: (() => {
+        if (s.title && s.title.trim()) {
+          return s.title.trim();
+        }
         if (Array.isArray(s.activity_path)) {
           return s.activity_path.length > 0
             ? s.activity_path.map((path: string) => formatActivityTitle(path)).join(', ')
-            : 'Unknown Session';
+            : (s.category || 'Classroom Activity');
         }
-        if (typeof s.activity_path === 'string') {
+        if (typeof s.activity_path === 'string' && s.activity_path.trim()) {
           return formatActivityTitle(s.activity_path);
         }
-        return 'Unknown Session';
+        return s.category || 'Classroom Activity';
       })(),
       category: s.category || 'General',
+      activityType: (s.activity_type || 'app') as 'app' | 'classroom',
       skill_domain: (() => {
         if (Array.isArray(s.skill_domain)) return s.skill_domain;
 
@@ -710,9 +807,20 @@ export interface StudentPerformanceOverview {
   pendingCount: number;
 }
 
-export const getStudentsPerformanceOverview = async (): Promise<StudentPerformanceOverview[]> => {
+export const getStudentsPerformanceOverview = async (
+  activityType: ActivityTypeFilter = 'all'
+): Promise<StudentPerformanceOverview[]> => {
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) return [];
+
+  let sessionsQuery = supabase
+    .from('student_sessions')
+    .select('student_id, rubric_evaluation, mistakes, status, activity_type')
+    .eq('teacher_id', user.id);
+
+  if (activityType !== 'all') {
+    sessionsQuery = sessionsQuery.eq('activity_type', activityType);
+  }
 
   const [studentsRes, sessionsRes] = await Promise.all([
     supabase
@@ -720,10 +828,7 @@ export const getStudentsPerformanceOverview = async (): Promise<StudentPerforman
       .select('id, name, avatar, class_id')
       .eq('teacher_id', user.id)
       .order('name', { ascending: true }),
-    supabase
-      .from('student_sessions')
-      .select('student_id, rubric_evaluation, mistakes, status')
-      .eq('teacher_id', user.id),
+    sessionsQuery,
   ]);
 
   if (studentsRes.error || !studentsRes.data) return [];
@@ -763,6 +868,7 @@ export const getStudentsPerformanceOverview = async (): Promise<StudentPerforman
     };
   });
 };
+
 
 
 

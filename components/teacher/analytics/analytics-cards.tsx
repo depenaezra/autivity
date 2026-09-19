@@ -7,7 +7,7 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
-import { getKpiData as getDraftKpiData, KpiData } from '../../../src/services/analytics';
+import { getKpiData as getDraftKpiData, KpiData, ActivityTypeFilter } from '../../../src/services/analytics';
 import IconPending from '../../../assets/images/teacher/analytics/icon-pending.svg';
 import IconCompleted from '../../../assets/images/teacher/analytics/icon-completed.svg';
 
@@ -83,9 +83,10 @@ function AnalyticsCardSkeletonItem({ card, isTablet }: { card: (typeof CARD_CONF
 
 interface AnalyticsCardsProps {
   refreshTrigger?: number;
+  activityType?: ActivityTypeFilter;
 }
 
-export function AnalyticsCards({ refreshTrigger }: AnalyticsCardsProps = {}) {
+export function AnalyticsCards({ refreshTrigger, activityType = 'all' }: AnalyticsCardsProps = {}) {
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
 
@@ -99,12 +100,12 @@ export function AnalyticsCards({ refreshTrigger }: AnalyticsCardsProps = {}) {
 
   useEffect(() => {
     fetchKpiData();
-  }, [refreshTrigger]);
+  }, [refreshTrigger, activityType]);
 
   const fetchKpiData = async () => {
     setIsLoading(true);
     try {
-      const data = await getDraftKpiData();
+      const data = await getDraftKpiData(activityType);
       setKpi(data);
     } catch (err) {
       console.error('AnalyticsCards: failed to fetch KPI data', err);

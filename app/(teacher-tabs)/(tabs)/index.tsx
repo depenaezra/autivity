@@ -20,6 +20,7 @@ import {
   archiveWarmupVideo,
   deleteWarmupVideo,
 } from '../../../src/services/warmup-videos';
+import { getUnreadNotificationCount } from '../../../src/services/notifications';
 import { useTeacherDashboard } from '../../../hooks/use-teacher-dashboard';
 import { Alert } from 'react-native';
 
@@ -31,6 +32,7 @@ export default function HomeScreen() {
   const [focusKey, setFocusKey] = useState(0);
   const [selectedWarmupVideo, setSelectedWarmupVideo] = useState<WarmupVideo | null>(null);
   const [isVideoPlayerVisible, setIsVideoPlayerVisible] = useState(false);
+  const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
 
   // Video Management State
   const [warmupVideos, setWarmupVideos] = useState<WarmupVideo[]>(DEFAULT_WARMUP_VIDEOS);
@@ -51,6 +53,9 @@ export default function HomeScreen() {
     useCallback(() => {
       setFocusKey((prev) => prev + 1);
       fetchVideos();
+      getUnreadNotificationCount()
+        .then((count) => setHasUnreadNotifications(count > 0))
+        .catch(() => {});
     }, [fetchVideos])
   );
 
@@ -148,6 +153,7 @@ export default function HomeScreen() {
             firstName={firstName} 
             isTablet={isTablet} 
             onProfilePress={() => router.push('/(teacher-tabs)/profile' as any)} 
+            hasUnreadNotifications={hasUnreadNotifications}
           />
         </Animated.View>
 
