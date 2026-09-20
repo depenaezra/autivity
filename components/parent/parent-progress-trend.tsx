@@ -3,21 +3,23 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, Text, useWindowDimensions, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp, FadeOutDown, FadeOutUp } from 'react-native-reanimated';
 import Svg, { Circle, Defs, Line, LinearGradient, Path, Stop, Text as SvgText } from 'react-native-svg';
+import { ActivityTypeFilter } from '../../src/services/analytics';
+import { getProgressTrendTakeaway } from '../../src/services/parentAnalyticsEngine';
 import { ParentSessionRecord } from '../../src/services/parentDashboard';
-import { filterSessionsByPeriod, FilterPeriod, getFilterLabel } from '../../src/utils/dashboardFilters';
-import { generateProgressForecast } from '../../src/services/parentAnalyticsEngine';
+import { FilterPeriod, filterSessionsByPeriod, getFilterLabel } from '../../src/utils/dashboardFilters';
 
 interface ParentProgressTrendProps {
   sessions: ParentSessionRecord[];
   globalFilter?: FilterPeriod;
+  activityType?: ActivityTypeFilter;
   isTablet: boolean;
 }
 
-export function ParentProgressTrend({ sessions, globalFilter, isTablet }: ParentProgressTrendProps) {
+export function ParentProgressTrend({ sessions, globalFilter, activityType = 'all', isTablet }: ParentProgressTrendProps) {
   const { width } = useWindowDimensions();
   const [filter, setFilter] = useState<FilterPeriod>(globalFilter || 'overall');
   const [showInfo, setShowInfo] = useState(false);
-  const [showForecastInfo, setShowForecastInfo] = useState(false);
+  const [showCalculationInfo, setShowCalculationInfo] = useState(false);
   const [selectedPointIdx, setSelectedPointIdx] = useState<number | null>(null);
 
   useEffect(() => {
@@ -104,11 +106,16 @@ export function ParentProgressTrend({ sessions, globalFilter, isTablet }: Parent
     return Math.round((last - first) * 10) / 10;
   }, [chartData]);
 
-  // Dynamic 14-day OLS Linear Regression Trajectory Forecast
-  const forecast = useMemo(() => {
-    const filtered = filterSessionsByPeriod(sessions, filter);
-    return generateProgressForecast(filtered);
-  }, [sessions, filter]);
+  // Dynamic Evidence-Based Takeaway
+  const trendTakeaway = useMemo(() => {
+    return getProgressTrendTakeaway({
+      trendDifference,
+      averageScore,
+      totalPoints: chartData.length,
+      timeframeLabel: getTimeframePeriodName(filter),
+      activityType,
+    });
+  }, [trendDifference, averageScore, chartData.length, filter, activityType]);
 
   const filters: { label: string; value: FilterPeriod }[] = [
     { label: 'Today', value: 'today' },
@@ -264,7 +271,7 @@ export function ParentProgressTrend({ sessions, globalFilter, isTablet }: Parent
             elevation: 1,
           }}
         >
-          {/* Metric Header & Right-Side Forecast Pill */}
+          {/* Metric Header */}
           <View className="flex-row items-start justify-between gap-4 px-2 mb-4 relative z-20">
             {/* Left Stack: Score & Trend -> Title -> Baseline Comparison */}
             <View className="flex-col flex-1">
@@ -280,27 +287,26 @@ export function ParentProgressTrend({ sessions, globalFilter, isTablet }: Parent
                         trendDifference > 0
                           ? 'trending-up'
                           : trendDifference < 0
-                          ? 'trending-down'
-                          : 'minus'
+                            ? 'trending-down'
+                            : 'minus'
                       }
                       size={16}
                       color={
                         trendDifference > 0
                           ? '#179D33'
                           : trendDifference < 0
-                          ? '#EF4444'
-                          : '#6B7280'
+                            ? '#EF4444'
+                            : '#6B7280'
                       }
                       strokeWidth={2.5}
                     />
                     <Text
-                      className={`font-quicksand-bold text-base ${
-                        trendDifference > 0
+                      className={`font-quicksand-bold text-base ${trendDifference > 0
                           ? 'text-[#179D33]'
                           : trendDifference < 0
-                          ? 'text-[#EF4444]'
-                          : 'text-[#6B7280]'
-                      }`}
+                            ? 'text-[#EF4444]'
+                            : 'text-[#6B7280]'
+                        }`}
                     >
                       {`${trendDifference > 0 ? '+' : ''}${trendDifference}%`}
                     </Text>
@@ -320,64 +326,6 @@ export function ParentProgressTrend({ sessions, globalFilter, isTablet }: Parent
                 </Text>
               )}
             </View>
-
-            {/* Right Side: Clear, Self-Explanatory Forecast Pill */}
-            {forecast.projected14DayScore !== null && (
-              <View className="bg-[#F0FDF4] border border-[#86EFAC] rounded-2xl px-3.5 py-2.5 flex-col items-end shrink-0 max-w-[220px]">
-                <View className="flex-row items-center gap-1 mb-0.5">
-                  <Feather name="trending-up" size={13} color="#15803D" />
-                  <Text className="font-fredoka-one text-[10px] text-[#15803D] uppercase tracking-wider">
-                    2-WEEK OUTLOOK
-                  </Text>
-                  <Pressable onPress={() => setShowForecastInfo(!showForecastInfo)} className="p-0.5 active:opacity-75">
-                    <Feather name="info" size={12} color="#15803D" />
-                  </Pressable>
-                </View>
-                <Text className="font-fredoka-one text-base text-[#166534]">
-                  ~{forecast.projected14DayScore}% Predicted Score
-                </Text>
-                {forecast.estimatedDaysToMastery ? (
-                  <Text className="font-quicksand-bold text-[10px] text-[#15803D] mt-0.5 text-right leading-tight">
-                    ~{forecast.estimatedDaysToMastery} {forecast.estimatedDaysToMastery === 1 ? 'day' : 'days'} estimate to reach mastery goal
-                  </Text>
-                ) : (
-                  <Text className="font-quicksand-bold text-[10px] text-[#15803D] mt-0.5 text-right leading-tight">
-                    Based on current learning pace
-                  </Text>
-                )}
-              </View>
-            )}
-
-            {/* Floating Tooltip Popover Overlay */}
-            {showForecastInfo && (
-              <Animated.View
-                entering={FadeInUp.duration(150)}
-                exiting={FadeOutUp.duration(100)}
-                className="absolute top-12 right-2 z-50 w-72 bg-white border-2 border-[#86EFAC] rounded-2xl p-3.5"
-                style={{
-                  shadowColor: '#15803D',
-                  shadowOffset: { width: 0, height: 6 },
-                  shadowOpacity: 0.15,
-                  shadowRadius: 10,
-                  elevation: 8,
-                }}
-              >
-                <View className="flex-row items-center justify-between mb-1.5 pb-1 border-b border-[#E5E7EB]">
-                  <View className="flex-row items-center gap-1.5">
-                    <Feather name="info" size={14} color="#15803D" />
-                    <Text className="font-fredoka-one text-xs text-[#15803D]">
-                      What is 2-Week Outlook?
-                    </Text>
-                  </View>
-                  <Pressable onPress={() => setShowForecastInfo(false)} className="p-1 active:opacity-75">
-                    <Feather name="x" size={14} color="#9CA3AF" />
-                  </Pressable>
-                </View>
-                <Text className="font-quicksand-medium text-[11px] text-[#4B5563] leading-relaxed">
-                  Uses your child's recent evaluation trend to predict their score over the next 14 days and estimates days needed to reach the standard <Text className="font-quicksand-bold text-[#15803D]">85% domain mastery goal</Text>.
-                </Text>
-              </Animated.View>
-            )}
           </View>
 
           {/* SVG Chart Area */}
@@ -555,6 +503,106 @@ export function ParentProgressTrend({ sessions, globalFilter, isTablet }: Parent
                 </Animated.View>
               );
             })()}
+          </View>
+
+          {/* Dynamic Evidence-Based Key Takeaway Box */}
+          <View className="mt-4 pt-4 border-t border-[#F3F4F6] flex-col gap-2.5">
+            <View className="flex-row items-center justify-between">
+              <View className="flex-row items-center gap-2 flex-1">
+                {/* Takeaway Status Pill */}
+                <View
+                  style={{
+                    backgroundColor:
+                      trendTakeaway.badgeType === 'growth'
+                        ? '#DCFCE7'
+                        : trendTakeaway.badgeType === 'focus'
+                          ? '#FFF3C4'
+                          : trendTakeaway.badgeType === 'steady'
+                            ? '#E0F2FE'
+                            : '#F3F4F6',
+                    borderColor:
+                      trendTakeaway.badgeType === 'growth'
+                        ? '#86EFAC'
+                        : trendTakeaway.badgeType === 'focus'
+                          ? '#FFAE02'
+                          : trendTakeaway.badgeType === 'steady'
+                            ? '#62A9E6'
+                            : '#D1D5DB',
+                    borderWidth: 1,
+                    borderRadius: 999,
+                    paddingHorizontal: 9,
+                    paddingVertical: 3,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color:
+                        trendTakeaway.badgeType === 'growth'
+                          ? '#15803D'
+                          : trendTakeaway.badgeType === 'focus'
+                            ? '#D97706'
+                            : trendTakeaway.badgeType === 'steady'
+                              ? '#2563EB'
+                              : '#6B7280',
+                    }}
+                    className="font-fredoka-one text-[10px] uppercase"
+                  >
+                    {trendTakeaway.badgeLabel}
+                  </Text>
+                </View>
+
+                <Text className="font-fredoka-one text-sm text-[#374151] flex-1" numberOfLines={1}>
+                  {trendTakeaway.title}
+                </Text>
+              </View>
+
+              {/* Explainer Toggle */}
+              <Pressable
+                onPress={() => setShowCalculationInfo(!showCalculationInfo)}
+                className="flex-row items-center gap-1 active:opacity-75 p-1"
+              >
+                <Feather name="help-circle" size={13} color="#9CA3AF" />
+                <Text className="font-quicksand-bold text-[10px] text-[#9CA3AF]">
+                  {showCalculationInfo ? 'Hide' : 'How it works'}
+                </Text>
+              </Pressable>
+            </View>
+
+            <Text className="font-quicksand-medium text-xs text-[#64748B] leading-relaxed">
+              {trendTakeaway.description}
+            </Text>
+
+            {trendTakeaway.recommendation && (
+              <View className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl p-2.5 flex-row items-start gap-2">
+                <Feather name="info" size={13} color="#62A9E6" style={{ marginTop: 2 }} />
+                <Text className="font-quicksand-medium text-[11px] text-[#475569] flex-1 leading-normal">
+                  <Text className="font-quicksand-bold text-[#0F172A]">Takeaway: </Text>
+                  {trendTakeaway.recommendation}
+                </Text>
+              </View>
+            )}
+
+            {/* Collapsible Easy Parent Guide */}
+            {showCalculationInfo && (
+              <Animated.View
+                entering={FadeInUp.duration(150)}
+                exiting={FadeOutUp.duration(100)}
+                className="bg-[#EFF6FF] border border-[#BFDBFE] rounded-xl p-3 flex-col gap-1.5 mt-1"
+              >
+                <Text className="font-fredoka-one text-[11px] text-[#1E40AF]">
+                  WHAT DOES THIS CHART MEAN?
+                </Text>
+                <Text className="font-quicksand-medium text-[11px] text-[#1E3A8A] leading-relaxed">
+                  • <Text className="font-quicksand-bold">What this shows:</Text> How comfortably your child engages with learning tasks (looking, listening, and finishing steps).
+                </Text>
+                <Text className="font-quicksand-medium text-[11px] text-[#1E3A8A] leading-relaxed">
+                  • <Text className="font-quicksand-bold">Daily changes:</Text> Minor ups and downs are completely normal depending on your child's mood, energy, or newly introduced lessons.
+                </Text>
+                <Text className="font-quicksand-medium text-[11px] text-[#1E3A8A] leading-relaxed">
+                  • <Text className="font-quicksand-bold">The 85% goal:</Text> Reaching around 85% means your child can do these skills confidently and on their own!
+                </Text>
+              </Animated.View>
+            )}
           </View>
         </View>
       )}

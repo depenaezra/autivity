@@ -25,6 +25,26 @@ export interface ForecastPoint {
   forecastScore?: number;
 }
 
+export const ANALYTICS_THRESHOLDS = {
+  MASTERY_GOAL: 85,
+  TREND_SIGNIFICANT_DELTA: 5.0,
+  TIER1_STRENGTH_MIN: 75.0,
+  TIER3_FOCUS_MAX: 60.0,
+  BALANCED_DOMAIN_DIFF_MAX: 10.0,
+  STAMINA_HIGH_MINUTES: 15.0,
+  STAMINA_INTERVAL_MINUTES: 8.0,
+  MIN_INTERVAL_SESSIONS: 4,
+  CONSISTENCY_HIGH_SESSIONS_PER_WEEK: 4,
+} as const;
+
+export interface ChartTakeaway {
+  badgeLabel: string;
+  badgeType: 'growth' | 'focus' | 'steady' | 'outlook' | 'neutral';
+  title: string;
+  description: string;
+  recommendation?: string;
+}
+
 export interface ParentAnalyticsOverview {
   narrativeHighlights: NarrativeHighlight[];
   domainExplainers: DomainExplainer[];
@@ -106,14 +126,24 @@ export function calculateLinearRegression(points: { x: number; y: number }[]): {
   return { slope, intercept };
 }
 
+import { ActivityTypeFilter } from './analytics';
+
 /**
  * Generates plain-English narrative summary highlights based on evaluated sessions
  */
 export function generateNarrativeHighlights(
   evaluatedSessions: ParentSessionRecord[],
-  masterDomains: { name: string; subSkills: string[] }[] = []
+  masterDomains: { name: string; subSkills: string[] }[] = [],
+  activityType: ActivityTypeFilter = 'all'
 ): NarrativeHighlight[] {
   const highlights: NarrativeHighlight[] = [];
+
+  const activityNoun =
+    activityType === 'app' ? 'app activities' : activityType === 'classroom' ? 'classroom activities' : 'learning activities';
+  const sessionNoun =
+    activityType === 'app' ? 'app activity' : activityType === 'classroom' ? 'classroom activity' : 'learning session';
+  const sessionTitle =
+    activityType === 'app' ? 'App Sessions' : activityType === 'classroom' ? 'Classroom Sessions' : 'Sessions';
 
   if (evaluatedSessions.length === 0) {
     return [
@@ -121,7 +151,7 @@ export function generateNarrativeHighlights(
         id: 'no_data',
         type: 'growth',
         title: 'Awaiting Evaluated Sessions',
-        description: 'Narrative progress highlights will update automatically once session evaluations are recorded by the teacher.',
+        description: `Narrative progress highlights will update automatically once ${activityNoun} evaluations are recorded by the teacher.`,
         badgeLabel: 'STATUS',
       },
     ];
@@ -160,7 +190,7 @@ export function generateNarrativeHighlights(
       id: 'growth_highlight',
       type: 'growth',
       title: `Strong Momentum: ${top.name}`,
-      description: `Your child is demonstrating solid proficiency in ${top.name} with an average evaluated performance score of ${top.avg}%.`,
+      description: `Your child is demonstrating solid proficiency in ${top.name} with an average evaluated score of ${top.avg}% in ${activityNoun}.`,
       badgeLabel: 'TOP STRENGTH',
     });
   }
@@ -172,7 +202,7 @@ export function generateNarrativeHighlights(
       id: 'focus_highlight',
       type: 'focus',
       title: `Active Focus: ${lowest.name}`,
-      description: `${lowest.name} is currently receiving focused attention in classroom activities with a current average of ${lowest.avg}%.`,
+      description: `${lowest.name} is currently receiving focused guidance in ${activityNoun} with an average of ${lowest.avg}%.`,
       badgeLabel: 'FOCUS AREA',
     });
   }
@@ -182,8 +212,8 @@ export function generateNarrativeHighlights(
   highlights.push({
     id: 'consistency_highlight',
     type: 'consistency',
-    title: `Sessions: ${totalCount} Evaluated`,
-    description: `Teachers have validated ${totalCount} learning session evaluation${totalCount > 1 ? 's' : ''} for this timeframe.`,
+    title: `${sessionTitle}: ${totalCount} Evaluated`,
+    description: `Teachers have validated ${totalCount} ${sessionNoun} evaluation${totalCount > 1 ? 's' : ''} for this timeframe.`,
     badgeLabel: 'CONSISTENCY',
   });
 
@@ -305,3 +335,231 @@ export function generateProgressForecast(
     estimatedDaysToMastery,
   };
 }
+
+/**
+ * Generates dynamic, evidence-based takeaway for the Progress Over Time Trend Chart
+ */
+export function getProgressTrendTakeaway(params: {
+  trendDifference: number | null;
+  averageScore: number;
+  totalPoints: number;
+  timeframeLabel: string;
+  activityType?: ActivityTypeFilter;
+}): ChartTakeaway {
+  const { trendDifference, averageScore, totalPoints, timeframeLabel, activityType = 'all' } = params;
+
+  const activityNoun =
+    activityType === 'app' ? 'app activities' : activityType === 'classroom' ? 'classroom activities' : 'learning activities';
+
+  if (totalPoints < 2) {
+    return {
+      badgeLabel: 'AWAITING DATA',
+      badgeType: 'neutral',
+      title: 'Building Baseline Trend',
+      description: `Progress trends require at least 2 evaluated ${activityNoun} to establish an authentic performance baseline.`,
+      recommendation: 'Check back after upcoming sessions are validated by the educator.',
+    };
+  }
+
+  // Criterion Mastery achieved (≥ 85%)
+  if (averageScore >= ANALYTICS_THRESHOLDS.MASTERY_GOAL) {
+    return {
+      badgeLabel: 'GOAL REACHED',
+      badgeType: 'growth',
+      title: 'Skills Mastered',
+      description: `Your child is doing amazing! They can now complete these ${activityNoun} comfortably and on their own.`,
+      recommendation: 'Encourage continued practice to reinforce confidence across everyday routines.',
+    };
+  }
+
+  // Meaningful growth (≥ +5%)
+  if (trendDifference !== null && trendDifference >= ANALYTICS_THRESHOLDS.TREND_SIGNIFICANT_DELTA) {
+    return {
+      badgeLabel: 'GREAT PROGRESS',
+      badgeType: 'growth',
+      title: 'Making Great Progress',
+      description: `Your child is showing noticeable improvements in following steps and staying engaged during ${activityNoun}.`,
+      recommendation: 'Celebrate this momentum! Positive encouragement helps build ongoing learning stamina.',
+    };
+  }
+
+  // Meaningful dip (≤ -5%)
+  if (trendDifference !== null && trendDifference <= -ANALYTICS_THRESHOLDS.TREND_SIGNIFICANT_DELTA) {
+    return {
+      badgeLabel: 'NEEDS PRACTICE',
+      badgeType: 'focus',
+      title: 'Learning New Challenges',
+      description: `Scores dipped slightly as ${activityNoun} introduced new challenges. Teachers are providing extra step-by-step guidance.`,
+      recommendation: 'Gentle, low-pressure practice at home helps your child become comfortable with new steps.',
+    };
+  }
+
+  // Steady pace (-4.9% to +4.9%)
+  return {
+    badgeLabel: 'STEADY PACE',
+    badgeType: 'steady',
+    title: 'Consistent Practice',
+    description: `Your child is maintaining a steady and reliable learning routine during ${activityNoun}.`,
+    recommendation: 'Maintaining this stable routine helps build long-term confidence before introducing new steps.',
+  };
+}
+
+/**
+ * Generates dynamic domain insights based on RTI skill tiers and balance
+ */
+export function getSkillDomainTakeaways(
+  domainScores: { label: string; value: number }[],
+  activityType: ActivityTypeFilter = 'all'
+): ChartTakeaway[] {
+  const takeaways: ChartTakeaway[] = [];
+  const evaluated = domainScores.filter((d) => d.value > 0);
+
+  const taskNoun =
+    activityType === 'app' ? 'app activities' : activityType === 'classroom' ? 'classroom tasks' : 'activities';
+
+  if (evaluated.length === 0) {
+    return [
+      {
+        badgeLabel: 'AWAITING DATA',
+        badgeType: 'neutral',
+        title: 'Domain Evaluations In Progress',
+        description: `Domain-specific competency scores will populate once rubric evaluations in ${taskNoun} are recorded.`,
+      },
+    ];
+  }
+
+  const sorted = [...evaluated].sort((a, b) => b.value - a.value);
+  const top = sorted[0];
+  const lowest = sorted[sorted.length - 1];
+
+  // Tier 1 Top Strength (≥ 75% or highest)
+  if (top) {
+    const isTier1 = top.value >= ANALYTICS_THRESHOLDS.TIER1_STRENGTH_MIN;
+    takeaways.push({
+      badgeLabel: isTier1 ? 'TOP STRENGTH' : 'LEADING AREA',
+      badgeType: 'growth',
+      title: `${top.label} (${top.value}%)`,
+      description: isTier1
+        ? `Demonstrates high independence and self-regulation in ${top.label} ${taskNoun} with minimal teacher prompting.`
+        : `Currently shows the highest relative engagement and comfort in ${top.label} ${taskNoun}.`,
+      recommendation: 'Use this preferred skill area to build confidence at the start of learning routines.',
+    });
+  }
+
+  // Balanced Profile Check (diff ≤ 10%)
+  if (sorted.length >= 3 && top.value - lowest.value <= ANALYTICS_THRESHOLDS.BALANCED_DOMAIN_DIFF_MAX) {
+    const avg = Math.round(sorted.reduce((sum, d) => sum + d.value, 0) / sorted.length);
+    takeaways.push({
+      badgeLabel: 'BALANCED GROWTH',
+      badgeType: 'steady',
+      title: 'Well-Rounded Skill Development',
+      description: `Scores across all evaluated domains are within 10% of each other (averaging ${avg}%), indicating harmonious development in ${taskNoun}.`,
+    });
+  } else if (lowest && (lowest.value < ANALYTICS_THRESHOLDS.TIER3_FOCUS_MAX || sorted.length > 1)) {
+    // Tier 3 Active Focus (< 60% or lowest)
+    takeaways.push({
+      badgeLabel: 'ACTIVE FOCUS',
+      badgeType: 'focus',
+      title: `${lowest.label} (${lowest.value}%)`,
+      description: lowest.value < ANALYTICS_THRESHOLDS.TIER3_FOCUS_MAX
+        ? `${lowest.label} is currently receiving focused guidance with visual cues and step-by-step prompts in ${taskNoun}.`
+        : `Teachers are providing targeted practice in ${lowest.label} to bring it in balance with other domains.`,
+      recommendation: 'Try simple, low-pressure matching or verbal imitation games at home to reinforce classroom work.',
+    });
+  }
+
+  return takeaways;
+}
+
+/**
+ * Generates dynamic activity performance interpretation
+ */
+export function getActivityPerformanceTakeaway(
+  activityData: { label: string; value: number }[],
+  activityType: ActivityTypeFilter = 'all'
+): ChartTakeaway {
+  const activityNoun =
+    activityType === 'app' ? 'app activities' : activityType === 'classroom' ? 'classroom activities' : 'activities';
+
+  if (activityData.length === 0) {
+    return {
+      badgeLabel: 'NO DATA YET',
+      badgeType: 'neutral',
+      title: 'Activity Scores Updating',
+      description: `Scores for each category will appear as your child completes ${activityNoun}.`,
+    };
+  }
+
+  const top = activityData[0];
+  const lowest = activityData.length > 1 ? activityData[activityData.length - 1] : null;
+
+  if (top && top.value >= ANALYTICS_THRESHOLDS.TIER1_STRENGTH_MIN) {
+    return {
+      badgeLabel: 'TOP ACTIVITY',
+      badgeType: 'growth',
+      title: top.label,
+      description: `Your child is doing great with ${top.label} ${activityNoun}!${
+        lowest && lowest.value < ANALYTICS_THRESHOLDS.TIER3_FOCUS_MAX
+          ? ` They are getting extra practice with ${lowest.label} in ${activityType === 'app' ? 'app games' : 'guided practice'}.`
+          : ''
+      }`,
+      recommendation: `Starting with activities they enjoy (like ${top.label}) helps them feel confident before trying harder ones.`,
+    };
+  }
+
+  return {
+    badgeLabel: 'IN PROGRESS',
+    badgeType: 'steady',
+    title: top.label,
+    description: `Your child is actively practicing ${top.label} and other ${activityNoun}.`,
+    recommendation: 'Doing simple learning games together at home helps reinforce what they practice with teachers.',
+  };
+}
+
+/**
+ * Generates contextual interpretation chips for the 3 overview stats cards
+ */
+export function getStatsInsights(stats: {
+  overallPerformance: number;
+  avgSessionMinutes: number;
+  totalSessions: number;
+}): {
+  performanceBadge: { label: string; color: string; bg: string; border: string };
+  staminaBadge: { label: string; color: string; bg: string; border: string };
+  consistencyBadge: { label: string; color: string; bg: string; border: string };
+} {
+  // 1. Performance Badge
+  let performanceBadge = { label: 'EMERGING', color: '#FFAE02', bg: '#FFF3C4', border: '#FFAE02' };
+  if (stats.overallPerformance >= ANALYTICS_THRESHOLDS.MASTERY_GOAL) {
+    performanceBadge = { label: 'MASTERY LEVEL', color: '#179D33', bg: '#DCFCE7', border: '#86EFAC' };
+  } else if (stats.overallPerformance >= ANALYTICS_THRESHOLDS.TIER1_STRENGTH_MIN) {
+    performanceBadge = { label: 'SOLID PROFICIENCY', color: '#62A9E6', bg: '#E0F2FE', border: '#BBE8FB' };
+  } else if (stats.overallPerformance === 0) {
+    performanceBadge = { label: 'AWAITING SESSIONS', color: '#9CA3AF', bg: '#F3F4F6', border: '#E5E7EB' };
+  }
+
+  // 2. Stamina Badge (>15m vs <8m)
+  let staminaBadge = { label: 'BALANCED DURATION', color: '#62A9E6', bg: '#E0F2FE', border: '#BBE8FB' };
+  if (stats.avgSessionMinutes >= ANALYTICS_THRESHOLDS.STAMINA_HIGH_MINUTES) {
+    staminaBadge = { label: 'GREAT STAMINA (>15m)', color: '#179D33', bg: '#DCFCE7', border: '#86EFAC' };
+  } else if (
+    stats.avgSessionMinutes > 0 &&
+    stats.avgSessionMinutes <= ANALYTICS_THRESHOLDS.STAMINA_INTERVAL_MINUTES &&
+    stats.totalSessions >= ANALYTICS_THRESHOLDS.MIN_INTERVAL_SESSIONS
+  ) {
+    staminaBadge = { label: 'BITE-SIZED INTERVALS', color: '#FFAE02', bg: '#FFF3C4', border: '#FFAE02' };
+  } else if (stats.avgSessionMinutes === 0) {
+    staminaBadge = { label: 'NO DURATION LOGGED', color: '#9CA3AF', bg: '#F3F4F6', border: '#E5E7EB' };
+  }
+
+  // 3. Consistency Badge (≥4 sessions/week)
+  let consistencyBadge = { label: 'ACTIVE ROUTINE', color: '#62A9E6', bg: '#E0F2FE', border: '#BBE8FB' };
+  if (stats.totalSessions >= ANALYTICS_THRESHOLDS.CONSISTENCY_HIGH_SESSIONS_PER_WEEK) {
+    consistencyBadge = { label: 'HIGH CONSISTENCY (4+)', color: '#179D33', bg: '#DCFCE7', border: '#86EFAC' };
+  } else if (stats.totalSessions <= 1) {
+    consistencyBadge = { label: 'BUILDING ROUTINE', color: '#9CA3AF', bg: '#F3F4F6', border: '#E5E7EB' };
+  }
+
+  return { performanceBadge, staminaBadge, consistencyBadge };
+}
+

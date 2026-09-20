@@ -3,8 +3,10 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, Text, useWindowDimensions, View } from 'react-native';
 import Animated, { FadeInUp, FadeOutUp } from 'react-native-reanimated';
 import Svg, { Circle, Defs, Line, LinearGradient, Polygon, Stop } from 'react-native-svg';
+import { ActivityTypeFilter } from '../../src/services/analytics';
 import { ParentSessionRecord } from '../../src/services/parentDashboard';
 import { filterSessionsByPeriod, FilterPeriod } from '../../src/utils/dashboardFilters';
+import { getSkillDomainTakeaways } from '../../src/services/parentAnalyticsEngine';
 
 const filters: { label: string; value: FilterPeriod }[] = [
   { label: 'Today', value: 'today' },
@@ -23,6 +25,7 @@ interface ParentSkillPerformanceProps {
   masterDomains?: { name: string; subSkills: string[] }[];
   data?: SkillPerformanceItem[];
   globalFilter?: FilterPeriod;
+  activityType?: ActivityTypeFilter;
   isTablet: boolean;
 }
 
@@ -33,6 +36,7 @@ export function ParentSkillPerformance({
   masterDomains = [],
   data: initialData,
   globalFilter,
+  activityType = 'all',
   isTablet,
 }: ParentSkillPerformanceProps) {
   const { width: windowWidth } = useWindowDimensions();
@@ -89,6 +93,10 @@ export function ParentSkillPerformance({
   }, [filteredSessions, initialData, masterDomains, sessions.length]);
 
   const activeData = skillData.length > 0 ? skillData : initialData || [];
+
+  const domainTakeaways = useMemo(() => {
+    return getSkillDomainTakeaways(activeData, activityType);
+  }, [activeData, activityType]);
 
   // Radar Chart Layout Metrics
   const chartSize = isTablet ? 240 : Math.min(windowWidth - 90, 220);
@@ -326,6 +334,75 @@ export function ParentSkillPerformance({
               })}
             </View>
           </View>
+
+          {/* Dynamic Evidence-Based Domain Insights Callouts */}
+          {domainTakeaways.length > 0 && (
+            <View className="mt-4 pt-4 border-t border-[#F3F4F6] flex-col gap-3">
+              <View className="flex-row items-center justify-between">
+                <Text className="font-fredoka-one text-xs text-[#9CA3AF] uppercase tracking-wider">
+                  DOMAIN HIGHLIGHTS & AT-HOME GUIDANCE
+                </Text>
+              </View>
+
+              <View className="flex-col gap-2.5">
+                {domainTakeaways.map((t, idx) => {
+                  const isGrowth = t.badgeType === 'growth';
+                  const isFocus = t.badgeType === 'focus';
+                  const isSteady = t.badgeType === 'steady';
+
+                  const badgeBg = isGrowth ? '#DCFCE7' : isFocus ? '#FFF3C4' : isSteady ? '#E0F2FE' : '#F3F4F6';
+                  const badgeBorder = isGrowth ? '#86EFAC' : isFocus ? '#FFAE02' : isSteady ? '#62A9E6' : '#D1D5DB';
+                  const badgeText = isGrowth ? '#15803D' : isFocus ? '#D97706' : isSteady ? '#2563EB' : '#6B7280';
+
+                  return (
+                    <View
+                      key={`takeaway-${idx}`}
+                      className="bg-[#F9FAFB] border border-[#F3F4F6] rounded-2xl p-3.5 flex-col gap-1.5"
+                    >
+                      <View className="flex-row items-center justify-between">
+                        <View className="flex-row items-center gap-2 flex-1 pr-2">
+                          <View
+                            style={{
+                              backgroundColor: badgeBg,
+                              borderColor: badgeBorder,
+                              borderWidth: 1,
+                              borderRadius: 999,
+                              paddingHorizontal: 8,
+                              paddingVertical: 2,
+                            }}
+                          >
+                            <Text
+                              style={{ color: badgeText }}
+                              className="font-fredoka-one text-[9px] uppercase"
+                            >
+                              {t.badgeLabel}
+                            </Text>
+                          </View>
+                          <Text className="font-fredoka-one text-sm text-[#374151] flex-1" numberOfLines={1}>
+                            {t.title}
+                          </Text>
+                        </View>
+                      </View>
+
+                      <Text className="font-quicksand-medium text-xs text-[#64748B] leading-relaxed">
+                        {t.description}
+                      </Text>
+
+                      {t.recommendation && (
+                        <View className="bg-white border border-[#E2E8F0] rounded-xl p-2.5 flex-row items-start gap-2 mt-1">
+                          <Feather name="home" size={13} color="#62A9E6" style={{ marginTop: 2 }} />
+                          <Text className="font-quicksand-medium text-[11px] text-[#475569] flex-1 leading-normal">
+                            <Text className="font-quicksand-bold text-[#0F172A]">At-Home Tip: </Text>
+                            {t.recommendation}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+          )}
         </View>
       )}
     </View>

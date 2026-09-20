@@ -473,7 +473,12 @@ const formatFeedbackHtml = (f: ParentSessionRecord) => {
     </div>`;
 };
 
-const buildReportHtml = (data: ParentDashboardData, stats: ReportStats, timeframeLabel?: string) => {
+const buildReportHtml = (
+  data: ParentDashboardData,
+  stats: ReportStats,
+  timeframeLabel?: string,
+  activityType: ActivityTypeFilter = 'all'
+) => {
   const student = data.student;
   const generatedOn = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
@@ -490,11 +495,19 @@ const buildReportHtml = (data: ParentDashboardData, stats: ReportStats, timefram
     .join('') || `<div style="font-size:13px;color:#64748B;">No teacher feedback recorded for this timeframe.</div>`;
 
   const timeframeBadgeHtml = timeframeLabel
-    ? `<div style="margin-top:8px;"><span style="background:#E0F2FE; border:1px solid #BBE8FB; color:#0284C7; border-radius:6px; padding:4px 10px; font-weight:700; font-size:11px; text-transform:uppercase;">TIMEFRAME: ${escapeHtml(timeframeLabel)}</span></div>`
+    ? `<span style="background:#E0F2FE; border:1px solid #BBE8FB; color:#0284C7; border-radius:6px; padding:4px 10px; font-weight:700; font-size:11px; text-transform:uppercase;">TIMEFRAME: ${escapeHtml(timeframeLabel)}</span>`
+    : '';
+
+  const activityBadgeHtml = activityType !== 'all'
+    ? `<span style="background:#CBFAC4; border:1px solid #86EFAC; color:#15803D; border-radius:6px; padding:4px 10px; font-weight:700; font-size:11px; text-transform:uppercase; margin-left:6px;">SOURCE: ${escapeHtml(activityType === 'app' ? 'App Activities' : 'Classroom Activities')}</span>`
+    : '';
+
+  const badgesHtml = timeframeBadgeHtml || activityBadgeHtml
+    ? `<div style="margin-top:8px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">${timeframeBadgeHtml}${activityBadgeHtml}</div>`
     : '';
 
   const trendChartHtml = generateTrendChartSvg(data.sessions);
-  const activityChartHtml = generateActivityPerformanceSvg(data.sessions);
+  const activityChartHtml = activityType !== 'classroom' ? generateActivityPerformanceSvg(data.sessions) : '';
   const skillChartHtml = generateSkillRadarSvg(stats.skillBreakdown);
   const domainPracticeHtml = data.domainExposure && data.domainExposure.length > 0
     ? generateClassDevelopmentalDomainPracticeSvg(data.domainExposure)
@@ -560,7 +573,7 @@ const buildReportHtml = (data: ParentDashboardData, stats: ReportStats, timefram
         ${escapeHtml(data.classInfo?.title || 'N/A')} (${escapeHtml(data.classInfo?.grade || '')}) &nbsp;•&nbsp;
         Teacher: ${escapeHtml(data.teacherName)} &nbsp;•&nbsp; Learner Code: ${escapeHtml(student?.learner_code || '')} &nbsp;•&nbsp;
         Generated ${generatedOn}
-        ${timeframeBadgeHtml}
+        ${badgesHtml}
       </div>
 
       <div class="stat-row">
@@ -1269,7 +1282,8 @@ export const exportStudentAnalyticsReportExcel = async (
 export const exportChildReportPdf = async (
   data: ParentDashboardData,
   stats: ReportStats,
-  timeframeLabel?: string
+  timeframeLabel?: string,
+  activityType: ActivityTypeFilter = 'all'
 ) => {
   if (data.student?.id) {
     return exportStudentAnalyticsReportPdf(
@@ -1283,10 +1297,11 @@ export const exportChildReportPdf = async (
         isLinked: true,
       },
       'overall',
-      timeframeLabel || 'Overall'
+      timeframeLabel || 'Overall',
+      activityType
     );
   }
-  const html = buildReportHtml(data, stats, timeframeLabel);
+  const html = buildReportHtml(data, stats, timeframeLabel, activityType);
   const { uri } = await Print.printToFileAsync({ html });
 
   if (await Sharing.isAvailableAsync()) {

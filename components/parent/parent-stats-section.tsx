@@ -109,3 +109,4 @@ export function ParentStatsSection({ stats, isTablet }: ParentStatsSectionProps)
     </View>
   );
 }
+

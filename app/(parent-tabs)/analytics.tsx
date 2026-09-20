@@ -5,6 +5,7 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View, useWindowD
 import Animated, { FadeInRight } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { ActivityTypeFilter } from '../../src/services/analytics';
 import { exportChildReportPdf } from '../../src/services/exportReport';
 import { generateNarrativeHighlights } from '../../src/services/parentAnalyticsEngine';
 import { getParentDashboardData, ParentDashboardData } from '../../src/services/parentDashboard';
@@ -30,6 +31,7 @@ export default function ParentAnalyticsScreen() {
   const [dashboard, setDashboard] = useState<ParentDashboardData | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [globalFilter, setGlobalFilter] = useState<FilterPeriod>('overall');
+  const [activityType, setActivityType] = useState<ActivityTypeFilter>('all');
   const [isFilterModalVisible, setFilterModalVisible] = useState(false);
 
   useFocusEffect(
@@ -57,9 +59,16 @@ export default function ParentAnalyticsScreen() {
 
   const sessions = dashboard?.sessions || [];
 
+  // Filter sessions first by selected Activity Source ('all' | 'app' | 'classroom')
+  const sessionsByActivityType = useMemo(() => {
+    if (activityType === 'all') return sessions;
+    return sessions.filter((s) => (s.activityType || 'app') === activityType);
+  }, [sessions, activityType]);
+
+  // Then filter by Timeframe Range ('today' | 'week' | 'month' | 'overall')
   const filteredSessionsForStats = useMemo(() => {
-    return filterSessionsByPeriod(sessions, globalFilter);
-  }, [sessions, globalFilter]);
+    return filterSessionsByPeriod(sessionsByActivityType, globalFilter);
+  }, [sessionsByActivityType, globalFilter]);
 
   const evaluatedSessions = useMemo(() => {
     return filteredSessionsForStats.filter((s) => s.status === 'validated' && s.rubricEvaluation);
@@ -99,8 +108,8 @@ export default function ParentAnalyticsScreen() {
   }, [filteredSessionsForStats, evaluatedSessions]);
 
   const narrativeHighlights = useMemo(() => {
-    return generateNarrativeHighlights(evaluatedSessions, dashboard?.masterDomains || []);
-  }, [evaluatedSessions, dashboard]);
+    return generateNarrativeHighlights(evaluatedSessions, dashboard?.masterDomains || [], activityType);
+  }, [evaluatedSessions, dashboard, activityType]);
 
   const radarData = useMemo(() => {
     const domains = dashboard?.masterDomains || [];
@@ -144,7 +153,8 @@ export default function ParentAnalyticsScreen() {
           totalSessions: stats.totalSessions,
           skillBreakdown: radarData,
         },
-        getFilterLabel(globalFilter)
+        getFilterLabel(globalFilter),
+        activityType
       );
     } catch (err: any) {
       Alert.alert('Could not create PDF', err.message || 'Error exporting report');
@@ -152,6 +162,14 @@ export default function ParentAnalyticsScreen() {
       setIsExporting(false);
     }
   };
+
+  const activityTypeOptions: { label: string; value: ActivityTypeFilter; icon: keyof typeof Feather.glyphMap }[] = [
+    { label: 'All Activities', value: 'all', icon: 'grid' },
+    { label: 'App Activities', value: 'app', icon: 'tablet' },
+    { label: 'Classroom Activities', value: 'classroom', icon: 'book-open' },
+  ];
+
+  const currentActivityOption = activityTypeOptions.find((o) => o.value === activityType) || activityTypeOptions[0];
 
   if (isLoading) {
     return <ParentDashboardSkeleton variant="analytics" />;
@@ -170,7 +188,7 @@ export default function ParentAnalyticsScreen() {
           entering={FadeInRight.delay(50).duration(300)}
           className={`w-full ${isTablet ? 'px-12 pt-4' : 'px-6 pt-2'}`}
         >
-          <View className="flex-row flex-wrap items-center justify-between gap-3 mb-4">
+          <View className="flex-row flex-wrap items-center justify-between gap-3 mb-2">
             <Text className={`font-fredoka-one text-[#484A4B] ${isTablet ? 'text-[44px]' : 'text-[28px]'}`}>
               Analytics
             </Text>
@@ -229,6 +247,48 @@ export default function ParentAnalyticsScreen() {
               </Pressable>
             </View>
           </View>
+
+          {/* ACTIVITY SOURCE SWITCHER (Icon Capsule Bar) */}
+          <View className="flex-row items-center justify-between px-1 pt-1 pb-1 mt-1 mb-2">
+            <Text className="font-fredoka-one text-[14px] sm:text-[16px] text-[#484A4B]">
+              {currentActivityOption.label}
+            </Text>
+
+            {/* Capsule Container with 3 Icons */}
+            <View className="flex-row items-center bg-[#ECEFF3] p-1 rounded-full border border-[#E2E8F0]">
+              {activityTypeOptions.map((opt) => {
+                const isActive = activityType === opt.value;
+                return (
+                  <Pressable
+                    key={opt.value}
+                    onPress={() => setActivityType(opt.value)}
+                    className={`w-9 h-8 sm:w-10 sm:h-9 items-center justify-center rounded-full transition-all active:scale-90 ${
+                      isActive ? 'bg-[#62A9E6]' : 'bg-transparent'
+                    }`}
+                    style={
+                      isActive
+                        ? {
+                            shadowColor: '#62A9E6',
+                            shadowOffset: { width: 0, height: 1 },
+                            shadowOpacity: 0.35,
+                            shadowRadius: 2,
+                            elevation: 2,
+                          }
+                        : undefined
+                    }
+                    accessibilityRole="button"
+                    accessibilityLabel={opt.label}
+                  >
+                    <Feather
+                      name={opt.icon}
+                      size={isTablet ? 18 : 15}
+                      color={isActive ? '#FFFFFF' : '#64748B'}
+                    />
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
         </Animated.View>
 
         {/* CONTENT CONTAINER */}
@@ -245,22 +305,35 @@ export default function ParentAnalyticsScreen() {
               <ParentNarrativeSummary highlights={narrativeHighlights} isTablet={isTablet} />
             </Animated.View>
 
-            {/* DAILY PROGRESS TREND & TRAJECTORY FORECAST */}
+            {/* DAILY PROGRESS TREND */}
             <Animated.View key={`trend-${focusKey}`} entering={FadeInRight.delay(150).duration(300)} className="w-full">
-              <ParentProgressTrend sessions={sessions} globalFilter={globalFilter} isTablet={isTablet} />
+              <ParentProgressTrend
+                sessions={sessionsByActivityType}
+                globalFilter={globalFilter}
+                activityType={activityType}
+                isTablet={isTablet}
+              />
             </Animated.View>
 
-            {/* ACTIVITY PERFORMANCE */}
-            <Animated.View key={`activity-${focusKey}`} entering={FadeInRight.delay(200).duration(300)} className="w-full">
-              <ParentActivityPerformance sessions={sessions} globalFilter={globalFilter} isTablet={isTablet} />
-            </Animated.View>
+            {/* ACTIVITY PERFORMANCE (Shown for App and All activities; omitted for Classroom view) */}
+            {activityType !== 'classroom' && (
+              <Animated.View key={`activity-${focusKey}`} entering={FadeInRight.delay(200).duration(300)} className="w-full">
+                <ParentActivityPerformance
+                  sessions={sessionsByActivityType}
+                  globalFilter={globalFilter}
+                  activityType={activityType}
+                  isTablet={isTablet}
+                />
+              </Animated.View>
+            )}
 
             {/* SKILL PERFORMANCE */}
             <Animated.View key={`skill-${focusKey}`} entering={FadeInRight.delay(250).duration(300)} className="w-full">
               <ParentSkillPerformance
-                sessions={sessions}
+                sessions={sessionsByActivityType}
                 masterDomains={dashboard?.masterDomains}
                 globalFilter={globalFilter}
+                activityType={activityType}
                 isTablet={isTablet}
               />
             </Animated.View>

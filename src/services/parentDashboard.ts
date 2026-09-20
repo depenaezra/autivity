@@ -5,6 +5,7 @@ export interface ParentSessionRecord {
     id: string;
     studentId: string;
     category: string;
+    activityType?: 'app' | 'classroom';
     skill_domain: string[];
     date: Date;
     durationSeconds: number;
@@ -120,6 +121,7 @@ export const getParentDashboardData = async (): Promise<ParentDashboardData> => 
         id: s.id,
         studentId: s.student_id,
         category: s.category || 'General',
+        activityType: (s.activity_type as 'app' | 'classroom') || 'app',
         skill_domain: parseSkillDomain(s.skill_domain),
         date: new Date(s.created_at),
         durationSeconds: s.duration_seconds || 0,
