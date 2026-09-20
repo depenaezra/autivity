@@ -16,11 +16,14 @@ interface ParentProfileMenuSectionProps {
   onSaveProfile: () => void;
   onCancelEdit: () => void;
   // Child / Learner details state
+  linkedStudents?: any[];
   linkedStudent?: any;
   relinkCode: string;
   setRelinkCode: (val: string) => void;
   isLinking: boolean;
   onLinkChild: () => void;
+  onUnlinkChild?: (studentId: string, studentName: string) => void;
+  isUnlinking?: boolean;
   // Account action
   onChangePassword: () => void;
 }
@@ -36,13 +39,20 @@ export function ParentProfileMenuSection({
   setEmail,
   onSaveProfile,
   onCancelEdit,
+  linkedStudents = [],
   linkedStudent,
   relinkCode,
   setRelinkCode,
   isLinking,
   onLinkChild,
+  onUnlinkChild,
+  isUnlinking = false,
   onChangePassword,
 }: ParentProfileMenuSectionProps) {
+  // Normalize students array
+  const studentsList: any[] = linkedStudents && linkedStudents.length > 0 
+    ? linkedStudents 
+    : (linkedStudent ? [linkedStudent] : []);
   // Accordion expanded states (default all sections closed)
   const [personalExpanded, setPersonalExpanded] = useState(false);
   const [learnerExpanded, setLearnerExpanded] = useState(false);
@@ -238,63 +248,96 @@ export function ParentProfileMenuSection({
             exiting={FadeOutUp.duration(150)}
             className={`bg-[#F9FAFB] ${isTablet ? 'px-8 py-5' : 'px-5 py-4'}`}
           >
-            {linkedStudent ? (
-              <View className="flex-col">
-                {/* Child's Name */}
-                <View className="flex-row items-center justify-between border-b border-[#E5E7EB] pb-3 mb-3">
-                  <Text
-                    className={`font-quicksand-bold text-[#4B5563] ${isTablet ? 'w-[140px] text-base' : 'w-[100px] text-sm'
-                      }`}
-                  >
-                    Child's Name
-                  </Text>
-                  <Text
-                    className={`font-quicksand-medium flex-1 text-[#9CA3AF] ${isTablet ? 'text-base' : 'text-sm'
-                      }`}
-                  >
-                    {linkedStudent.name}
-                  </Text>
-                </View>
-
-                {/* Learner Code */}
-                {linkedStudent.learner_code && (
-                  <View className="flex-row items-center justify-between border-b border-[#E5E7EB] pb-3 mb-3">
-                    <Text
-                      className={`font-quicksand-bold text-[#4B5563] ${isTablet ? 'w-[140px] text-base' : 'w-[100px] text-sm'
-                        }`}
+            {studentsList.length > 0 ? (
+              <View className="flex-col gap-3 mb-4">
+                <Text className="font-fredoka-one text-xs text-[#9CA3AF] uppercase tracking-wider mb-1">
+                  Linked Learners ({studentsList.length})
+                </Text>
+                {studentsList.map((st: any, index: number) => {
+                  return (
+                    <View
+                      key={st.id || index}
+                      className="bg-white rounded-2xl border-[2px] border-[#E5E7EB] p-3.5 flex-col gap-2.5"
+                      style={{
+                        shadowColor: '#F1F1F1',
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 1,
+                        shadowRadius: 0,
+                        elevation: 1,
+                      }}
                     >
-                      Learner Code
-                    </Text>
-                    <View className="flex-1 flex-row items-center">
-                      <View className="bg-[#BBE8FB] px-3 py-1 rounded-[6px] justify-center items-center">
-                        <Text className="font-fredoka-one text-[#62A9E6] uppercase text-xs sm:text-sm">
-                          # {linkedStudent.learner_code}
-                        </Text>
+                      {/* Top Row: Avatar, Name & Unlink Button */}
+                      <View className="flex-row items-center justify-between">
+                        <View className="flex-row items-center gap-3 flex-1">
+                          <View className="w-11 h-11 rounded-full bg-[#EBF5FF] border-[2px] border-[#62A9E6] items-center justify-center">
+                            <Text style={{ fontSize: isTablet ? 22 : 18 }}>
+                              {st.avatar || '🙂'}
+                            </Text>
+                          </View>
+                          <View className="flex-1 justify-center">
+                            <Text
+                              className={`font-fredoka-one text-[#484A4B] ${
+                                isTablet ? 'text-lg' : 'text-base'
+                              }`}
+                              numberOfLines={1}
+                            >
+                              {st.name}
+                            </Text>
+                            {st.classes?.title && (
+                              <Text className="font-quicksand-medium text-xs text-[#9CA3AF]" numberOfLines={1}>
+                                {st.classes.title} {st.classes.grade ? `• ${st.classes.grade}` : ''}
+                              </Text>
+                            )}
+                          </View>
+                        </View>
+
+                        {/* Unlink Action Button */}
+                        {onUnlinkChild && (
+                          <Pressable
+                            onPress={() => onUnlinkChild(st.id, st.name)}
+                            disabled={isUnlinking}
+                            className="flex-row items-center gap-1.5 bg-[#FFF5F5] border-[1.5px] border-[#FFDBD4] px-2.5 py-1.5 rounded-lg active:scale-95 transition-transform"
+                            style={{
+                              shadowColor: '#FFDBD4',
+                              shadowOffset: { width: 0, height: 1 },
+                              shadowOpacity: 0.8,
+                              shadowRadius: 0,
+                              elevation: 1,
+                            }}
+                          >
+                            <Feather name="trash-2" size={13} color="#FF8870" />
+                            <Text className="font-fredoka-one text-[#FF8870] text-[11px] uppercase">
+                              UNLINK
+                            </Text>
+                          </Pressable>
+                        )}
+                      </View>
+
+                      {/* Details Row: Learner Code & Teacher */}
+                      <View className="flex-row items-center justify-between pt-2 border-t border-[#F1F1F1]">
+                        <View className="flex-row items-center gap-1.5">
+                          <Text className="font-quicksand-bold text-[11px] text-[#9CA3AF]">
+                            CODE:
+                          </Text>
+                          <View className="bg-[#BBE8FB] px-2 py-0.5 rounded-[5px]">
+                            <Text className="font-fredoka-one text-[#62A9E6] uppercase text-[10px]">
+                              # {st.learner_code || 'AUT-000'}
+                            </Text>
+                          </View>
+                        </View>
+
+                        {st.teacher?.first_name && (
+                          <Text className="font-quicksand-medium text-[11px] text-[#9CA3AF]">
+                            Teacher: {st.teacher.first_name} {st.teacher.last_name || ''}
+                          </Text>
+                        )}
                       </View>
                     </View>
-                  </View>
-                )}
-
-                {/* Classroom */}
-                {linkedStudent.classes?.title && (
-                  <View className="flex-row items-center justify-between border-b border-[#E5E7EB] pb-3 mb-3">
-                    <Text
-                      className={`font-quicksand-bold text-[#4B5563] ${isTablet ? 'w-[140px] text-base' : 'w-[100px] text-sm'
-                        }`}
-                    >
-                      Classroom
-                    </Text>
-                    <Text
-                      className={`font-quicksand-medium flex-1 text-[#9CA3AF] ${isTablet ? 'text-base' : 'text-sm'
-                        }`}
-                    >
-                      {linkedStudent.classes.title}
-                    </Text>
-                  </View>
-                )}
+                  );
+                })}
               </View>
             ) : (
-              <View className="bg-white border-2 border-dashed border-[#E5E7EB] rounded-2xl p-4 items-center mb-3">
+              <View className="bg-white border-2 border-dashed border-[#E5E7EB] rounded-2xl p-4 items-center mb-4">
                 <Text className="font-fredoka-one text-sm text-[#4B5563] text-center">
                   No Learner Linked Yet
                 </Text>
@@ -304,12 +347,17 @@ export function ParentProfileMenuSection({
               </View>
             )}
 
-            {/* Re-link / Update Learner Code Input */}
-            <View className="mt-1 pt-2 flex-col gap-2">
-              <Text className="font-quicksand-bold text-[#484A4B] text-sm mb-1">
-                {linkedStudent ? 'Update or Re-link Learner Code' : 'Enter Learner Code'}
+            {/* Link Another / Enter Learner Code Input */}
+            <View className="pt-2 border-t border-[#E5E7EB] flex-col gap-2">
+              <Text className="font-quicksand-bold text-[#484A4B] text-sm">
+                {studentsList.length > 0 ? 'Link Another Child' : 'Enter Learner Code'}
               </Text>
-              <View className="flex-row items-center gap-2">
+              <Text className="font-quicksand-medium text-xs text-[#9CA3AF] -mt-1">
+                {studentsList.length > 0
+                  ? 'Have another child? Enter their learner code below to link their dashboard.'
+                  : 'Enter the code from your child’s teacher (e.g. AUT-1234).'}
+              </Text>
+              <View className="flex-row items-center gap-2 mt-1">
                 <TextInput
                   value={relinkCode}
                   onChangeText={setRelinkCode}
@@ -321,8 +369,9 @@ export function ParentProfileMenuSection({
                 <Pressable
                   onPress={onLinkChild}
                   disabled={isLinking || !relinkCode.trim()}
-                  className={`bg-white border-[2px] border-[#BBE8FB] rounded-[8px] px-4 py-2 items-center justify-center active:scale-95 transition-transform ${isLinking || !relinkCode.trim() ? 'opacity-40' : 'opacity-100'
-                    }`}
+                  className={`bg-white border-[2px] border-[#BBE8FB] rounded-[8px] px-4 py-3 items-center justify-center active:scale-95 transition-transform ${
+                    isLinking || !relinkCode.trim() ? 'opacity-40' : 'opacity-100'
+                  }`}
                   style={{
                     borderColor: '#BBE8FB',
                     shadowColor: '#BBE8FB',

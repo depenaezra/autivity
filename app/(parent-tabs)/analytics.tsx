@@ -1,4 +1,4 @@
-import { Feather } from '@expo/vector-icons';
+import { Feather, Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
@@ -8,10 +8,15 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ActivityTypeFilter } from '../../src/services/analytics';
 import { exportChildReportPdf } from '../../src/services/exportReport';
 import { generateNarrativeHighlights } from '../../src/services/parentAnalyticsEngine';
-import { getParentDashboardData, ParentDashboardData } from '../../src/services/parentDashboard';
+import {
+  getAllLinkedChildrenDashboardData,
+  getParentDashboardData,
+  ParentDashboardData,
+} from '../../src/services/parentDashboard';
 import { filterSessionsByPeriod, FilterPeriod, getFilterLabel } from '../../src/utils/dashboardFilters';
 
 import { ParentActivityPerformance } from '../../components/parent/parent-activity-performance';
+import { ParentCompareAnalytics } from '../../components/parent/parent-compare-analytics';
 import { ParentDashboardSkeleton } from '../../components/parent/parent-dashboard-skeleton';
 import { ParentDomainExplainers } from '../../components/parent/parent-domain-explainers';
 import { ParentFilterModal } from '../../components/parent/parent-filter-modal';
@@ -29,33 +34,63 @@ export default function ParentAnalyticsScreen() {
   const [focusKey, setFocusKey] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [dashboard, setDashboard] = useState<ParentDashboardData | null>(null);
+  const [allChildrenData, setAllChildrenData] = useState<Record<string, ParentDashboardData>>({});
+  const [linkedStudents, setLinkedStudents] = useState<any[]>([]);
+  const [selectedStudentId, setSelectedStudentId] = useState<string | 'all' | undefined>(undefined);
   const [isExporting, setIsExporting] = useState(false);
   const [globalFilter, setGlobalFilter] = useState<FilterPeriod>('overall');
   const [activityType, setActivityType] = useState<ActivityTypeFilter>('all');
   const [isFilterModalVisible, setFilterModalVisible] = useState(false);
 
+  const loadAnalyticsData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const multiData = await getAllLinkedChildrenDashboardData();
+      setLinkedStudents(multiData.linkedStudents);
+      setAllChildrenData(multiData.childrenData);
+
+      if (multiData.linkedStudents.length > 0) {
+        // If current selection is valid, keep it; otherwise default to first child
+        const currentTargetId =
+          selectedStudentId && (selectedStudentId === 'all' || multiData.childrenData[selectedStudentId])
+            ? selectedStudentId
+            : multiData.linkedStudents[0].id;
+
+        if (currentTargetId === 'all') {
+          // If in 'all' compare mode, set active dashboard to first child for fallback values
+          setDashboard(multiData.childrenData[multiData.linkedStudents[0].id]);
+        } else {
+          setDashboard(multiData.childrenData[currentTargetId]);
+        }
+      } else {
+        setDashboard(null);
+      }
+    } catch (err: any) {
+      console.error('Error loading parent analytics:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [selectedStudentId]);
+
   useFocusEffect(
     useCallback(() => {
       setFocusKey((prev) => prev + 1);
-      let isActive = true;
-      (async () => {
-        setIsLoading(true);
-        try {
-          const data = await getParentDashboardData();
-          if (isActive) {
-            setDashboard(data);
-          }
-        } catch (err: any) {
-          console.error('Error loading parent analytics:', err);
-        } finally {
-          if (isActive) setIsLoading(false);
-        }
-      })();
-      return () => {
-        isActive = false;
-      };
-    }, [])
+      loadAnalyticsData();
+    }, [loadAnalyticsData])
   );
+
+  const handleSelectStudentMode = (targetId: string | 'all') => {
+    setSelectedStudentId(targetId);
+    if (targetId === 'all') {
+      if (linkedStudents.length > 0) {
+        setDashboard(allChildrenData[linkedStudents[0].id]);
+      }
+    } else {
+      if (allChildrenData[targetId]) {
+        setDashboard(allChildrenData[targetId]);
+      }
+    }
+  };
 
   const sessions = dashboard?.sessions || [];
 
@@ -175,6 +210,22 @@ export default function ParentAnalyticsScreen() {
     return <ParentDashboardSkeleton variant="analytics" />;
   }
 
+  if (!dashboard?.student && linkedStudents.length === 0) {
+    return (
+      <View className="flex-1 bg-[#F5F8FA] items-center justify-center px-8">
+        <Feather name="user-x" size={40} color="#9CA3AF" />
+        <Text className="font-quicksand-bold text-[#4B5563] text-lg mt-4 text-center">
+          No child linked yet
+        </Text>
+        <Text className="font-quicksand-medium text-[#9CA3AF] text-sm mt-2 text-center">
+          Go to your Profile tab to link your child with their learner code.
+        </Text>
+      </View>
+    );
+  }
+
+  const isCompareMode = selectedStudentId === 'all';
+
   return (
     <SafeAreaView className="flex-1 bg-[#F5F8FA]" edges={['top', 'left', 'right']}>
       <ScrollView
@@ -215,38 +266,111 @@ export default function ParentAnalyticsScreen() {
                 <Feather name="chevron-down" size={13} color="#62A9E6" />
               </Pressable>
 
-              {/* Master Download Report Button */}
-              <Pressable
-                onPress={handleExportPdf}
-                disabled={isExporting}
-                className="flex-row items-center justify-center gap-1.5 bg-white border-[2px] border-[#BBE8FB] px-3 h-[36px] rounded-xl active:scale-95 transition-transform"
-                style={{
-                  borderColor: '#BBE8FB',
-                  shadowColor: '#BBE8FB',
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 1,
-                  shadowRadius: 0,
-                  elevation: 2,
-                }}
-              >
-                {isExporting ? (
-                  <>
-                    <ActivityIndicator size="small" color="#62A9E6" style={{ height: 16 }} />
-                    <Text className="font-fredoka-one text-[#62A9E6] text-[11px] uppercase" numberOfLines={1}>
-                      EXPORTING...
-                    </Text>
-                  </>
-                ) : (
-                  <>
-                    <Feather name="download" size={13} color="#62A9E6" />
-                    <Text className="font-fredoka-one text-[#62A9E6] text-[11px] uppercase" numberOfLines={1}>
-                      DOWNLOAD REPORT
-                    </Text>
-                  </>
-                )}
-              </Pressable>
+              {/* Master Download Report Button (available when single child is active) */}
+              {!isCompareMode && (
+                <Pressable
+                  onPress={handleExportPdf}
+                  disabled={isExporting}
+                  className="flex-row items-center justify-center gap-1.5 bg-white border-[2px] border-[#BBE8FB] px-3 h-[36px] rounded-xl active:scale-95 transition-transform"
+                  style={{
+                    borderColor: '#BBE8FB',
+                    shadowColor: '#BBE8FB',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 1,
+                    shadowRadius: 0,
+                    elevation: 2,
+                  }}
+                >
+                  {isExporting ? (
+                    <>
+                      <ActivityIndicator size="small" color="#62A9E6" style={{ height: 16 }} />
+                      <Text className="font-fredoka-one text-[#62A9E6] text-[11px] uppercase" numberOfLines={1}>
+                        EXPORTING...
+                      </Text>
+                    </>
+                  ) : (
+                    <>
+                      <Feather name="download" size={13} color="#62A9E6" />
+                      <Text className="font-fredoka-one text-[#62A9E6] text-[11px] uppercase" numberOfLines={1}>
+                        DOWNLOAD REPORT
+                      </Text>
+                    </>
+                  )}
+                </Pressable>
+              )}
             </View>
           </View>
+
+          {/* MULTI-CHILD VIEW SELECTOR BAR (Shown when parent has 2+ children linked) */}
+          {linkedStudents.length > 1 && (
+            <View className="flex-row items-center gap-2 mb-3 mt-1 flex-wrap">
+              {linkedStudents.map((st) => {
+                const isSelected =
+                  selectedStudentId === st.id || (!selectedStudentId && st.id === linkedStudents[0]?.id);
+                return (
+                  <Pressable
+                    key={st.id}
+                    onPress={() => handleSelectStudentMode(st.id)}
+                    className={`flex-row items-center gap-2 px-3 py-1.5 rounded-full border-[2px] active:scale-95 transition-transform ${
+                      isSelected ? 'bg-[#EBF5FF] border-[#62A9E6]' : 'bg-white border-[#E5E7EB]'
+                    }`}
+                    style={
+                      isSelected
+                        ? {
+                            shadowColor: '#BBE8FB',
+                            shadowOffset: { width: 0, height: 2 },
+                            shadowOpacity: 1,
+                            shadowRadius: 0,
+                            elevation: 2,
+                          }
+                        : undefined
+                    }
+                  >
+                    <Text style={{ fontSize: 16 }}>{st.avatar || '🙂'}</Text>
+                    <Text
+                      className={`font-fredoka-one text-xs ${
+                        isSelected ? 'text-[#62A9E6]' : 'text-[#6B7280]'
+                      }`}
+                    >
+                      {st.name}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+
+              {/* Compare Both / Dual View Button */}
+              <Pressable
+                onPress={() => handleSelectStudentMode('all')}
+                className={`flex-row items-center gap-1.5 px-3 py-1.5 rounded-full border-[2px] active:scale-95 transition-transform ${
+                  isCompareMode ? 'bg-[#CBFAC4] border-[#179D33]' : 'bg-white border-[#E5E7EB]'
+                }`}
+                style={
+                  isCompareMode
+                    ? {
+                        shadowColor: '#CBFAC4',
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 1,
+                        shadowRadius: 0,
+                        elevation: 2,
+                      }
+                    : undefined
+                }
+              >
+                <Ionicons
+                  name="stats-chart"
+                  size={14}
+                  color={isCompareMode ? '#179D33' : '#6B7280'}
+                />
+                <Text
+                  className={`font-fredoka-one text-xs ${
+                    isCompareMode ? 'text-[#179D33]' : 'text-[#6B7280]'
+                  }`}
+                >
+                  Compare Both
+                </Text>
+              </Pressable>
+            </View>
+          )}
 
           {/* ACTIVITY SOURCE SWITCHER (Icon Capsule Bar) */}
           <View className="flex-row items-center justify-between px-1 pt-1 pb-1 mt-1 mb-2">
@@ -293,56 +417,71 @@ export default function ParentAnalyticsScreen() {
 
         {/* CONTENT CONTAINER */}
         <View className={`w-full ${isTablet ? 'px-12' : 'px-6'}`}>
-          <View className="flex-col gap-4">
-
-            {/* STAT CARDS */}
-            <Animated.View key={`stats-${focusKey}`} entering={FadeInRight.delay(100).duration(300)} className="w-full">
-              <ParentStatsSection stats={stats} isTablet={isTablet} />
-            </Animated.View>
-
-            {/* EXECUTIVE NARRATIVE SUMMARY */}
-            <Animated.View key={`summary-${focusKey}`} entering={FadeInRight.delay(120).duration(300)} className="w-full">
-              <ParentNarrativeSummary highlights={narrativeHighlights} isTablet={isTablet} />
-            </Animated.View>
-
-            {/* DAILY PROGRESS TREND */}
-            <Animated.View key={`trend-${focusKey}`} entering={FadeInRight.delay(150).duration(300)} className="w-full">
-              <ParentProgressTrend
-                sessions={sessionsByActivityType}
+          {isCompareMode ? (
+            /* DUAL / COMPARISON VIEW */
+            <Animated.View key={`compare-${focusKey}`} entering={FadeInRight.delay(100).duration(300)} className="w-full">
+              <ParentCompareAnalytics
+                childrenData={allChildrenData}
+                linkedStudents={linkedStudents}
+                masterDomains={dashboard?.masterDomains || []}
                 globalFilter={globalFilter}
                 activityType={activityType}
                 isTablet={isTablet}
+                onSelectChild={(id) => handleSelectStudentMode(id)}
               />
             </Animated.View>
+          ) : (
+            /* INDIVIDUAL CHILD DETAILED ANALYTICS */
+            <View className="flex-col gap-4">
+              {/* STAT CARDS */}
+              <Animated.View key={`stats-${focusKey}`} entering={FadeInRight.delay(100).duration(300)} className="w-full">
+                <ParentStatsSection stats={stats} isTablet={isTablet} />
+              </Animated.View>
 
-            {/* ACTIVITY PERFORMANCE (Shown for App and All activities; omitted for Classroom view) */}
-            {activityType !== 'classroom' && (
-              <Animated.View key={`activity-${focusKey}`} entering={FadeInRight.delay(200).duration(300)} className="w-full">
-                <ParentActivityPerformance
+              {/* EXECUTIVE NARRATIVE SUMMARY */}
+              <Animated.View key={`summary-${focusKey}`} entering={FadeInRight.delay(120).duration(300)} className="w-full">
+                <ParentNarrativeSummary highlights={narrativeHighlights} isTablet={isTablet} />
+              </Animated.View>
+
+              {/* DAILY PROGRESS TREND */}
+              <Animated.View key={`trend-${focusKey}`} entering={FadeInRight.delay(150).duration(300)} className="w-full">
+                <ParentProgressTrend
                   sessions={sessionsByActivityType}
                   globalFilter={globalFilter}
                   activityType={activityType}
                   isTablet={isTablet}
                 />
               </Animated.View>
-            )}
 
-            {/* SKILL PERFORMANCE */}
-            <Animated.View key={`skill-${focusKey}`} entering={FadeInRight.delay(250).duration(300)} className="w-full">
-              <ParentSkillPerformance
-                sessions={sessionsByActivityType}
-                masterDomains={dashboard?.masterDomains}
-                globalFilter={globalFilter}
-                activityType={activityType}
-                isTablet={isTablet}
-              />
-            </Animated.View>
+              {/* ACTIVITY PERFORMANCE (Shown for App and All activities; omitted for Classroom view) */}
+              {activityType !== 'classroom' && (
+                <Animated.View key={`activity-${focusKey}`} entering={FadeInRight.delay(200).duration(300)} className="w-full">
+                  <ParentActivityPerformance
+                    sessions={sessionsByActivityType}
+                    globalFilter={globalFilter}
+                    activityType={activityType}
+                    isTablet={isTablet}
+                  />
+                </Animated.View>
+              )}
 
-            {/* SPED DOMAIN EDUCATIONAL EXPLAINERS */}
-            <Animated.View key={`explainers-${focusKey}`} entering={FadeInRight.delay(300).duration(300)} className="w-full">
-              <ParentDomainExplainers isTablet={isTablet} />
-            </Animated.View>
-          </View>
+              {/* SKILL PERFORMANCE */}
+              <Animated.View key={`skill-${focusKey}`} entering={FadeInRight.delay(250).duration(300)} className="w-full">
+                <ParentSkillPerformance
+                  sessions={sessionsByActivityType}
+                  masterDomains={dashboard?.masterDomains}
+                  globalFilter={globalFilter}
+                  activityType={activityType}
+                  isTablet={isTablet}
+                />
+              </Animated.View>
+
+              {/* SPED DOMAIN EDUCATIONAL EXPLAINERS */}
+              <Animated.View key={`explainers-${focusKey}`} entering={FadeInRight.delay(300).duration(300)} className="w-full">
+                <ParentDomainExplainers isTablet={isTablet} />
+              </Animated.View>
+            </View>
+          )}
         </View>
       </ScrollView>
 

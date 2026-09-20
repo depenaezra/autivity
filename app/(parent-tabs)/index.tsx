@@ -32,6 +32,7 @@ export default function ParentHomeScreen() {
   const isTablet = width >= 768;
   const insets = useSafeAreaInsets();
 
+  const [selectedStudentId, setSelectedStudentId] = useState<string | undefined>(undefined);
   const [focusKey, setFocusKey] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [dashboard, setDashboard] = useState<ParentDashboardData | null>(null);
@@ -49,41 +50,45 @@ export default function ParentHomeScreen() {
     }
   }, [paramFirstName]);
 
+  const loadDashboardData = useCallback(async (studentId?: string) => {
+    setIsLoading(true);
+    try {
+      const profile = await getUserProfile().catch(() => null);
+      if (profile?.first_name) {
+        setParentName(profile.first_name);
+      }
+
+      const [data, unreadCount] = await Promise.all([
+        getParentDashboardData(studentId),
+        getUnreadNotificationCount().catch(() => 0),
+      ]);
+
+      setDashboard(data);
+      setHasUnread(unreadCount > 0);
+      if (data.parentFirstName) {
+        setParentName(data.parentFirstName);
+      }
+      if (data.student?.id) {
+        setSelectedStudentId(data.student.id);
+      }
+    } catch (err: any) {
+      Alert.alert('Error loading dashboard', err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       setFocusKey((prev) => prev + 1);
-      let isActive = true;
-      (async () => {
-        setIsLoading(true);
-        try {
-          const profile = await getUserProfile().catch(() => null);
-          if (isActive && profile?.first_name) {
-            setParentName(profile.first_name);
-          }
-
-          const [data, unreadCount] = await Promise.all([
-            getParentDashboardData(),
-            getUnreadNotificationCount().catch(() => 0),
-          ]);
-
-          if (isActive) {
-            setDashboard(data);
-            setHasUnread(unreadCount > 0);
-            if (data.parentFirstName) {
-              setParentName(data.parentFirstName);
-            }
-          }
-        } catch (err: any) {
-          if (isActive) Alert.alert('Error loading dashboard', err.message);
-        } finally {
-          if (isActive) setIsLoading(false);
-        }
-      })();
-      return () => {
-        isActive = false;
-      };
-    }, [])
+      loadDashboardData(selectedStudentId);
+    }, [selectedStudentId, loadDashboardData])
   );
+
+  const handleSelectStudent = (newStudentId: string) => {
+    setSelectedStudentId(newStudentId);
+    loadDashboardData(newStudentId);
+  };
 
   const sessions = dashboard?.sessions || [];
 
@@ -224,6 +229,9 @@ export default function ParentHomeScreen() {
                 onProfilePress={() => router.push('/(parent-tabs)/profile' as any)}
                 hasUnreadNotifications={hasUnread}
                 student={student}
+                linkedStudents={dashboard?.linkedStudents || []}
+                selectedStudentId={selectedStudentId}
+                onSelectStudent={handleSelectStudent}
                 classInfo={dashboard?.classInfo}
                 teacherName={dashboard?.teacherName}
                 onChildPress={() => setLearnerInfoVisible(true)}

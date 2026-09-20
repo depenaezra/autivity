@@ -18,12 +18,16 @@ interface ParentHeaderProps {
   hasUnreadNotifications?: boolean;
   // Parent & Learner Info
   student?: {
+    id?: string;
     name?: string;
     avatar?: string;
     spectrum_level?: string;
     learner_code?: string;
     bio?: string;
   } | null;
+  linkedStudents?: any[];
+  selectedStudentId?: string;
+  onSelectStudent?: (studentId: string) => void;
   classInfo?: {
     title?: string;
     grade?: string;
@@ -66,6 +70,9 @@ export function ParentHeader({
   onProfilePress,
   hasUnreadNotifications = false,
   student,
+  linkedStudents = [],
+  selectedStudentId,
+  onSelectStudent,
   classInfo,
   teacherName,
   onChildPress,
@@ -151,9 +158,52 @@ export function ParentHeader({
         </Pressable>
       </View>
 
+      {/* MULTI-CHILD SWITCHER CAPSULE (Shown when parent has 2+ linked children) */}
+      {linkedStudents && linkedStudents.length > 1 && (
+        <View className="mt-4 flex-row items-center gap-2 flex-wrap">
+          <Text className="font-fredoka-one text-xs text-[#9CA3AF] uppercase mr-1">
+            Child:
+          </Text>
+          {linkedStudents.map((st) => {
+            const isSelected = selectedStudentId ? st.id === selectedStudentId : st.id === student?.id;
+            return (
+              <Pressable
+                key={st.id}
+                onPress={() => onSelectStudent && onSelectStudent(st.id)}
+                className={`flex-row items-center gap-2 px-3 py-1.5 rounded-full border-[2px] active:scale-95 transition-transform ${
+                  isSelected
+                    ? 'bg-[#EBF5FF] border-[#62A9E6]'
+                    : 'bg-white border-[#E5E7EB]'
+                }`}
+                style={
+                  isSelected
+                    ? {
+                        shadowColor: '#BBE8FB',
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 1,
+                        shadowRadius: 0,
+                        elevation: 2,
+                      }
+                    : undefined
+                }
+              >
+                <Text style={{ fontSize: 16 }}>{st.avatar || '🙂'}</Text>
+                <Text
+                  className={`font-fredoka-one text-xs ${
+                    isSelected ? 'text-[#62A9E6]' : 'text-[#6B7280]'
+                  }`}
+                >
+                  {st.name}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      )}
+
       {/* CHILD & PARENT INFO CARD - TACTILE DESIGN SYSTEM FORMAT */}
       {student && (
-        <View className="mt-5">
+        <View className="mt-4">
           <View
             className={`bg-white border-[4px] border-[#F1F1F1] ${
               isTablet ? 'rounded-[32px] p-6' : 'rounded-[20px] p-4'

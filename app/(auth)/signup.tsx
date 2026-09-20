@@ -61,7 +61,7 @@ export default function Signup() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [learnerCode, setLearnerCode] = useState('');
+  const [learnerCodes, setLearnerCodes] = useState<string[]>(['']);
 
   // ui states
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
@@ -80,6 +80,20 @@ export default function Signup() {
   const isPasswordInvalid = passwordBlurred && password.length > 0 && !isStrongPassword(password);
   const isConfirmPasswordInvalid = confirmPasswordBlurred && confirmPassword.length > 0 && confirmPassword !== password;
 
+  const handleLearnerCodeChange = (text: string, index: number) => {
+    const updated = [...learnerCodes];
+    updated[index] = text.toUpperCase();
+    setLearnerCodes(updated);
+  };
+
+  const handleAddLearnerCodeField = () => {
+    setLearnerCodes([...learnerCodes, '']);
+  };
+
+  const handleRemoveLearnerCodeField = (index: number) => {
+    if (learnerCodes.length <= 1) return;
+    setLearnerCodes(learnerCodes.filter((_, i) => i !== index));
+  };
 
   // registration details -> database
   const handleRegister = async () => {
@@ -93,9 +107,13 @@ export default function Signup() {
       return;
     }
 
+    const validCodes = learnerCodes
+      .map((c) => c.trim().toUpperCase())
+      .filter(Boolean);
+
     // parents must provide their child's learner code to register
-    if (role === 'parent' && !learnerCode.trim()) {
-      Alert.alert('Learner Code Required', "Please enter your child's learner code (e.g. AUT-0001) to continue.");
+    if (role === 'parent' && validCodes.length === 0) {
+      Alert.alert('Learner Code Required', "Please enter at least one learner code (e.g. AUT-0001) to continue.");
       return;
     }
     // if password is not strong
@@ -124,7 +142,7 @@ export default function Signup() {
     setIsLoading(true);
 
     try {
-      const signUpResult = await register(email, password, firstName, lastName, userGoals, role, learnerCode);
+      const signUpResult = await register(email, password, firstName, lastName, userGoals, role, validCodes);
 
       // Parents do not need verification, set is_verified to true immediately
       if (role === 'parent' && signUpResult?.user) {
@@ -334,32 +352,88 @@ export default function Signup() {
                   </Text>
                 )}
 
-                {/* learner code (parents only) */}
+                {/* learner codes (parents only) */}
                 {role === 'parent' && (
-                  <View className="w-full flex-col">
-                    <View
-                      className={`w-full border-[2px] justify-center bg-[#F1F1F1] ${isTablet ? 'h-[76px] rounded-xl px-8' : 'h-[60px] rounded-xl px-6'
-                        }`}
+                  <View className="w-full flex-col gap-2.5">
+                    <View className="flex-row items-center justify-between px-1">
+                      <Text className={`font-fredoka-one text-xs text-[#9CA3AF] uppercase ${isTablet ? 'text-sm' : 'text-xs'}`}>
+                        Learner Code(s)
+                      </Text>
+                      <Text className="font-quicksand-medium text-xs text-[#9CA3AF]">
+                        {learnerCodes.length} {learnerCodes.length === 1 ? 'Child' : 'Children'}
+                      </Text>
+                    </View>
+
+                    {learnerCodes.map((code, index) => {
+                      const inputId = `learnerCode_${index}`;
+                      return (
+                        <View key={index} className="flex-row items-center gap-2">
+                          <View
+                            className={`flex-1 border-[2px] justify-center bg-[#F1F1F1] ${
+                              isTablet ? 'h-[76px] rounded-xl px-8' : 'h-[60px] rounded-xl px-6'
+                            }`}
+                            style={{
+                              borderColor: focusedInput === inputId ? '#62A9E6' : '#F1F1F1',
+                            }}
+                          >
+                            <TextInput
+                              className={`font-quicksand-medium text-[#4B5563] w-full h-full py-1 ${
+                                isTablet ? 'text-[24px]' : 'text-[18px]'
+                              }`}
+                              placeholder={
+                                learnerCodes.length > 1
+                                  ? `Learner code #${index + 1}`
+                                  : "Learner code (e.g. AUT-0001)"
+                              }
+                              placeholderTextColor="#9CA3AF"
+                              value={code}
+                              onChangeText={(text) => handleLearnerCodeChange(text, index)}
+                              onFocus={() => setFocusedInput(inputId)}
+                              onBlur={() => setFocusedInput(null)}
+                              autoCapitalize="characters"
+                            />
+                          </View>
+
+                          {/* Remove button if more than 1 code field */}
+                          {learnerCodes.length > 1 && (
+                            <Pressable
+                              onPress={() => handleRemoveLearnerCodeField(index)}
+                              className={`items-center justify-center rounded-xl bg-[#FFF5F5] border border-[#FFDBD4] active:scale-95 transition-transform ${
+                                isTablet ? 'w-14 h-[76px]' : 'w-12 h-[60px]'
+                              }`}
+                            >
+                              <Feather name="trash-2" size={isTablet ? 22 : 18} color="#FF8870" />
+                            </Pressable>
+                          )}
+                        </View>
+                      );
+                    })}
+
+                    {/* Add Another Child Code Button */}
+                    <Pressable
+                      onPress={handleAddLearnerCodeField}
+                      className="self-start flex-row items-center gap-1.5 bg-white border-[2px] border-[#BBE8FB] px-3.5 py-2 rounded-xl active:scale-95 transition-transform mt-0.5"
                       style={{
-                        borderColor: focusedInput === 'learnerCode' ? '#62A9E6' : '#F1F1F1',
+                        borderColor: '#BBE8FB',
+                        shadowColor: '#BBE8FB',
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 1,
+                        shadowRadius: 0,
+                        elevation: 2,
                       }}
                     >
-                      <TextInput
-                        className={`font-quicksand-medium text-[#4B5563] w-full h-full py-1 ${isTablet ? 'text-[24px]' : 'text-[18px]'
-                          }`}
-                        placeholder="Learner code"
-                        placeholderTextColor="#9CA3AF"
-                        value={learnerCode}
-                        onChangeText={(text) => setLearnerCode(text.toUpperCase())}
-                        onFocus={() => setFocusedInput('learnerCode')}
-                        onBlur={() => setFocusedInput(null)}
-                        autoCapitalize="characters"
-                      />
-                    </View>
+                      <Feather name="plus" size={15} color="#62A9E6" />
+                      <Text className="font-fredoka-one text-[#62A9E6] text-xs uppercase">
+                        + Add Another Child Code
+                      </Text>
+                    </Pressable>
+
                     <Text
-                      className={`w-full font-quicksand-medium text-[#9CA3AF] text-left px-2 mt-1.5 ${isTablet ? "text-base" : "text-xs"}`}
+                      className={`w-full font-quicksand-medium text-[#9CA3AF] text-left px-1 mt-0.5 ${
+                        isTablet ? 'text-base' : 'text-xs'
+                      }`}
                     >
-                      Ask your child's teacher for the learner code.
+                      Ask each child's teacher for their unique learner code.
                     </Text>
                   </View>
                 )}

@@ -12,7 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '@/src/lib/supabase';
 import { linkParentToLearner, logout } from '@/src/services/auth';
 import { getUserProfile } from '@/src/services/profile';
-import { getLinkedStudentForParent } from '@/src/services/students';
+import { getLinkedStudentsForParent, unlinkStudentFromParent } from '@/src/services/students';
 
 import { ParentProfileActions } from './profile-actions';
 import { ParentProfileHeader } from './profile-header';
@@ -31,10 +31,11 @@ export function ParentProfileScreen() {
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
 
-  // Parent-only learner link state
-  const [linkedStudent, setLinkedStudent] = useState<any>(null);
+  // Parent-only learner links state
+  const [linkedStudents, setLinkedStudents] = useState<any[]>([]);
   const [relinkCode, setRelinkCode] = useState('');
   const [isLinking, setIsLinking] = useState(false);
+  const [isUnlinking, setIsUnlinking] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -77,12 +78,19 @@ export function ParentProfileScreen() {
       setLastName(resolvedLastName);
       setEmail(resolvedEmail);
 
-      // Fetch linked student
+      // Fetch all linked students and sync learner codes in profiles
       try {
-        const linked = await getLinkedStudentForParent();
-        setLinkedStudent(linked);
+        const students = await getLinkedStudentsForParent();
+        setLinkedStudents(students || []);
+        if (user) {
+          const codes = (students || []).map((s: any) => s.learner_code?.trim()).filter(Boolean);
+          const joinedCodes = codes.join(', ');
+          if (joinedCodes && data?.learner_code !== joinedCodes) {
+            await supabase.from('profiles').update({ learner_code: joinedCodes }).eq('id', user.id);
+          }
+        }
       } catch {
-        setLinkedStudent(null);
+        setLinkedStudents([]);
       }
     } catch (error: any) {
       Alert.alert('Error loading profile', error.message);
@@ -138,12 +146,38 @@ export function ParentProfileScreen() {
       await linkParentToLearner(relinkCode.trim());
       Alert.alert('Success', 'Successfully linked to learner!');
       setRelinkCode('');
-      fetchProfile();
+      await fetchProfile();
     } catch (err: any) {
       Alert.alert('Linking Error', err.message || 'Failed to link learner code.');
     } finally {
       setIsLinking(false);
     }
+  };
+
+  const handleUnlinkChild = (studentId: string, studentName: string) => {
+    Alert.alert(
+      'Unlink Child',
+      `Are you sure you want to unlink ${studentName || 'this student'}? You can re-link them at any time using their learner code.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Unlink',
+          style: 'destructive',
+          onPress: async () => {
+            setIsUnlinking(true);
+            try {
+              await unlinkStudentFromParent(studentId);
+              Alert.alert('Success', `${studentName || 'Student'} unlinked successfully.`);
+              await fetchProfile();
+            } catch (err: any) {
+              Alert.alert('Error Unlinking', err.message || 'Failed to unlink student.');
+            } finally {
+              setIsUnlinking(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleChangePassword = () => {
@@ -257,11 +291,13 @@ export function ParentProfileScreen() {
             setEmail={setEmail}
             onSaveProfile={handleSaveProfile}
             onCancelEdit={handleCancelEdit}
-            linkedStudent={linkedStudent}
+            linkedStudents={linkedStudents}
             relinkCode={relinkCode}
             setRelinkCode={setRelinkCode}
             isLinking={isLinking}
             onLinkChild={handleLinkChild}
+            onUnlinkChild={handleUnlinkChild}
+            isUnlinking={isUnlinking}
             onChangePassword={handleChangePassword}
           />
         </Animated.View>
