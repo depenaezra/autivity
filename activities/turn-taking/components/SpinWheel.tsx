@@ -1,4 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, {
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import {
   View,
   Text,
@@ -16,59 +20,461 @@ interface SpinWheelProps {
   onComplete: (firstPlayer: TurnTakingPlayer) => void;
 }
 
+type ConfettiPiece = {
+  x: number;
+  size: number;
+  rotation: number;
+  color: string;
+  delay: number;
+};
+
+const CONFETTI_COLORS = [
+  '#3B82F6',
+  '#60A5FA',
+  '#93C5FD',
+  '#FBBF24',
+  '#F59E0B',
+  '#34D399',
+  '#F472B6',
+];
+
+const CONFETTI_COUNT = 36;
+
 export default function SpinWheel({
   player1,
   player2,
   onComplete,
 }: SpinWheelProps) {
-  const rotation = useRef(new Animated.Value(0)).current;
-  const [isSpinning, setIsSpinning] = useState(false);
-  const [winner, setWinner] = useState<TurnTakingPlayer | null>(null);
+  const rotation = useRef(
+    new Animated.Value(0)
+  ).current;
+
+  const idleRotation = useRef(
+    new Animated.Value(0)
+  ).current;
+
+  const idleAnimation =
+    useRef<Animated.CompositeAnimation | null>(
+      null
+    );
+
+  const [isSpinning, setIsSpinning] =
+    useState(false);
+
+  const [winner, setWinner] =
+    useState<TurnTakingPlayer | null>(null);
+
+  const [showConfetti, setShowConfetti] =
+    useState(false);
+
+  /*
+   * =====================================================
+   * CONFETTI
+   * =====================================================
+   */
+
+  const confettiAnimations = useRef(
+    Array.from(
+      { length: CONFETTI_COUNT },
+      () => ({
+        translateY: new Animated.Value(0),
+        translateX: new Animated.Value(0),
+        rotate: new Animated.Value(0),
+        opacity: new Animated.Value(0),
+      })
+    )
+  ).current;
+
+  const [confettiPieces] =
+    useState<ConfettiPiece[]>(() =>
+      Array.from(
+        {
+          length: CONFETTI_COUNT,
+        },
+        (_, index) => ({
+          x:
+            -120 +
+            Math.random() * 240,
+
+          size:
+            6 +
+            Math.random() * 7,
+
+          rotation:
+            Math.random() * 360,
+
+          color:
+            CONFETTI_COLORS[
+              index %
+                CONFETTI_COLORS.length
+            ],
+
+          delay:
+            Math.random() * 180,
+        })
+      )
+    );
+
+  /*
+   * =====================================================
+   * IDLE ROTATION
+   * =====================================================
+   */
+
+  useEffect(() => {
+    if (isSpinning || winner) {
+      return;
+    }
+
+    idleRotation.setValue(0);
+
+    idleAnimation.current =
+      Animated.loop(
+        Animated.timing(
+          idleRotation,
+          {
+            toValue: 1,
+            duration: 7000,
+            easing: Easing.linear,
+            useNativeDriver: true,
+          }
+        )
+      );
+
+    idleAnimation.current.start();
+
+    return () => {
+      idleAnimation.current?.stop();
+    };
+  }, [
+    isSpinning,
+    winner,
+    idleRotation,
+  ]);
+
+  const idleRotate =
+    idleRotation.interpolate({
+      inputRange: [0, 1],
+      outputRange: [
+        '0deg',
+        '360deg',
+      ],
+    });
+
+  /*
+   * =====================================================
+   * CONFETTI
+   * =====================================================
+   */
+
+  const releaseConfetti = () => {
+    setShowConfetti(true);
+
+    confettiAnimations.forEach(
+      (animation, index) => {
+        const piece =
+          confettiPieces[index];
+
+        animation.translateY.setValue(0);
+        animation.translateX.setValue(0);
+        animation.rotate.setValue(0);
+        animation.opacity.setValue(0);
+
+        setTimeout(() => {
+          Animated.parallel([
+            Animated.timing(
+              animation.opacity,
+              {
+                toValue: 1,
+                duration: 100,
+                useNativeDriver: true,
+              }
+            ),
+
+            Animated.timing(
+              animation.translateY,
+              {
+                toValue:
+                  170 +
+                  Math.random() * 150,
+
+                duration:
+                  1100 +
+                  Math.random() * 500,
+
+                easing:
+                  Easing.out(
+                    Easing.quad
+                  ),
+
+                useNativeDriver: true,
+              }
+            ),
+
+            Animated.timing(
+              animation.translateX,
+              {
+                toValue:
+                  (Math.random() - 0.5) *
+                  220,
+
+                duration:
+                  1100 +
+                  Math.random() * 500,
+
+                easing:
+                  Easing.out(
+                    Easing.quad
+                  ),
+
+                useNativeDriver: true,
+              }
+            ),
+
+            Animated.timing(
+              animation.rotate,
+              {
+                toValue:
+                  piece.rotation +
+                  720,
+
+                duration:
+                  1100 +
+                  Math.random() * 500,
+
+                easing:
+                  Easing.linear,
+
+                useNativeDriver: true,
+              }
+            ),
+          ]).start();
+        }, piece.delay);
+      }
+    );
+
+    setTimeout(() => {
+      setShowConfetti(false);
+    }, 2000);
+  };
+
+  /*
+   * =====================================================
+   * SPIN
+   * =====================================================
+   *
+   * IMPORTANT:
+   *
+   * WE DO NOT CHOOSE A WINNER HERE.
+   *
+   * The wheel gets a completely random stopping angle.
+   *
+   * AFTER the wheel stops, we determine which student's
+   * section is underneath the fixed pointer.
+   */
 
   const spin = () => {
-    if (isSpinning) return;
+    if (isSpinning || winner) {
+      return;
+    }
+
+    /*
+     * Stop slow idle rotation.
+     */
+    idleAnimation.current?.stop();
 
     setIsSpinning(true);
     setWinner(null);
+    setShowConfetti(false);
 
     /*
-     * Randomly choose which student will go first.
-     * The wheel visually spins several times before stopping.
+     * Reset confetti.
      */
-    const selectedPlayer =
-      Math.random() < 0.5 ? player1 : player2;
+    confettiAnimations.forEach(
+      (animation) => {
+        animation.translateY.setValue(0);
+        animation.translateX.setValue(0);
+        animation.rotate.setValue(0);
+        animation.opacity.setValue(0);
+      }
+    );
 
-    const extraSpins = 5 + Math.floor(Math.random() * 3);
+    /*
+     * =================================================
+     * COMPLETELY RANDOM LANDING POSITION
+     * =================================================
+     *
+     * 0 - 360 degrees.
+     *
+     * We are NOT choosing Student 1.
+     * We are NOT choosing Student 2.
+     *
+     * We are choosing ONLY where the wheel stops.
+     */
+
+    const randomLandingAngle =
+      Math.random() * 360;
+
+    /*
+     * Random number of complete rotations.
+     */
+
+    const extraSpins =
+      6 +
+      Math.floor(
+        Math.random() * 4
+      );
+
+    /*
+     * Final wheel rotation.
+     */
+
     const finalRotation =
       extraSpins * 360 +
-      (selectedPlayer.id === player1.id ? 0 : 180);
+      randomLandingAngle;
 
+    /*
+     * Start the actual spin from zero.
+     *
+     * This makes the mathematical position
+     * exactly match the visual position.
+     */
+
+    rotation.stopAnimation();
     rotation.setValue(0);
+
+    /*
+     * =================================================
+     * SPIN ANIMATION
+     * =================================================
+     */
 
     Animated.timing(rotation, {
       toValue: finalRotation,
-      duration: 3500,
-      easing: Easing.out(Easing.cubic),
+
+      duration:
+        4000 +
+        Math.floor(
+          Math.random() * 1000
+        ),
+
+      easing:
+        Easing.out(
+          Easing.cubic
+        ),
+
       useNativeDriver: true,
-    }).start(() => {
+
+    }).start(({ finished }) => {
+
+      if (!finished) {
+        setIsSpinning(false);
+        return;
+      }
+
+      /*
+       * =================================================
+       * THE WHEEL HAS STOPPED
+       * =================================================
+       *
+       * NOW determine who is underneath the pointer.
+       *
+       * We use ONLY the actual final wheel position.
+       */
+
+      const finalAngle =
+        randomLandingAngle;
+
+      /*
+       * Because the wheel is split vertically:
+       *
+       *              POINTER
+       *                 ↓
+       *
+       *          ┌──────┬──────┐
+       *          │  P1  │  P2  │
+       *          │ LEFT │RIGHT │
+       *          └──────┴──────┘
+       *
+       * P1 occupies the first 180 degrees.
+       * P2 occupies the second 180 degrees.
+       *
+       * 0° and 180° are the boundaries.
+       */
+
+      let actualWinner: TurnTakingPlayer;
+
+      if (
+        finalAngle >= 0 &&
+        finalAngle < 180
+      ) {
+        actualWinner = player1;
+      } else {
+        actualWinner = player2;
+      }
+
+      /*
+       * NOW the winner comes from where
+       * the wheel ACTUALLY stopped.
+       */
+
       setIsSpinning(false);
-      setWinner(selectedPlayer);
+
+      setWinner(
+        actualWinner
+      );
+
+      /*
+       * Confetti.
+       */
+
+      releaseConfetti();
+
+      /*
+       * Continue to activity using the
+       * ACTUAL wheel result.
+       */
 
       setTimeout(() => {
-        onComplete(selectedPlayer);
-      }, 1200);
+        onComplete(
+          actualWinner
+        );
+      }, 1500);
     });
   };
 
-  const rotate = rotation.interpolate({
-    inputRange: [0, 360],
-    outputRange: ['0deg', '360deg'],
-  });
+  /*
+   * =====================================================
+   * ROTATION
+   * =====================================================
+   */
+
+  const spinRotate =
+    rotation.interpolate({
+      inputRange: [
+        0,
+        360,
+      ],
+
+      outputRange: [
+        '0deg',
+        '360deg',
+      ],
+
+      extrapolate:
+        'extend',
+    });
 
   return (
     <View style={styles.container}>
+
+      {/* HEADER */}
+
       <View style={styles.header}>
-        <View style={styles.iconCircle}>
+
+        <View
+          style={styles.iconCircle}
+        >
           <Ionicons
             name="sync-outline"
             size={28}
@@ -76,134 +482,365 @@ export default function SpinWheel({
           />
         </View>
 
-        <Text style={styles.title}>Who Goes First?</Text>
-
-        <Text style={styles.subtitle}>
-          Spin the wheel to decide who will start
+        <Text style={styles.title}>
+          Who Goes First?
         </Text>
+
+        <Text
+          style={styles.subtitle}
+        >
+          Spin the wheel to decide who will
+          start
+        </Text>
+
       </View>
 
-      <View style={styles.wheelContainer}>
-        {/* Pointer */}
-        <View style={styles.pointerContainer}>
-          <View style={styles.pointer} />
+      {/* WHEEL */}
+
+      <View
+        style={styles.wheelContainer}
+      >
+
+        {/* FIXED POINTER */}
+
+        <View
+          style={
+            styles.pointerContainer
+          }
+        >
+          <View
+            style={styles.pointer}
+          />
         </View>
 
-        {/* Wheel */}
+        {/* ROTATING WHEEL */}
+
         <Animated.View
           style={[
             styles.wheel,
             {
-              transform: [{ rotate }],
+              transform: [
+                {
+                  rotate: isSpinning || winner ? spinRotate : idleRotate,
+                },
+              ],
             },
           ]}
         >
-          {/* Player 1 half */}
+
+          {/* PLAYER 1 - LEFT */}
+
           <View
             style={[
               styles.wheelHalf,
               styles.playerOneHalf,
             ]}
           >
-            <Text style={styles.playerNumber}>1</Text>
-            <Text style={styles.wheelPlayerName}>
+
+            <Text
+              style={
+                styles.playerNumber
+              }
+            >
+              1
+            </Text>
+
+            <Text
+              style={
+                styles.wheelPlayerName
+              }
+              numberOfLines={2}
+            >
               {player1.name}
             </Text>
+
           </View>
 
-          {/* Player 2 half */}
+          {/* PLAYER 2 - RIGHT */}
+
           <View
             style={[
               styles.wheelHalf,
               styles.playerTwoHalf,
             ]}
           >
-            <Text style={styles.playerNumber}>2</Text>
-            <Text style={styles.wheelPlayerName}>
+
+            <Text
+              style={
+                styles.playerNumber
+              }
+            >
+              2
+            </Text>
+
+            <Text
+              style={
+                styles.wheelPlayerName
+              }
+              numberOfLines={2}
+            >
               {player2.name}
             </Text>
+
           </View>
 
-          {/* Center circle */}
-          <View style={styles.centerCircle}>
+          {/* CENTER */}
+
+          <View
+            style={
+              styles.centerCircle
+            }
+          >
             <Ionicons
               name="shuffle"
               size={24}
               color="#FFFFFF"
             />
           </View>
+
         </Animated.View>
+
+        {/* CONFETTI */}
+
+        {showConfetti &&
+          confettiPieces.map(
+            (piece, index) => {
+
+              const animation =
+                confettiAnimations[
+                  index
+                ];
+
+              const rotateConfetti =
+                animation.rotate.interpolate(
+                  {
+                    inputRange: [
+                      0,
+                      360,
+                      720,
+                    ],
+
+                    outputRange: [
+                      '0deg',
+                      '360deg',
+                      '720deg',
+                    ],
+                  }
+                );
+
+              return (
+                <Animated.View
+                  key={index}
+                  pointerEvents="none"
+                  style={[
+                    styles.confetti,
+                    {
+                      width:
+                        piece.size,
+
+                      height:
+                        piece.size *
+                        1.5,
+
+                      backgroundColor:
+                        piece.color,
+
+                      left: '50%',
+
+                      marginLeft:
+                        piece.x,
+
+                      opacity:
+                        animation.opacity,
+
+                      transform: [
+                        {
+                          translateY:
+                            animation.translateY,
+                        },
+
+                        {
+                          translateX:
+                            animation.translateX,
+                        },
+
+                        {
+                          rotate:
+                            rotateConfetti,
+                        },
+                      ],
+                    },
+                  ]}
+                />
+              );
+            }
+          )}
+
       </View>
 
+      {/* WINNER */}
+
       {winner ? (
-        <View style={styles.winnerCard}>
+        <View
+          style={styles.winnerCard}
+        >
+
           <Ionicons
             name="trophy-outline"
             size={25}
             color="#F59E0B"
           />
 
-          <View style={styles.winnerInfo}>
-            <Text style={styles.winnerLabel}>
+          <View
+            style={styles.winnerInfo}
+          >
+
+            <Text
+              style={
+                styles.winnerLabel
+              }
+            >
               First Player
             </Text>
 
-            <Text style={styles.winnerName}>
+            <Text
+              style={
+                styles.winnerName
+              }
+            >
               {winner.name}
             </Text>
+
           </View>
+
         </View>
+
       ) : (
-        <View style={styles.playersCard}>
-          <View style={styles.playerRow}>
-            <View style={styles.smallAvatar}>
-              <Text style={styles.avatarText}>1</Text>
+
+        <View
+          style={styles.playersCard}
+        >
+
+          <View
+            style={styles.playerRow}
+          >
+
+            <View
+              style={
+                styles.smallAvatar
+              }
+            >
+              <Text
+                style={
+                  styles.avatarText
+                }
+              >
+                1
+              </Text>
             </View>
 
-            <Text style={styles.playerName}>
+            <Text
+              style={
+                styles.playerName
+              }
+              numberOfLines={1}
+            >
               {player1.name}
             </Text>
+
           </View>
 
-          <View style={styles.vsContainer}>
-            <Text style={styles.vsText}>VS</Text>
-          </View>
-
-          <View style={styles.playerRow}>
-            <View style={styles.smallAvatar}>
-              <Text style={styles.avatarText}>2</Text>
-            </View>
-
-            <Text style={styles.playerName}>
-              {player2.name}
+          <View
+            style={
+              styles.vsContainer
+            }
+          >
+            <Text
+              style={styles.vsText}
+            >
+              VS
             </Text>
           </View>
+
+          <View
+            style={styles.playerRow}
+          >
+
+            <View
+              style={
+                styles.smallAvatar
+              }
+            >
+              <Text
+                style={
+                  styles.avatarText
+                }
+              >
+                2
+              </Text>
+            </View>
+
+            <Text
+              style={
+                styles.playerName
+              }
+              numberOfLines={1}
+            >
+              {player2.name}
+            </Text>
+
+          </View>
+
         </View>
+
       )}
+
+      {/* SPIN BUTTON */}
 
       <TouchableOpacity
         activeOpacity={0.8}
-        disabled={isSpinning || !!winner}
+        disabled={
+          isSpinning ||
+          !!winner
+        }
         onPress={spin}
         style={[
           styles.spinButton,
-          (isSpinning || !!winner) && styles.disabledButton,
+          (isSpinning ||
+            !!winner) &&
+            styles.disabledButton,
         ]}
       >
+
         <Ionicons
-          name={isSpinning ? 'sync' : 'refresh-outline'}
+          name={
+            isSpinning
+              ? 'sync'
+              : 'refresh-outline'
+          }
           size={21}
           color="#FFFFFF"
         />
 
-        <Text style={styles.spinButtonText}>
-          {isSpinning ? 'Spinning...' : 'Spin the Wheel'}
+        <Text
+          style={
+            styles.spinButtonText
+          }
+        >
+          {isSpinning
+            ? 'Spinning...'
+            : 'Spin the Wheel'}
         </Text>
+
       </TouchableOpacity>
 
-      <Text style={styles.helperText}>
-        The wheel randomly decides who takes the first turn.
+      <Text
+        style={styles.helperText}
+      >
+        The wheel slowly rotates until you
+        spin.
       </Text>
+
     </View>
   );
 }
@@ -256,7 +893,7 @@ const styles = StyleSheet.create({
   pointerContainer: {
     position: 'absolute',
     top: -2,
-    zIndex: 10,
+    zIndex: 20,
     alignItems: 'center',
   },
 
@@ -266,9 +903,12 @@ const styles = StyleSheet.create({
     borderLeftWidth: 13,
     borderRightWidth: 13,
     borderTopWidth: 25,
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-    borderTopColor: '#0F172A',
+    borderLeftColor:
+      'transparent',
+    borderRightColor:
+      'transparent',
+    borderTopColor:
+      '#0F172A',
   },
 
   wheel: {
@@ -280,10 +920,12 @@ const styles = StyleSheet.create({
     borderColor: '#FFFFFF',
     backgroundColor: '#DBEAFE',
     elevation: 6,
+
     shadowOffset: {
       width: 0,
       height: 4,
     },
+
     shadowOpacity: 0.15,
     shadowRadius: 8,
   },
@@ -301,14 +943,16 @@ const styles = StyleSheet.create({
     left: 0,
     backgroundColor: '#93C5FD',
     borderRightWidth: 1,
-    borderRightColor: '#FFFFFF',
+    borderRightColor:
+      '#FFFFFF',
   },
 
   playerTwoHalf: {
     right: 0,
     backgroundColor: '#BFDBFE',
     borderLeftWidth: 1,
-    borderLeftColor: '#FFFFFF',
+    borderLeftColor:
+      '#FFFFFF',
   },
 
   playerNumber: {
@@ -324,6 +968,7 @@ const styles = StyleSheet.create({
     color: '#1E293B',
     textAlign: 'center',
     paddingHorizontal: 5,
+    maxWidth: 105,
   },
 
   centerCircle: {
@@ -340,6 +985,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 4,
     borderColor: '#FFFFFF',
+  },
+
+  confetti: {
+    position: 'absolute',
+    top: '50%',
+    borderRadius: 2,
+    zIndex: 30,
   },
 
   playersCard: {
@@ -382,6 +1034,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#334155',
     textAlign: 'center',
+    maxWidth: 110,
   },
 
   vsContainer: {

@@ -3,80 +3,64 @@ import { TurnTakingLevel } from '../types';
 export const TURN_TAKING_LEVELS: TurnTakingLevel[] = [
   {
     id: 1,
-    name: 'Easy Path',
+    name: 'Straight Line',
     difficulty: 1,
     pathPoints: [
-      { x: 50, y: 90 },
-      { x: 80, y: 130 },
-      { x: 110, y: 170 },
-      { x: 140, y: 210 },
-      { x: 170, y: 250 },
-      { x: 200, y: 290 },
-      { x: 230, y: 330 },
-      { x: 260, y: 370 },
+      { x: 165, y: 65 },
+      { x: 165, y: 105 },
+      { x: 165, y: 145 },
+      { x: 165, y: 185 },
+      { x: 165, y: 225 },
+      { x: 165, y: 265 },
+      { x: 165, y: 305 },
+      { x: 165, y: 345 },
+      { x: 165, y: 385 },
+      { x: 165, y: 425 },
     ],
   },
 
   {
     id: 2,
-    name: 'Wavy Path',
+    name: 'Smooth Curve',
     difficulty: 2,
     pathPoints: [
-      { x: 50, y: 90 },
-      { x: 100, y: 120 },
-      { x: 150, y: 100 },
-      { x: 200, y: 140 },
-      { x: 250, y: 120 },
-      { x: 300, y: 180 },
-      { x: 260, y: 230 },
-      { x: 210, y: 270 },
-      { x: 260, y: 320 },
-      { x: 310, y: 370 },
+      { x: 165, y: 65 },
+      { x: 125, y: 90 },
+      { x: 105, y: 130 },
+      { x: 105, y: 175 },
+      { x: 125, y: 215 },
+      { x: 165, y: 250 },
+      { x: 205, y: 285 },
+      { x: 225, y: 325 },
+      { x: 225, y: 365 },
+      { x: 205, y: 405 },
+      { x: 165, y: 435 },
     ],
   },
 
   {
     id: 3,
-    name: 'Curvy Path',
+    name: 'Zigzag',
     difficulty: 3,
     pathPoints: [
-      { x: 50, y: 90 },
-      { x: 100, y: 140 },
-      { x: 160, y: 110 },
-      { x: 210, y: 170 },
-      { x: 150, y: 220 },
-      { x: 90, y: 250 },
-      { x: 140, y: 300 },
-      { x: 220, y: 280 },
-      { x: 280, y: 330 },
-      { x: 330, y: 370 },
-    ],
-  },
-
-  {
-    id: 4,
-    name: 'Challenging Path',
-    difficulty: 4,
-    pathPoints: [
-      { x: 50, y: 90 },
-      { x: 120, y: 130 },
-      { x: 190, y: 100 },
-      { x: 250, y: 150 },
-      { x: 190, y: 200 },
-      { x: 110, y: 180 },
-      { x: 70, y: 240 },
-      { x: 140, y: 280 },
-      { x: 230, y: 250 },
-      { x: 300, y: 300 },
-      { x: 250, y: 340 },
-      { x: 320, y: 380 },
+      { x: 165, y: 65 },
+      { x: 105, y: 125 },
+      { x: 225, y: 185 },
+      { x: 105, y: 245 },
+      { x: 225, y: 305 },
+      { x: 105, y: 365 },
+      { x: 165, y: 435 },
     ],
   },
 ];
 
-export const getLevel = (levelNumber: number): TurnTakingLevel => {
+export const getLevel = (
+  levelNumber: number
+): TurnTakingLevel => {
   return (
-    TURN_TAKING_LEVELS.find((level) => level.id === levelNumber) ||
-    TURN_TAKING_LEVELS[TURN_TAKING_LEVELS.length - 1]
+    TURN_TAKING_LEVELS.find(
+      (level) => level.id === levelNumber
+    ) ||
+    TURN_TAKING_LEVELS[0]
   );
 };

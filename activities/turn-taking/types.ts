@@ -1,6 +1,8 @@
 export type TurnTakingPlayer = {
   id: string;
   name: string;
+  avatar?: string;
+  difficulty?: number;
 };
 
 export type TurnTakingLevel = {
@@ -19,6 +21,8 @@ export type TurnTakingResult = {
   level: number;
   completed: boolean;
   timeSeconds: number;
+  mistakes?: number;
+  obstacleCount?: number;
 };
 
 export type TurnTakingGameState =

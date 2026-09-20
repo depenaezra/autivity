@@ -10,43 +10,56 @@ import { Ionicons } from '@expo/vector-icons';
 import { TurnTakingPlayer } from '../types';
 
 interface StudentSelectorProps {
+  assignedStudent: TurnTakingPlayer;
   students: TurnTakingPlayer[];
-  onStart: (player1: TurnTakingPlayer, player2: TurnTakingPlayer) => void;
+  isLoading?: boolean;
+  onStart: (
+    player1: TurnTakingPlayer,
+    player2: TurnTakingPlayer
+  ) => void;
 }
 
 export default function StudentSelector({
+  assignedStudent,
   students,
+  isLoading = false,
   onStart,
 }: StudentSelectorProps) {
-  const [selectedStudents, setSelectedStudents] = useState<
-    TurnTakingPlayer[]
-  >([]);
+  const [selectedOpponent, setSelectedOpponent] =
+    useState<TurnTakingPlayer | null>(null);
 
-  const handleSelectStudent = (student: TurnTakingPlayer) => {
-    const alreadySelected = selectedStudents.some(
-      (item) => item.id === student.id
-    );
+  const otherStudents = students.filter(
+    (student) =>
+      String(student.id) !==
+      String(assignedStudent.id)
+  );
 
-    if (alreadySelected) {
-      setSelectedStudents((current) =>
-        current.filter((item) => item.id !== student.id)
-      );
+  const handleSelectOpponent = (
+    student: TurnTakingPlayer
+  ) => {
+    if (
+      String(student.id) ===
+      String(assignedStudent.id)
+    ) {
       return;
     }
 
-    if (selectedStudents.length < 2) {
-      setSelectedStudents((current) => [...current, student]);
-    }
+    setSelectedOpponent(student);
   };
 
   const handleStart = () => {
-    if (selectedStudents.length === 2) {
-      onStart(selectedStudents[0], selectedStudents[1]);
+    if (selectedOpponent) {
+      onStart(
+        assignedStudent,
+        selectedOpponent
+      );
     }
   };
 
   return (
     <View style={styles.container}>
+      {/* HEADER */}
+
       <View style={styles.header}>
         <View style={styles.iconCircle}>
           <Ionicons
@@ -56,12 +69,50 @@ export default function StudentSelector({
           />
         </View>
 
-        <Text style={styles.title}>Social & Turn-Taking</Text>
+        <Text style={styles.title}>
+          Social & Turn-Taking
+        </Text>
 
         <Text style={styles.subtitle}>
-          Select two students to play together
+          Choose a classmate to play against
         </Text>
       </View>
+
+      {/* PLAYER 1 */}
+
+      <Text style={styles.sectionTitle}>
+        Player 1
+      </Text>
+
+      <View style={styles.assignedCard}>
+        <View style={styles.assignedAvatar}>
+          <Text style={styles.assignedAvatarText}>
+            {assignedStudent.name
+              .charAt(0)
+              .toUpperCase()}
+          </Text>
+        </View>
+
+        <View style={styles.studentInfo}>
+          <Text style={styles.assignedName}>
+            {assignedStudent.name}
+          </Text>
+
+          <Text style={styles.assignedLabel}>
+            Assigned student
+          </Text>
+        </View>
+
+        <View style={styles.lockCircle}>
+          <Ionicons
+            name="lock-closed"
+            size={17}
+            color="#FFFFFF"
+          />
+        </View>
+      </View>
+
+      {/* INSTRUCTION */}
 
       <View style={styles.instructionCard}>
         <Ionicons
@@ -71,21 +122,31 @@ export default function StudentSelector({
         />
 
         <Text style={styles.instructionText}>
-          Choose exactly two students. They will take turns completing the
-          activity.
+          Player 1 is already assigned. Select one
+          classmate as Player 2.
         </Text>
       </View>
 
+      {/* PLAYER 2 */}
+
       <Text style={styles.sectionTitle}>
-        Select Students ({selectedStudents.length}/2)
+        Choose Player 2
       </Text>
 
       <ScrollView
         style={styles.studentList}
-        contentContainerStyle={styles.studentListContent}
+        contentContainerStyle={
+          styles.studentListContent
+        }
         showsVerticalScrollIndicator={false}
       >
-        {students.length === 0 ? (
+        {isLoading ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyTitle}>
+              Loading class students...
+            </Text>
+          </View>
+        ) : otherStudents.length === 0 ? (
           <View style={styles.emptyState}>
             <Ionicons
               name="people-outline"
@@ -94,47 +155,50 @@ export default function StudentSelector({
             />
 
             <Text style={styles.emptyTitle}>
-              No students available
+              No classmate available
             </Text>
 
             <Text style={styles.emptyText}>
-              Add students to the class before starting this activity.
+              Another student from the same class
+              is needed for this activity.
             </Text>
           </View>
         ) : (
-          students.map((student, index) => {
-            const isSelected = selectedStudents.some(
-              (item) => item.id === student.id
-            );
-
-            const selectionNumber =
-              selectedStudents.findIndex(
-                (item) => item.id === student.id
-              ) + 1;
+          otherStudents.map((student) => {
+            const isSelected =
+              selectedOpponent?.id ===
+              student.id;
 
             return (
               <TouchableOpacity
                 key={student.id}
                 activeOpacity={0.8}
-                onPress={() => handleSelectStudent(student)}
+                onPress={() =>
+                  handleSelectOpponent(student)
+                }
                 style={[
                   styles.studentCard,
-                  isSelected && styles.selectedStudentCard,
+                  isSelected &&
+                    styles.selectedStudentCard,
                 ]}
               >
                 <View
                   style={[
                     styles.avatar,
-                    isSelected && styles.selectedAvatar,
+                    isSelected &&
+                      styles.selectedAvatar,
                   ]}
                 >
                   <Text
                     style={[
                       styles.avatarText,
-                      isSelected && styles.selectedAvatarText,
+                      isSelected &&
+                        styles.selectedAvatarText,
                     ]}
                   >
-                    {student.name.charAt(0).toUpperCase()}
+                    {student.name
+                      .charAt(0)
+                      .toUpperCase()}
                   </Text>
                 </View>
 
@@ -145,7 +209,7 @@ export default function StudentSelector({
 
                   <Text style={styles.studentLabel}>
                     {isSelected
-                      ? `Player ${selectionNumber}`
+                      ? 'Player 2'
                       : 'Tap to select'}
                   </Text>
                 </View>
@@ -153,13 +217,16 @@ export default function StudentSelector({
                 <View
                   style={[
                     styles.checkCircle,
-                    isSelected && styles.checkedCircle,
+                    isSelected &&
+                      styles.checkedCircle,
                   ]}
                 >
                   {isSelected ? (
-                    <Text style={styles.checkNumber}>
-                      {selectionNumber}
-                    </Text>
+                    <Ionicons
+                      name="checkmark"
+                      size={22}
+                      color="#FFFFFF"
+                    />
                   ) : (
                     <Ionicons
                       name="add-outline"
@@ -174,20 +241,27 @@ export default function StudentSelector({
         )}
       </ScrollView>
 
+      {/* BOTTOM */}
+
       <View style={styles.bottomContainer}>
         <Text style={styles.selectedText}>
-          {selectedStudents.length === 2
-            ? `${selectedStudents[0].name} and ${selectedStudents[1].name} are ready!`
-            : 'Select two students to continue'}
+          {selectedOpponent
+            ? `${assignedStudent.name} will play against ${selectedOpponent.name}`
+            : 'Select one classmate to continue'}
         </Text>
 
         <TouchableOpacity
           activeOpacity={0.8}
-          disabled={selectedStudents.length !== 2}
+          disabled={
+            !selectedOpponent ||
+            isLoading
+          }
           onPress={handleStart}
           style={[
             styles.startButton,
-            selectedStudents.length !== 2 && styles.disabledButton,
+            (!selectedOpponent ||
+              isLoading) &&
+              styles.disabledButton,
           ]}
         >
           <Text style={styles.startButtonText}>
@@ -214,7 +288,7 @@ const styles = StyleSheet.create({
 
   header: {
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 18,
   },
 
   iconCircle: {
@@ -241,13 +315,68 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
+  sectionTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 10,
+  },
+
+  assignedCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EAF5FD',
+    borderWidth: 2,
+    borderColor: '#93C5FD',
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 14,
+  },
+
+  assignedAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#3B82F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+
+  assignedAvatarText: {
+    fontSize: 19,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+
+  assignedName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+
+  assignedLabel: {
+    fontSize: 13,
+    color: '#3B82F6',
+    marginTop: 3,
+  },
+
+  lockCircle: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#3B82F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
   instructionCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#EFF6FF',
     borderRadius: 14,
     padding: 14,
-    marginBottom: 20,
+    marginBottom: 18,
     gap: 10,
   },
 
@@ -256,13 +385,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     color: '#334155',
-  },
-
-  sectionTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#0F172A',
-    marginBottom: 10,
   },
 
   studentList: {
@@ -344,16 +466,10 @@ const styles = StyleSheet.create({
     borderColor: '#3B82F6',
   },
 
-  checkNumber: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 50,
+    paddingVertical: 40,
   },
 
   emptyTitle: {

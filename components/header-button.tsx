@@ -3,6 +3,7 @@ import { Pressable } from 'react-native';
 
 interface HeaderButtonProps {
   onPress: () => void;
+  onLongPress?: () => void;
   icon: React.ReactNode;
   borderColor?: string;
   shadowColor?: string;
@@ -11,6 +12,7 @@ interface HeaderButtonProps {
 
 export function HeaderButton({
   onPress,
+  onLongPress,
   icon,
   borderColor = '#BBE8FB',
   shadowColor = '#BBE8FB',
@@ -19,6 +21,8 @@ export function HeaderButton({
   return (
     <Pressable
       onPress={onPress}
+      onLongPress={onLongPress}
+      delayLongPress={1500}
       disabled={disabled}
       className="w-[44px] h-[44px] rounded-xl bg-white border-[2px] items-center justify-center active:scale-95 transition-transform"
       style={{
