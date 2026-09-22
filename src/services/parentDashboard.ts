@@ -13,6 +13,8 @@ export interface ParentSessionRecord {
     status: 'pending' | 'validated';
     teacherFeedback: string;
     validatedAt: string | null;
+    is_timed_out?: boolean;
+    completed_count?: number;
     rubricEvaluation?: {
         looking_at_objects?: number;
         concentrating?: number;
@@ -168,6 +170,8 @@ export const getParentDashboardData = async (selectedStudentId?: string): Promis
         status: s.status as 'pending' | 'validated',
         teacherFeedback: s.teacher_feedback || '',
         validatedAt: s.validated_at || null,
+        is_timed_out: s.is_timed_out ?? false,
+        completed_count: s.completed_count ?? 3,
         rubricEvaluation: s.rubric_evaluation || null,
     }));
 

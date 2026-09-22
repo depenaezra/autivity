@@ -8,12 +8,24 @@ import { speakElevenLabs, stopElevenLabsSpeech } from '@/src/services/elevenlabs
 export const cleanTextForSpeech = (text: string): string => {
     if (!text) return '';
     return text
-        // Remove all common emojis, symbols, and pictographs (e.g. ⭐, 💡, 🎉, etc.)
+        // Remove all common emojis, symbols, and pictographs (e.g. ⭐, 💡, 🎉, ⏰, ⏳, etc.)
         .replace(/[\p{Extended_Pictographic}\u{1F300}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{2B50}]/gu, '')
         // Clean double spaces
         .replace(/\s+/g, ' ')
         .trim();
 };
+
+export const TIME_ALMOST_UP_MESSAGES = [
+    "Hurry, time is almost up! You've got this! ⏰",
+    "Almost out of time! Keep going, you can do it! ⏳",
+    "Just a little time left! Keep it up! ⏰",
+    "Only a minute left! Finish strong! 🌟",
+];
+
+export const TIME_UP_MESSAGES = [
+    "Time is up! Great effort today! 🎉",
+    "Time's up! Wonderful job trying your best! 🌟",
+];
 
 let cachedBestVoice: string | undefined = undefined;
 

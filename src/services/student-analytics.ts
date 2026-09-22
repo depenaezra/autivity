@@ -680,6 +680,8 @@ export interface SessionRecord {
   teacher_feedback?: string;
   validated_at?: string;
   hints_used?: number;
+  is_timed_out?: boolean;
+  completed_count?: number;
 }
 
 const normalizeDepEdScore = (rawScore: any): number => {
@@ -793,6 +795,8 @@ export const getStudentSessions = async (
       teacher_feedback: s.teacher_feedback || '',
       validated_at: s.validated_at || null,
       hints_used: s.hints_used ?? 0,
+      is_timed_out: s.is_timed_out ?? false,
+      completed_count: s.completed_count ?? 3,
     };
   });
 };

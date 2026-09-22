@@ -379,6 +379,24 @@ export default function Sessions({
                           {session.activityType === 'classroom' ? 'CLASSROOM' : 'APP'}
                         </Text>
                       </View>
+
+                      {/* Timed Out Badge */}
+                      {session.is_timed_out && (
+                        <View
+                          className="px-2 py-0.5 rounded-[6px] border flex-row items-center gap-1 bg-[#FFF7ED] border-[#FFDBD4]"
+                        >
+                          <Feather
+                            name="clock"
+                            size={isTablet ? 11 : 9}
+                            color="#EA580C"
+                          />
+                          <Text
+                            className={`font-fredoka-one uppercase ${isTablet ? 'text-xs' : 'text-[9px]'} text-[#EA580C]`}
+                          >
+                            TIMED OUT ({session.completed_count || 1}/3)
+                          </Text>
+                        </View>
+                      )}
                     </View>
 
                     {/* Optically-aligned Date & Duration Row */}

@@ -13,6 +13,8 @@ interface SessionPayload {
     duration_seconds: number;
     mistakes?: number;
     hints_used?: number;
+    is_timed_out?: boolean;
+    completed_count?: number;
 }
 
 export const saveStudentSession = async (sessionData: SessionPayload) => {

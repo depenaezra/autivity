@@ -126,7 +126,7 @@ import { createNotification } from '@/src/services/notifications';
 import { getStudentHistoricalBaseline } from '@/src/services/sessions';
 import { formatActivityTitle } from '@/src/utils/format';
 import { playCorrectSound, setGlobalSfxEnabled, startBackgroundMusic, stopBackgroundMusic } from '@/src/utils/sound';
-import { stopSpeech } from '@/src/utils/speech';
+import { stopSpeech, TIME_ALMOST_UP_MESSAGES, TIME_UP_MESSAGES } from '@/src/utils/speech';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -253,6 +253,10 @@ export default function SetManager({
     const [playedActivityPaths, setPlayedActivityPaths] = useState<string[]>([]);
     const [hintSignal, setHintSignal] = useState(0);
 
+    // Time warning notification refs
+    const hasWarnedAlmostUpRef = useRef(false);
+    const hasWarnedTimeUpRef = useRef(false);
+
     // Microanimation for smooth progress bar fill (500ms easing slide)
     const progressAnim = useSharedValue(0);
 
@@ -378,6 +382,8 @@ export default function SetManager({
                 setSavedSetSessionId(null);
                 setTotalMistakesAccumulator(0);
                 setTotalScoreAccumulator(0);
+                hasWarnedAlmostUpRef.current = false;
+                hasWarnedTimeUpRef.current = false;
                 setIsInitializing(false);
                 isSavingRef.current = false;
                 setIsSaving(false);
@@ -420,6 +426,7 @@ export default function SetManager({
 
         return () => clearInterval(interval);
     }, [isSetComplete, completedCount]);
+
 
     // Sync bear instruction message when currentActivity swaps
     useEffect(() => {
@@ -466,6 +473,290 @@ export default function SetManager({
         setBearMessage(SUCCESS_MESSAGES[Math.floor(Math.random() * SUCCESS_MESSAGES.length)]);
         setIsActivityDone(true);
         setSuccessMode(true);
+    };
+
+    // TASK: Unified Database Payload Insertion & Completion Logic
+    const persistSession = async (options?: { isTimeout?: boolean }) => {
+        if (isSavingRef.current || isSetComplete) return;
+        isSavingRef.current = true;
+        setIsSaving(true);
+
+        const isTimeout = options?.isTimeout ?? false;
+        const currentCompletedCount = isTimeout ? completedCount : 3;
+        const finalMistakes = totalMistakesAccumulator + (isTimeout && completedMetrics ? completedMetrics.mistakes : 0);
+        const finalHints = Math.max(totalHintsAccumulator + (completedMetrics?.hintsUsed || 0), hintSignal);
+        const finalScore = 15; // Always give 15 stars each session, no matter their performance
+        const totalDuration = isTimeout ? 900 : Math.max(1, 900 - globalTimer); // unified elapsed global session time
+        const allPaths = playedActivityPaths.length > 0 ? playedActivityPaths : (currentActivity?.path ? [currentActivity.path] : []);
+
+        try {
+            const payload: any = {
+                student_id: studentId,
+                class_id: classId,
+                teacher_id: teacherId,
+                activity_path: allPaths,
+                category: currentActivity?.category || 'Activity',
+                sub_category: currentActivity?.sub_category || initialPool[0]?.sub_category || null,
+                skill_domain: currentActivity?.skill_domain || ['Fine Motor Skills'],
+                stars: finalScore,
+                duration_seconds: totalDuration, // Final duration
+                status: 'pending', // Hardcoded status string
+                mistakes: finalMistakes, // Combined sum of all hidden mistakes
+                hints_used: finalHints, // Total manual hints used
+                activity_id: currentActivity?.id, // Fallback points to final activity UUID
+                is_timed_out: isTimeout,
+                completed_count: currentCompletedCount,
+            };
+
+            let insertedSessionId: string | undefined = undefined;
+
+            const { data, error } = await supabase
+                .from('student_sessions')
+                .insert([payload])
+                .select();
+
+            if (error) {
+                console.warn("[DATABASE] Supabase insert failed, trying fallback payload:", error.message);
+                const { activity_id, sub_category, is_timed_out, completed_count, ...fallbackPayload } = payload;
+                const { data: fbData, error: fbErr } = await supabase
+                    .from('student_sessions')
+                    .insert([fallbackPayload])
+                    .select();
+
+                if (fbErr) {
+                    console.error("[DATABASE] Fallback student_sessions insertion failed:", fbErr.message);
+                } else if (fbData && fbData.length > 0) {
+                    console.log("[DATABASE] Fallback session insertion succeeded:", fbData[0]);
+                    insertedSessionId = fbData[0].id;
+                    setSavedSetSessionId(fbData[0].id);
+                }
+            } else if (data && data.length > 0) {
+                console.log("[DATABASE] Session insertion succeeded:", data[0]);
+                insertedSessionId = data[0].id;
+                setSavedSetSessionId(data[0].id);
+            }
+
+            if (studentId) {
+                try {
+                    const accuracy = Math.max(0, Math.round(((15 - finalMistakes) / 15) * 100));
+                    const categoryName = currentActivity?.category || 'Activity';
+
+                    const { data: student } = await supabase
+                        .from('students')
+                        .select('name, parent_id')
+                        .eq('id', studentId)
+                        .maybeSingle();
+
+                    const studentName = student?.name || 'Learner';
+                    const sessionId = insertedSessionId;
+
+                    // 1. Notify Parent: Activity Completed
+                    await createNotification({
+                        studentId,
+                        userId: student?.parent_id || undefined,
+                        title: 'New Activity Completed',
+                        message: `${studentName} completed ${categoryName} activity set with ${accuracy}% accuracy!`,
+                        type: 'activity',
+                        metadata: {
+                            session_id: sessionId,
+                            category: categoryName,
+                            accuracy,
+                            mistakes: finalMistakes,
+                            duration_seconds: totalDuration,
+                            is_timed_out: isTimeout,
+                            completed_count: currentCompletedCount,
+                        },
+                    });
+
+                    // 2. Notify Teacher: New Session to Evaluate
+                    await createNotification({
+                        studentId,
+                        targetRole: 'teacher',
+                        title: 'New Session to Evaluate',
+                        message: `${studentName} completed ${categoryName} activity (${accuracy}% accuracy). Ready for evaluation.`,
+                        type: 'feedback',
+                        metadata: {
+                            session_id: sessionId,
+                            student_id: studentId,
+                            category: categoryName,
+                            accuracy,
+                            mistakes: finalMistakes,
+                            duration_seconds: totalDuration,
+                            is_timed_out: isTimeout,
+                            completed_count: currentCompletedCount,
+                        },
+                    });
+
+                    // 3. Notify Teacher: Student Struggle Alert (if low accuracy or high mistakes)
+                    if (accuracy < 60 || finalMistakes >= 5) {
+                        await createNotification({
+                            studentId,
+                            targetRole: 'teacher',
+                            title: 'Performance Alert ⚠️',
+                            message: `${studentName} had high mistakes (${finalMistakes}) in ${categoryName} (${accuracy}% accuracy). Review activity analytics.`,
+                            type: 'alert',
+                            metadata: {
+                                session_id: sessionId,
+                                student_id: studentId,
+                                category: categoryName,
+                                accuracy,
+                                mistakes: finalMistakes,
+                                is_timed_out: isTimeout,
+                                completed_count: currentCompletedCount,
+                            },
+                        });
+                    }
+                } catch (notifErr) {
+                    console.error('[NOTIFICATIONS] Error sending activity notification:', notifErr);
+                }
+            }
+        } catch (e) {
+            console.error("[DATABASE] Error inserting student session:", e);
+        }
+
+        // Evaluate achievements after session insertion
+        if (studentId) {
+            try {
+                const achievementResult = await processActivityCompletion(studentId, finalScore);
+                if (
+                    achievementResult &&
+                    achievementResult.success &&
+                    achievementResult.newlyUnlocked &&
+                    achievementResult.newlyUnlocked.length > 0
+                ) {
+                    const unlockedIds = achievementResult.newlyUnlocked;
+                    const { data: dbBadges } = await supabase
+                        .from('achievements')
+                        .select('*')
+                        .in('id', unlockedIds);
+
+                    const fetchedMap = new Map(dbBadges?.map((b) => [b.id, b]) || []);
+
+                    const DEFAULT_BADGES: Record<string, any> = {
+                        first_adventure: {
+                            id: 'first_adventure',
+                            title: 'First Adventure',
+                            description: 'Completed your very first activity!',
+                            icon: 'compass',
+                            color: '#3B82F6',
+                            bg_color: '#EFF6FF',
+                            border_color: '#93C5FD',
+                        },
+                        triple_threat: {
+                            id: 'triple_threat',
+                            title: 'Triple Threat',
+                            description: 'Completed 3 activities in total!',
+                            icon: 'trophy',
+                            color: '#EAB308',
+                            bg_color: '#FEF9C3',
+                            border_color: '#FDE047',
+                        },
+                        speedy_explorer: {
+                            id: 'speedy_explorer',
+                            title: 'Speedy Explorer',
+                            description: 'Finished an activity in under 15 seconds!',
+                            icon: 'flash',
+                            color: '#EC4899',
+                            bg_color: '#FCE7F3',
+                            border_color: '#FBCFE8',
+                        },
+                        daily_hero: {
+                            id: 'daily_hero',
+                            title: 'Daily Hero',
+                            description: 'Completed activities 3 days in a row!',
+                            icon: 'star',
+                            color: '#10B981',
+                            bg_color: '#ECFDF5',
+                            border_color: '#A7F3D0',
+                        },
+                        shape_specialist: {
+                            id: 'shape_specialist',
+                            title: 'Shape Specialist',
+                            description: 'Mastered tracing all 4 basic geometric shapes!',
+                            icon: 'shapes',
+                            color: '#8B5CF6',
+                            bg_color: '#F5F3FF',
+                            border_color: '#DDD6FE',
+                        },
+                        alphabet_adventurer: {
+                            id: 'alphabet_adventurer',
+                            title: 'Alphabet Adventurer',
+                            description: 'Successfully traced 10 letters of the alphabet!',
+                            icon: 'text',
+                            color: '#3B82F6',
+                            bg_color: '#EFF6FF',
+                            border_color: '#93C5FD',
+                        },
+                        tracing_trailblazer: {
+                            id: 'tracing_trailblazer',
+                            title: 'Tracing Trailblazer',
+                            description: 'Completed 5 fine-motor tracing sessions!',
+                            icon: 'brush',
+                            color: '#EC4899',
+                            bg_color: '#FDF2F8',
+                            border_color: '#FBCFE8',
+                        },
+                        puzzle_prodigy: {
+                            id: 'puzzle_prodigy',
+                            title: 'Puzzle Prodigy',
+                            description: 'Solved 5 cognitive matching and logic puzzles!',
+                            icon: 'extension-puzzle',
+                            color: '#F59E0B',
+                            bg_color: '#FFFBEB',
+                            border_color: '#FDE68A',
+                        },
+                        bubble_champion: {
+                            id: 'bubble_champion',
+                            title: 'Bubble Champion',
+                            description: 'Popped your way through 5 visual-motor bubble activities!',
+                            icon: 'disc',
+                            color: '#06B6D4',
+                            bg_color: '#ECFEFF',
+                            border_color: '#A5F3FC',
+                        },
+                    };
+
+                    const formattedBadges: UnlockedBadge[] = unlockedIds.map((id) => {
+                        const dbBadge = fetchedMap.get(id);
+                        const fallback = DEFAULT_BADGES[id] || {
+                            id,
+                            title: 'New Achievement',
+                            description: 'Great job completing your activity!',
+                            icon: 'star',
+                            color: '#FACC15',
+                            bg_color: '#FEF9C3',
+                            border_color: '#FDE047',
+                        };
+                        return {
+                            id,
+                            title: dbBadge?.title || fallback.title,
+                            description: dbBadge?.description || fallback.description,
+                            icon: dbBadge?.icon || fallback.icon,
+                            color: dbBadge?.color || fallback.color,
+                            bgColor: dbBadge?.bg_color || fallback.bg_color,
+                            borderColor: dbBadge?.border_color || fallback.border_color,
+                        };
+                    });
+
+                    setUnlockedBadges(formattedBadges);
+                }
+            } catch (err) {
+                console.error('[SET_MANAGER] Error processing achievements:', err);
+            }
+        }
+
+        if (isTimeout) {
+            setIsSetComplete(true);
+            const randomMsg = TIME_UP_MESSAGES[Math.floor(Math.random() * TIME_UP_MESSAGES.length)];
+            setBearMessage(randomMsg);
+            setIsSaving(false);
+        } else {
+            // Increment to 3, freeze global timer, and display visual confetti praise card
+            setCompletedCount(3);
+            setIsSetComplete(true);
+            setBearMessage("Incredible job! You finished all 3 activities! 🎉");
+            setIsSaving(false);
+        }
     };
 
     // CHECK / Next Activity double-click transition logic
@@ -564,228 +855,31 @@ export default function SetManager({
                     console.warn("[SET_MANAGER] No more unplayed activities left in pool.");
                 }
             } else if (completedCount === 2) {
-                if (isSavingRef.current) return;
-                isSavingRef.current = true;
-                setIsSaving(true);
-
-                // TASK: Unified Database Payload Insertion on completedCount === 2 (finished 3rd activity)
-                const finalMistakes = totalMistakesAccumulator;
-                const finalHints = Math.max(totalHintsAccumulator + (completedMetrics?.hintsUsed || 0), hintSignal);
-                const finalScore = 15; // Always give 15 stars each session, no matter their performance
-                const totalDuration = 900 - globalTimer; // unified elapsed global session time
-                const allPaths = playedActivityPaths;
-
-                try {
-                    const payload: any = {
-                        student_id: studentId,
-                        class_id: classId,
-                        teacher_id: teacherId,
-                        activity_path: allPaths,
-                        category: currentActivity.category || 'Activity',
-                        sub_category: currentActivity.sub_category || initialPool[0]?.sub_category || null,
-                        skill_domain: currentActivity.skill_domain || ['Fine Motor Skills'],
-                        stars: finalScore,
-                        duration_seconds: totalDuration, // Final duration
-                        status: 'pending', // Hardcoded status string
-                        mistakes: finalMistakes, // Combined sum of all hidden mistakes
-                        hints_used: finalHints, // Total manual hints used
-                        activity_id: currentActivity.id // Fallback points to final activity UUID
-                    };
-
-                    let insertedSessionId: string | undefined = undefined;
-
-                    const { data, error } = await supabase
-                        .from('student_sessions')
-                        .insert([payload])
-                        .select();
-
-                    if (error) {
-                        console.warn("[DATABASE] Supabase insert failed, trying fallback payload:", error.message);
-                        const { activity_id, sub_category, ...fallbackPayload } = payload;
-                        const { data: fbData, error: fbErr } = await supabase
-                            .from('student_sessions')
-                            .insert([fallbackPayload])
-                            .select();
-
-                        if (fbErr) {
-                            console.error("[DATABASE] Fallback student_sessions insertion failed:", fbErr.message);
-                        } else if (fbData && fbData.length > 0) {
-                            console.log("[DATABASE] Fallback session insertion succeeded:", fbData[0]);
-                            insertedSessionId = fbData[0].id;
-                            setSavedSetSessionId(fbData[0].id);
-                        }
-                    } else if (data && data.length > 0) {
-                        console.log("[DATABASE] Session insertion succeeded:", data[0]);
-                        insertedSessionId = data[0].id;
-                        setSavedSetSessionId(data[0].id);
-                    }
-
-                    if (studentId) {
-                        try {
-                            const accuracy = Math.max(0, Math.round(((15 - finalMistakes) / 15) * 100));
-                            const categoryName = currentActivity?.category || 'Activity';
-
-                            const { data: student } = await supabase
-                                .from('students')
-                                .select('name, parent_id')
-                                .eq('id', studentId)
-                                .maybeSingle();
-
-                            const studentName = student?.name || 'Learner';
-                            const sessionId = insertedSessionId;
-
-                            // 1. Notify Parent: Activity Completed
-                            await createNotification({
-                                studentId,
-                                userId: student?.parent_id || undefined,
-                                title: 'New Activity Completed',
-                                message: `${studentName} completed ${categoryName} activity set with ${accuracy}% accuracy!`,
-                                type: 'activity',
-                                metadata: {
-                                    session_id: sessionId,
-                                    category: categoryName,
-                                    accuracy,
-                                    mistakes: finalMistakes,
-                                    duration_seconds: totalDuration,
-                                },
-                            });
-
-                            // 2. Notify Teacher: New Session to Evaluate
-                            await createNotification({
-                                studentId,
-                                targetRole: 'teacher',
-                                title: 'New Session to Evaluate',
-                                message: `${studentName} completed ${categoryName} activity (${accuracy}% accuracy). Ready for evaluation.`,
-                                type: 'feedback',
-                                metadata: {
-                                    session_id: sessionId,
-                                    student_id: studentId,
-                                    category: categoryName,
-                                    accuracy,
-                                    mistakes: finalMistakes,
-                                    duration_seconds: totalDuration,
-                                },
-                            });
-
-                            // 3. Notify Teacher: Student Struggle Alert (if low accuracy or high mistakes)
-                            if (accuracy < 60 || finalMistakes >= 5) {
-                                await createNotification({
-                                    studentId,
-                                    targetRole: 'teacher',
-                                    title: 'Performance Alert ⚠️',
-                                    message: `${studentName} had high mistakes (${finalMistakes}) in ${categoryName} (${accuracy}% accuracy). Review activity analytics.`,
-                                    type: 'alert',
-                                    metadata: {
-                                        session_id: sessionId,
-                                        student_id: studentId,
-                                        category: categoryName,
-                                        accuracy,
-                                        mistakes: finalMistakes,
-                                    },
-                                });
-                            }
-                        } catch (notifErr) {
-                            console.error('[NOTIFICATIONS] Error sending activity notification:', notifErr);
-                        }
-                    }
-                } catch (e) {
-                    console.error("[DATABASE] Error inserting student session:", e);
-                }
-
-                // Evaluate achievements after session insertion
-                if (studentId) {
-                    try {
-                        const achievementResult = await processActivityCompletion(studentId, finalScore);
-                        if (
-                            achievementResult &&
-                            achievementResult.success &&
-                            achievementResult.newlyUnlocked &&
-                            achievementResult.newlyUnlocked.length > 0
-                        ) {
-                            const unlockedIds = achievementResult.newlyUnlocked;
-                            const { data: dbBadges } = await supabase
-                                .from('achievements')
-                                .select('*')
-                                .in('id', unlockedIds);
-
-                            const fetchedMap = new Map(dbBadges?.map((b) => [b.id, b]) || []);
-
-                            const DEFAULT_BADGES: Record<string, any> = {
-                                first_adventure: {
-                                    id: 'first_adventure',
-                                    title: 'First Adventure',
-                                    description: 'Completed your very first activity!',
-                                    icon: 'compass',
-                                    color: '#3B82F6',
-                                    bg_color: '#EFF6FF',
-                                    border_color: '#93C5FD',
-                                },
-                                triple_threat: {
-                                    id: 'triple_threat',
-                                    title: 'Triple Threat',
-                                    description: 'Completed 3 activities in total!',
-                                    icon: 'trophy',
-                                    color: '#EAB308',
-                                    bg_color: '#FEF9C3',
-                                    border_color: '#FDE047',
-                                },
-                                speedy_explorer: {
-                                    id: 'speedy_explorer',
-                                    title: 'Speedy Explorer',
-                                    description: 'Finished an activity in under 15 seconds!',
-                                    icon: 'flash',
-                                    color: '#EC4899',
-                                    bg_color: '#FCE7F3',
-                                    border_color: '#FBCFE8',
-                                },
-                                daily_hero: {
-                                    id: 'daily_hero',
-                                    title: 'Daily Hero',
-                                    description: 'Completed activities 3 days in a row!',
-                                    icon: 'star',
-                                    color: '#10B981',
-                                    bg_color: '#ECFDF5',
-                                    border_color: '#A7F3D0',
-                                },
-                            };
-
-                            const formattedBadges: UnlockedBadge[] = unlockedIds.map((id) => {
-                                const dbBadge = fetchedMap.get(id);
-                                const fallback = DEFAULT_BADGES[id] || {
-                                    id,
-                                    title: 'New Achievement',
-                                    description: 'Great job completing your activity!',
-                                    icon: 'star',
-                                    color: '#FACC15',
-                                    bg_color: '#FEF9C3',
-                                    border_color: '#FDE047',
-                                };
-                                return {
-                                    id,
-                                    title: dbBadge?.title || fallback.title,
-                                    description: dbBadge?.description || fallback.description,
-                                    icon: dbBadge?.icon || fallback.icon,
-                                    color: dbBadge?.color || fallback.color,
-                                    bgColor: dbBadge?.bg_color || fallback.bg_color,
-                                    borderColor: dbBadge?.border_color || fallback.border_color,
-                                };
-                            });
-
-                            setUnlockedBadges(formattedBadges);
-                        }
-                    } catch (err) {
-                        console.error('[SET_MANAGER] Error processing achievements:', err);
-                    }
-                }
-
-                // Increment to 3, freeze global timer, and display visual confetti praise card
-                setCompletedCount(3);
-                setIsSetComplete(true);
-                setBearMessage("Incredible job! You finished all 3 activities! 🎉");
-                setIsSaving(false);
+                await persistSession({ isTimeout: false });
             }
         }
     };
+    // Trigger voice dialogue when time is almost up (e.g. 60 seconds remaining) or time is up (0 seconds)
+    useEffect(() => {
+        if (isInitializing || isSetComplete || completedCount >= 3) return;
+
+        // Warn when 60 seconds (1 minute) remains
+        if (globalTimer <= 60 && globalTimer > 0 && !hasWarnedAlmostUpRef.current) {
+            hasWarnedAlmostUpRef.current = true;
+            const randomMsg = TIME_ALMOST_UP_MESSAGES[Math.floor(Math.random() * TIME_ALMOST_UP_MESSAGES.length)];
+            setBearMessage(randomMsg);
+            try {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            } catch {}
+        } else if (globalTimer === 0 && !hasWarnedTimeUpRef.current) {
+            hasWarnedTimeUpRef.current = true;
+            try {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            } catch {}
+            persistSession({ isTimeout: true });
+        }
+    }, [globalTimer, isInitializing, isSetComplete, completedCount, persistSession]);
+
     // Build the format currentTask expects
     const currentTask = useMemo(() => {
         if (!currentActivity) return null;

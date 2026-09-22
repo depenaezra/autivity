@@ -9,7 +9,7 @@ export const processActivityCompletion = async (
         // FETCH ALL PAST SESSIONS FOR BADGE LOGIC
         const { data: sessions } = await supabase
             .from('student_sessions')
-            .select('id, created_at, duration_seconds')
+            .select('id, created_at, duration_seconds, category, sub_category, activity_path')
             .eq('student_id', studentId);
 
         const sessionCount = sessions?.length || 0;
@@ -106,6 +106,102 @@ export const processActivityCompletion = async (
             if (hasThreeDayStreak) {
                 await unlockBadge('daily_hero');
             }
+        }
+
+        // Collect all activity paths across all sessions
+        const allActivityPaths: string[] = [];
+        sessions?.forEach(s => {
+            if (Array.isArray(s.activity_path)) {
+                allActivityPaths.push(...s.activity_path.map((p: any) => String(p).toLowerCase()));
+            } else if (typeof s.activity_path === 'string') {
+                allActivityPaths.push(s.activity_path.toLowerCase());
+            }
+        });
+
+        // Achievement: SHAPE SPECIALIST
+        // Mastered tracing all 4 basic geometric shapes (circle, square, triangle, rectangle)
+        const hasCircle = allActivityPaths.some(p => p.includes('circle'));
+        const hasSquare = allActivityPaths.some(p => p.includes('square'));
+        const hasTriangle = allActivityPaths.some(p => p.includes('triangle'));
+        const hasRectangle = allActivityPaths.some(p => p.includes('rectangle'));
+        if (hasCircle && hasSquare && hasTriangle && hasRectangle) {
+            await unlockBadge('shape_specialist');
+        }
+
+        // Achievement: ALPHABET ADVENTURER
+        // Successfully traced at least 10 letters of the alphabet
+        const tracedLetters = new Set<string>();
+        allActivityPaths.forEach(p => {
+            const letterMatch = p.match(/(?:letters|letter)[/-]([a-z0-9])/i) || p.match(/letter_([a-z0-9])/i);
+            if (letterMatch && letterMatch[1]) {
+                tracedLetters.add(letterMatch[1].toLowerCase());
+            }
+        });
+        if (tracedLetters.size >= 10) {
+            await unlockBadge('alphabet_adventurer');
+        }
+
+        // Achievement: TRACING TRAILBLAZER
+        // Completed 5 fine-motor tracing sessions
+        const tracingSessionCount = sessions?.filter(s => {
+            const cat = (s.category || '').toLowerCase();
+            const sub = (s.sub_category || '').toLowerCase();
+            const hasTracingPath = Array.isArray(s.activity_path)
+                ? s.activity_path.some((p: any) => String(p).toLowerCase().includes('tracing'))
+                : typeof s.activity_path === 'string' && s.activity_path.toLowerCase().includes('tracing');
+            return cat.includes('tracing') || sub.includes('tracing') || hasTracingPath;
+        }).length || 0;
+        if (tracingSessionCount >= 5) {
+            await unlockBadge('tracing_trailblazer');
+        }
+
+        // Achievement: PUZZLE PRODIGY
+        // Solved 5 cognitive matching, drag-and-drop, pick-n-choose, or sequencing puzzle sessions
+        const puzzleSessionCount = sessions?.filter(s => {
+            const cat = (s.category || '').toLowerCase();
+            const sub = (s.sub_category || '').toLowerCase();
+            const hasPuzzlePath = Array.isArray(s.activity_path)
+                ? s.activity_path.some((p: any) => {
+                    const lp = String(p).toLowerCase();
+                    return lp.includes('drag') || lp.includes('pick') || lp.includes('sequence') || lp.includes('puzzle') || lp.includes('match');
+                })
+                : typeof s.activity_path === 'string' && (
+                    s.activity_path.toLowerCase().includes('drag') ||
+                    s.activity_path.toLowerCase().includes('pick') ||
+                    s.activity_path.toLowerCase().includes('sequence') ||
+                    s.activity_path.toLowerCase().includes('puzzle') ||
+                    s.activity_path.toLowerCase().includes('match')
+                );
+            return (
+                cat.includes('drag') ||
+                cat.includes('pick') ||
+                cat.includes('sequence') ||
+                cat.includes('puzzle') ||
+                cat.includes('match') ||
+                sub.includes('drag') ||
+                sub.includes('pick') ||
+                sub.includes('sequence') ||
+                sub.includes('puzzle') ||
+                sub.includes('match') ||
+                hasPuzzlePath
+            );
+        }).length || 0;
+        if (puzzleSessionCount >= 5) {
+            await unlockBadge('puzzle_prodigy');
+        }
+
+        // Achievement: BUBBLE CHAMPION
+        // Popped through 5 visual-motor bubble activities
+        const bubbleSessionCount = sessions?.filter(s => {
+            const cat = (s.category || '').toLowerCase();
+            const sub = (s.sub_category || '').toLowerCase();
+            const hasBubblePath = Array.isArray(s.activity_path)
+                ? s.activity_path.some((p: any) => String(p).toLowerCase().includes('bubble'))
+                : typeof s.activity_path === 'string' && s.activity_path.toLowerCase().includes('bubble');
+            return cat.includes('bubble') || sub.includes('bubble') || hasBubblePath;
+        }).length || 0;
+        if (bubbleSessionCount >= 5) {
+            await unlockBadge('bubble_champion');
         }
 
         // Update student's badges count in students table
