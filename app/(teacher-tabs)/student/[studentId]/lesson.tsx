@@ -9,6 +9,7 @@ import SetManager from '@/components/set-manager';
 import { supabase } from '@/src/lib/supabase';
 import { getActivitiesBySubcategories, getDefaultActivities } from '@/src/services/materials';
 import { getStudentById } from '@/src/services/students';
+import TurnTakingActivity from '@/activities/turn-taking';
 
 export default function LessonScreen() {
     const params = useLocalSearchParams();
@@ -21,6 +22,14 @@ export default function LessonScreen() {
     const [teacherId, setTeacherId] = useState<string | null>(initialTeacherId || null);
     const [activityPool, setActivityPool] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const isTurnTaking =
+  activityType === 'turn-taking' ||
+  activityType === 'turntaking' ||
+  activityType === 'turn_taking';
+
+if (isTurnTaking) {
+  return <TurnTakingActivity />;
+}
 
     useEffect(() => {
         const loadAssigned = async () => {
