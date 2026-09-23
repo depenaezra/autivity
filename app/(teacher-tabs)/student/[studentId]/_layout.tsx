@@ -12,6 +12,13 @@ export default function StudentIdLayout() {
                     presentation: 'card'
                 }} 
             />
+            <Stack.Screen 
+                name="turn-taking" 
+                options={{ 
+                    animation: 'slide_from_bottom',
+                    presentation: 'card'
+                }} 
+            />
         </Stack>
     );
 }

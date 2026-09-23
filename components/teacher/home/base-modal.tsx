@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import {
   ActivityIndicator,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -47,7 +48,9 @@ export function BaseModal({
   heightClassName,
 }: BaseModalProps) {
   const [shouldRender, setShouldRender] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const slideAnim = useSharedValue(600);
+  const scrollViewRef = useRef<ScrollView>(null);
 
   // Pan responder for drag to close gesture
   const panResponder = useRef(
@@ -81,6 +84,24 @@ export function BaseModal({
     })
   ).current;
 
+  // Keyboard show/hide listeners for dynamic height handling
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
   // Synchronize internal rendering state with animation timing
   useEffect(() => {
     if (visible) {
@@ -110,8 +131,11 @@ export function BaseModal({
 
   if (!shouldRender) return null;
 
+  const isKeyboardOpen = keyboardHeight > 0;
   const defaultHeightClass = isTablet ? 'h-[52%]' : 'h-[60%]';
-  const finalHeightClass = heightClassName || defaultHeightClass;
+  const finalHeightClass = isKeyboardOpen
+    ? (isTablet ? 'h-[85%]' : 'h-[90%]')
+    : (heightClassName || defaultHeightClass);
 
   return (
     <Modal
@@ -121,7 +145,7 @@ export function BaseModal({
       onRequestClose={onClose}
     >
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         className="flex-1 justify-end bg-black/40"
       >
         {/* Backdrop overlay covering the full screen */}
@@ -133,7 +157,10 @@ export function BaseModal({
 
         {/* Modal Container */}
         <Animated.View
-          style={animatedStyle}
+          style={[
+            animatedStyle,
+            isKeyboardOpen ? { maxHeight: isTablet ? '88%' : '92%' } : null,
+          ]}
           className={`bg-white border-[4px] border-[#F1F1F1] rounded-[32px] px-6 pt-2 pb-6 mx-6 mb-6 ${finalHeightClass}`}
         >
           {/* Top handle bar (Draggable to close) */}
@@ -155,11 +182,16 @@ export function BaseModal({
 
           {/* Form Content area */}
           <ScrollView 
+            ref={scrollViewRef}
             showsVerticalScrollIndicator={true}
             nestedScrollEnabled={true}
-            keyboardShouldPersistTaps="always"
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="none"
             className="flex-1"
-            contentContainerStyle={{ paddingBottom: 28, flexGrow: 1 }}
+            contentContainerStyle={{
+              paddingBottom: 28,
+              flexGrow: 1,
+            }}
           >
             {children}
           </ScrollView>

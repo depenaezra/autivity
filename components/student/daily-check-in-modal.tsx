@@ -216,6 +216,8 @@ export function DailyCheckInModal({
             {/* 6 Emotion Cards Grid */}
             <ScrollView
               showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="none"
               contentContainerStyle={{
                 flexGrow: 1,
                 justifyContent: 'center',

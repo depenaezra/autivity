@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -107,6 +108,26 @@ export default function FeedbackModal({
   });
   const [teacherFeedback, setTeacherFeedback] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const scrollViewRef = useRef<ScrollView>(null);
+
+  // Track keyboard height to adjust scroll padding
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   useEffect(() => {
     if (visible) {
@@ -170,6 +191,8 @@ export default function FeedbackModal({
 
   if (!visible) return null;
 
+  const isKeyboardOpen = keyboardHeight > 0;
+
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <KeyboardAvoidingView
@@ -181,7 +204,7 @@ export default function FeedbackModal({
           style={{
             width: '100%',
             maxWidth: isTablet ? 700 : undefined,
-            maxHeight: isTablet ? '85%' : '90%',
+            maxHeight: isKeyboardOpen ? (isTablet ? '90%' : '94%') : (isTablet ? '85%' : '90%'),
           }}
           className="bg-white rounded-[28px] border-[3px] border-[#D1D5DB] border-b-[6px] shadow-2xl overflow-hidden flex-col flex-1"
         >
@@ -225,10 +248,15 @@ export default function FeedbackModal({
 
           {/* Scrollable Content Body */}
           <ScrollView
+            ref={scrollViewRef}
             className="flex-1 px-6 py-5"
-            contentContainerStyle={{ paddingBottom: 32 }}
+            contentContainerStyle={{
+              paddingBottom: 36,
+              flexGrow: 1,
+            }}
             showsVerticalScrollIndicator={true}
-            keyboardShouldPersistTaps="always"
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="none"
             bounces={false}
           >
             {step === 'draft' ? (
@@ -355,6 +383,11 @@ export default function FeedbackModal({
                     className="w-full min-h-[110px] bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl p-3 text-sm font-quicksand-medium text-[#4B5563]"
                     value={teacherFeedback}
                     onChangeText={setTeacherFeedback}
+                    onFocus={() => {
+                      setTimeout(() => {
+                        scrollViewRef.current?.scrollToEnd({ animated: true });
+                      }, 150);
+                    }}
                   />
                 </View>
               </View>

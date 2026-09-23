@@ -503,7 +503,6 @@ export default function SetManager({
                 status: 'pending', // Hardcoded status string
                 mistakes: finalMistakes, // Combined sum of all hidden mistakes
                 hints_used: finalHints, // Total manual hints used
-                activity_id: currentActivity?.id, // Fallback points to final activity UUID
                 is_timed_out: isTimeout,
                 completed_count: currentCompletedCount,
             };
@@ -517,7 +516,7 @@ export default function SetManager({
 
             if (error) {
                 console.warn("[DATABASE] Supabase insert failed, trying fallback payload:", error.message);
-                const { activity_id, sub_category, is_timed_out, completed_count, ...fallbackPayload } = payload;
+                const { is_timed_out, completed_count, ...fallbackPayload } = payload;
                 const { data: fbData, error: fbErr } = await supabase
                     .from('student_sessions')
                     .insert([fallbackPayload])
