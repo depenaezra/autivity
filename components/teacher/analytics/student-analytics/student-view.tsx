@@ -27,6 +27,7 @@ import Sessions from './sessions';
 import { calculateRubricScore } from '../../../../src/services/classAnalyticsEngine';
 import { generateStudentRecommendations, StudentRecommendation } from '../../../../src/services/studentAnalyticsEngine';
 import StudentRecommendationsCard from './student-recommendations-card';
+import { UniversalLegendModal } from '../../../analytics/universal-legend-modal';
 
 // SVGs for themed headers matching class color
 import HeaderClassBlue from '../../../../assets/images/teacher/class/header-class-blue.svg';
@@ -59,6 +60,7 @@ export default function StudentView({ studentId, onBack }: StudentViewProps) {
   const [isLogModalVisible, setLogModalVisible] = useState(false);
   const [isExportModalVisible, setExportModalVisible] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [isLegendModalVisible, setLegendModalVisible] = useState(false);
   const [recommendations, setRecommendations] = useState<StudentRecommendation[]>([]);
   const [needsIntervention, setNeedsIntervention] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -181,6 +183,12 @@ export default function StudentView({ studentId, onBack }: StudentViewProps) {
               <Ionicons name="caret-back" size={isTablet ? 30 : 24} color="#62A9E6" />
             </View>
           }
+        />
+      }
+      rightHeaderButton={
+        <HeaderButton
+          onPress={() => setLegendModalVisible(true)}
+          icon={<Ionicons name="help-circle-outline" size={isTablet ? 28 : 24} color="#62A9E6" />}
         />
       }
       headerContent={renderHeaderContent()}
@@ -396,6 +404,13 @@ export default function StudentView({ studentId, onBack }: StudentViewProps) {
         onClose={() => setExportModalVisible(false)}
         onSelectFormat={handleSelectExportFormat}
         isExporting={isExporting}
+      />
+      {/* UNIVERSAL BENCHMARK LEGEND MODAL */}
+      <UniversalLegendModal
+        visible={isLegendModalVisible}
+        onClose={() => setLegendModalVisible(false)}
+        isTablet={isTablet}
+        initialRole="teacher"
       />
     </ScreenLayout>
   );

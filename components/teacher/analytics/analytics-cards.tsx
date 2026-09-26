@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Text, View, useWindowDimensions } from 'react-native';
+import { Text, View, useWindowDimensions } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -10,76 +10,6 @@ import Animated, {
 import { getKpiData as getDraftKpiData, KpiData, ActivityTypeFilter } from '../../../src/services/analytics';
 import IconPending from '../../../assets/images/teacher/analytics/icon-pending.svg';
 import IconCompleted from '../../../assets/images/teacher/analytics/icon-completed.svg';
-
-interface AnalyticsCardConfig {
-  key: keyof KpiData;
-  label: string;
-  borderColor: string;
-  labelColor: string;
-  IconComponent: React.ComponentType<{ width: number; height: number }>;
-  iconSizeMultiplier?: number;
-}
-
-const CARD_CONFIGS: AnalyticsCardConfig[] = [
-  {
-    key: 'pendingEvaluations',
-    label: 'PENDING EVALUATIONS',
-    borderColor: '#FFDBD4',
-    labelColor: '#FF8870',
-    IconComponent: IconPending,
-    iconSizeMultiplier: 0.85,
-  },
-  {
-    key: 'completedSessions',
-    label: 'COMPLETED SESSIONS',
-    borderColor: '#CBFAC4',
-    labelColor: '#179D33',
-    IconComponent: IconCompleted,
-  },
-];
-
-function AnalyticsCardSkeletonItem({ card, isTablet }: { card: (typeof CARD_CONFIGS)[0]; isTablet: boolean }) {
-  const opacity = useSharedValue(0.4);
-
-  React.useEffect(() => {
-    opacity.value = withRepeat(
-      withSequence(
-        withTiming(1, { duration: 750 }),
-        withTiming(0.4, { duration: 750 })
-      ),
-      -1,
-      true
-    );
-  }, []);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-  }));
-
-  return (
-    <Animated.View
-      key={card.key}
-      className={`border-[4px] bg-white justify-center items-center flex-1 ${
-        isTablet ? 'rounded-[32px] p-4 h-[160px]' : 'rounded-[20px] p-3 h-[130px]'
-      }`}
-      style={[
-        {
-          borderColor: '#F1F1F1',
-          shadowColor: '#F1F1F1',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 1,
-          shadowRadius: 0,
-          elevation: 2,
-        },
-        animatedStyle,
-      ]}
-    >
-      <View className={`bg-[#E5E7EB] rounded-full ${isTablet ? 'w-12 h-12 mb-2' : 'w-8 h-8 mb-1.5'}`} />
-      <View className={`bg-[#E5E7EB] rounded-[4px] ${isTablet ? 'w-16 h-7 mb-2' : 'w-10 h-5 mb-1.5'}`} />
-      <View className={`bg-[#E5E7EB] rounded-[4px] ${isTablet ? 'w-20 h-4' : 'w-14 h-3'}`} />
-    </Animated.View>
-  );
-}
 
 interface AnalyticsCardsProps {
   refreshTrigger?: number;
@@ -95,6 +25,9 @@ export function AnalyticsCards({ refreshTrigger, activityType = 'all' }: Analyti
     totalStudents: 0,
     totalClasses: 0,
     completedSessions: 0,
+    totalSessions: 0,
+    evaluatedSessions: 0,
+    evaluatedPercentage: 100,
   });
   const [isLoading, setIsLoading] = useState(true);
 
@@ -114,64 +47,218 @@ export function AnalyticsCards({ refreshTrigger, activityType = 'all' }: Analyti
     }
   };
 
+  const opacity = useSharedValue(0.4);
+
+  useEffect(() => {
+    opacity.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 750 }),
+        withTiming(0.4, { duration: 750 })
+      ),
+      -1,
+      true
+    );
+  }, [opacity]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+  }));
+
   if (isLoading) {
     return (
       <View className={`w-full flex-row justify-between ${isTablet ? 'px-12 mt-10 gap-6' : 'px-6 mt-6 gap-3'}`}>
-        {CARD_CONFIGS.map((card) => (
-          <AnalyticsCardSkeletonItem key={card.key} card={card} isTablet={isTablet} />
+        {[1, 2].map((idx) => (
+          <Animated.View
+            key={idx}
+            className={`border-[4px] bg-white justify-center items-center flex-1 ${
+              isTablet ? 'rounded-[32px] p-4 h-[175px]' : 'rounded-[20px] p-3 h-[145px]'
+            }`}
+            style={[
+              {
+                borderColor: '#F1F1F1',
+                shadowColor: '#F1F1F1',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 1,
+                shadowRadius: 0,
+                elevation: 2,
+              },
+              animatedStyle,
+            ]}
+          >
+            <View className={`bg-[#E5E7EB] rounded-full ${isTablet ? 'w-12 h-12 mb-2' : 'w-8 h-8 mb-1.5'}`} />
+            <View className={`bg-[#E5E7EB] rounded-[4px] ${isTablet ? 'w-16 h-7 mb-2' : 'w-10 h-5 mb-1.5'}`} />
+            <View className={`bg-[#E5E7EB] rounded-[4px] ${isTablet ? 'w-20 h-4' : 'w-14 h-3'}`} />
+          </Animated.View>
         ))}
       </View>
     );
   }
 
+  // Compliance Status Pill logic (Target: 100% evaluated, Green >= 90%, Amber 70-89%, Red < 70%)
+  const compliancePct = kpi.evaluatedPercentage;
+  let complianceBadge = {
+    label: `● Target Met (100% Goal)`,
+    color: '#179D33',
+    bgColor: '#F0FDF4',
+    borderColor: '#CBFAC4',
+  };
+
+  if (compliancePct < 70) {
+    complianceBadge = {
+      label: `● ${kpi.pendingEvaluations} Pending Evaluation${kpi.pendingEvaluations === 1 ? '' : 's'}`,
+      color: '#FF8870',
+      bgColor: '#FFF7ED',
+      borderColor: '#FFDBD4',
+    };
+  } else if (compliancePct < 90) {
+    complianceBadge = {
+      label: `● ${kpi.pendingEvaluations} Pending (${compliancePct}%)`,
+      color: '#FFAE02',
+      bgColor: '#FFFBEB',
+      borderColor: '#FFF3C4',
+    };
+  } else if (kpi.pendingEvaluations > 0) {
+    complianceBadge = {
+      label: `● ${kpi.pendingEvaluations} Pending of ${kpi.totalSessions}`,
+      color: '#179D33',
+      bgColor: '#F0FDF4',
+      borderColor: '#CBFAC4',
+    };
+  }
+
+  const iconSize = isTablet ? 40 : 28;
+
   return (
     <View className={`w-full flex-row justify-between ${isTablet ? 'px-12 mt-10 gap-6' : 'px-6 mt-6 gap-3'}`}>
-      {CARD_CONFIGS.map((card) => {
-        const count = kpi[card.key];
-        const iconSize = (isTablet ? 48 : 32) * (card.iconSizeMultiplier ?? 1);
+      {/* Card 1: Evaluation Compliance Rate */}
+      <View
+        className={`border-[4px] bg-white justify-between items-center flex-1 ${
+          isTablet ? 'rounded-[32px] p-4 min-h-[175px]' : 'rounded-[20px] p-3 min-h-[148px]'
+        }`}
+        style={{
+          borderColor: '#FFDBD4',
+          shadowColor: '#FFDBD4',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 1,
+          shadowRadius: 0,
+          elevation: 2,
+        }}
+      >
+        <Text
+          className={`font-fredoka-one tracking-[0.06em] text-center ${
+            isTablet ? 'text-sm mt-1' : 'text-[10px] mt-1'
+          }`}
+          style={{ color: '#FF8870', letterSpacing: isTablet ? 1.2 : 0.6 }}
+          numberOfLines={1}
+        >
+          EVALUATION RATE
+        </Text>
 
-        return (
-          <View
-            key={card.key}
-            className={`border-[4px] bg-white justify-center items-center flex-1 ${
-              isTablet ? 'rounded-[32px] p-4 h-[160px]' : 'rounded-[20px] p-3 h-[130px]'
-            }`}
+        <View className={`justify-center items-center ${isTablet ? 'my-1' : 'my-0.5'}`}>
+          <IconPending width={iconSize} height={iconSize} />
+        </View>
+
+        <View className="items-center justify-center">
+          <Text
+            className="font-fredoka-one text-[#484A4B] text-center"
             style={{
-              borderColor: card.borderColor,
-              shadowColor: card.borderColor,
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 1,
-              shadowRadius: 0,
-              elevation: 2,
+              fontSize: isTablet ? 28 : 22,
+              lineHeight: isTablet ? 32 : 24,
             }}
           >
-            {/* Label */}
-            <Text
-              className={`font-fredoka-one tracking-[0.06em] text-center ${
-                isTablet ? 'text-sm mt-2' : 'text-[10px] mt-2'
-              }`}
-              style={{ color: card.labelColor, letterSpacing: isTablet ? 1.2 : 0.6 }}
-              numberOfLines={1}
-            >
-              {card.label}
-            </Text>
+            {compliancePct}%
+          </Text>
+          <Text
+            className={`font-quicksand-bold text-[#9CA3AF] text-center ${
+              isTablet ? 'text-xs mt-0.5' : 'text-[10px] mt-0.5'
+            }`}
+          >
+            compliance
+          </Text>
+        </View>
 
-            {/* Icon */}
-            <View className={`justify-center items-center ${isTablet ? 'my-2' : 'my-1.5'}`}>
-              <card.IconComponent width={iconSize} height={iconSize} />
-            </View>
+        <View
+          className={`rounded-full items-center justify-center mt-1.5 border-[1.5px] ${
+            isTablet ? 'px-3 py-1' : 'px-2 py-0.5'
+          }`}
+          style={{ backgroundColor: complianceBadge.bgColor, borderColor: complianceBadge.borderColor }}
+        >
+          <Text
+            className={`font-quicksand-bold text-center ${
+              isTablet ? 'text-xs' : 'text-[9px]'
+            }`}
+            style={{ color: complianceBadge.color }}
+            numberOfLines={1}
+          >
+            {complianceBadge.label}
+          </Text>
+        </View>
+      </View>
 
-            {/* Count */}
-            <Text
-              className={`font-fredoka-one text-[#484A4B] text-center ${
-                isTablet ? 'text-4xl mb-2' : 'text-[26px] mb-2'
-              }`}
-            >
-              {count}
-            </Text>
-          </View>
-        );
-      })}
+      {/* Card 2: Completed Sessions */}
+      <View
+        className={`border-[4px] bg-white justify-between items-center flex-1 ${
+          isTablet ? 'rounded-[32px] p-4 min-h-[175px]' : 'rounded-[20px] p-3 min-h-[148px]'
+        }`}
+        style={{
+          borderColor: '#CBFAC4',
+          shadowColor: '#CBFAC4',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 1,
+          shadowRadius: 0,
+          elevation: 2,
+        }}
+      >
+        <Text
+          className={`font-fredoka-one tracking-[0.06em] text-center ${
+            isTablet ? 'text-sm mt-1' : 'text-[10px] mt-1'
+          }`}
+          style={{ color: '#179D33', letterSpacing: isTablet ? 1.2 : 0.6 }}
+          numberOfLines={1}
+        >
+          COMPLETED SESSIONS
+        </Text>
+
+        <View className={`justify-center items-center ${isTablet ? 'my-1' : 'my-0.5'}`}>
+          <IconCompleted width={iconSize} height={iconSize} />
+        </View>
+
+        <View className="items-center justify-center">
+          <Text
+            className="font-fredoka-one text-[#484A4B] text-center"
+            style={{
+              fontSize: isTablet ? 28 : 22,
+              lineHeight: isTablet ? 32 : 24,
+            }}
+          >
+            {kpi.completedSessions}
+          </Text>
+          <Text
+            className={`font-quicksand-bold text-[#9CA3AF] text-center ${
+              isTablet ? 'text-xs mt-0.5' : 'text-[10px] mt-0.5'
+            }`}
+          >
+            total sessions
+          </Text>
+        </View>
+
+        <View
+          className={`rounded-full items-center justify-center mt-1.5 border-[1.5px] ${
+            isTablet ? 'px-3 py-1' : 'px-2 py-0.5'
+          }`}
+          style={{ backgroundColor: '#F0FDF4', borderColor: '#CBFAC4' }}
+        >
+          <Text
+            className={`font-quicksand-bold text-center ${
+              isTablet ? 'text-xs' : 'text-[9px]'
+            }`}
+            style={{ color: '#179D33' }}
+            numberOfLines={1}
+          >
+            ● {kpi.evaluatedSessions} Evaluated ({compliancePct}%)
+          </Text>
+        </View>
+      </View>
     </View>
   );
 }

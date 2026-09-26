@@ -8,6 +8,9 @@ export interface KpiData {
   totalStudents: number;
   totalClasses: number;
   completedSessions: number;
+  totalSessions: number;
+  evaluatedSessions: number;
+  evaluatedPercentage: number;
 }
 
 export const getKpiData = async (activityType: ActivityTypeFilter = 'all'): Promise<KpiData> => {
@@ -20,21 +23,29 @@ export const getKpiData = async (activityType: ActivityTypeFilter = 'all'): Prom
     .eq('teacher_id', user.id)
     .eq('status', 'pending');
 
-  let completedQuery = supabase
+  let totalSessionsQuery = supabase
     .from('student_sessions')
     .select('*', { count: 'exact', head: true })
     .eq('teacher_id', user.id);
 
+  let evaluatedQuery = supabase
+    .from('student_sessions')
+    .select('*', { count: 'exact', head: true })
+    .eq('teacher_id', user.id)
+    .neq('status', 'pending');
+
   if (activityType !== 'all') {
     pendingQuery = pendingQuery.eq('activity_type', activityType);
-    completedQuery = completedQuery.eq('activity_type', activityType);
+    totalSessionsQuery = totalSessionsQuery.eq('activity_type', activityType);
+    evaluatedQuery = evaluatedQuery.eq('activity_type', activityType);
   }
 
   const [
     pendingRes,
     studentsRes,
     classesRes,
-    completedRes
+    totalSessionsRes,
+    evaluatedRes
   ] = await Promise.all([
     pendingQuery,
     supabase
@@ -45,19 +56,29 @@ export const getKpiData = async (activityType: ActivityTypeFilter = 'all'): Prom
       .from('classes')
       .select('*', { count: 'exact', head: true })
       .eq('teacher_id', user.id),
-    completedQuery,
+    totalSessionsQuery,
+    evaluatedQuery,
   ]);
 
   if (pendingRes.error) throw new Error(pendingRes.error.message);
   if (studentsRes.error) throw new Error(studentsRes.error.message);
   if (classesRes.error) throw new Error(classesRes.error.message);
-  if (completedRes.error) throw new Error(completedRes.error.message);
+  if (totalSessionsRes.error) throw new Error(totalSessionsRes.error.message);
+  if (evaluatedRes.error) throw new Error(evaluatedRes.error.message);
+
+  const totalSessions = totalSessionsRes.count ?? 0;
+  const pendingEvaluations = pendingRes.count ?? 0;
+  const evaluatedSessions = evaluatedRes.count ?? Math.max(0, totalSessions - pendingEvaluations);
+  const evaluatedPercentage = totalSessions > 0 ? Math.round((evaluatedSessions / totalSessions) * 100) : 100;
 
   return {
-    pendingEvaluations: pendingRes.count ?? 0,
+    pendingEvaluations,
     totalStudents: studentsRes.count ?? 0,
     totalClasses: classesRes.count ?? 0,
-    completedSessions: completedRes.count ?? 0,
+    completedSessions: totalSessions,
+    totalSessions,
+    evaluatedSessions,
+    evaluatedPercentage,
   };
 };
 

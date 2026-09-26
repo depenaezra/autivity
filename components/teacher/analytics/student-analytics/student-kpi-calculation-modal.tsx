@@ -3,6 +3,12 @@ import React, { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { StudentSessionStats } from '../../../../src/services/student-analytics';
 import { BaseModal } from '../../home/base-modal';
+import { UniversalLegendModal } from '../../../analytics/universal-legend-modal';
+import {
+  UNIVERSAL_BENCHMARK_TIERS,
+  getMistakesTier,
+  getHintsTier,
+} from '../../../../src/constants/benchmarkLegend';
 
 export type MetricKey = 'duration' | 'mistakes' | 'hints';
 
@@ -76,6 +82,7 @@ export function StudentKpiCalculationModal({
   isTablet,
 }: StudentKpiCalculationModalProps) {
   const [selectedMetric, setSelectedMetric] = useState<MetricKey>('mistakes');
+  const [isLegendOpen, setIsLegendOpen] = useState(false);
 
   useEffect(() => {
     if (initialMetric) {
@@ -235,8 +242,37 @@ export function StudentKpiCalculationModal({
           </Text>
         </View>
 
-        {/* 3. Current Filter Context */}
-        <View className="bg-[#F9FAFB] border border-[#F3F4F6] rounded-xl p-3 flex-row justify-between items-center">
+        {/* 3. Universal 3-Tier Legend Access Button */}
+        <Pressable
+          onPress={() => setIsLegendOpen(true)}
+          className="bg-white border-[2px] border-[#BBE8FB] rounded-xl p-3.5 flex-row items-center justify-between active:scale-95 transition-transform"
+          style={{
+            borderColor: '#BBE8FB',
+            shadowColor: '#BBE8FB',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 1,
+            shadowRadius: 0,
+            elevation: 2,
+          }}
+        >
+          <View className="flex-row items-center gap-2.5">
+            <View className="w-8 h-8 rounded-full bg-[#E0F2FE] items-center justify-center">
+              <Feather name="help-circle" size={16} color="#62A9E6" />
+            </View>
+            <View>
+              <Text className="font-fredoka-one text-sm text-[#484A4B]">
+                VIEW 3-TIER BENCHMARK LEGEND
+              </Text>
+              <Text className="font-quicksand-medium text-xs text-[#62A9E6]">
+                Mastered (≥80%) • Developing • Needs Support
+              </Text>
+            </View>
+          </View>
+          <Feather name="chevron-right" size={18} color="#62A9E6" />
+        </Pressable>
+
+        {/* 4. Current Filter Context */}
+        <View className="bg-[#F9FAFB] border border-[#F3F4F6] rounded-xl p-3 flex-row justify-between items-center mb-2">
           <Text className="font-quicksand-medium text-xs text-[#6B7280]">
             Active Range Filter:
           </Text>
@@ -245,6 +281,14 @@ export function StudentKpiCalculationModal({
           </Text>
         </View>
       </View>
+
+      {/* UNIVERSAL BENCHMARK LEGEND MODAL */}
+      <UniversalLegendModal
+        visible={isLegendOpen}
+        onClose={() => setIsLegendOpen(false)}
+        isTablet={isTablet}
+        initialRole="teacher"
+      />
     </BaseModal>
   );
 }

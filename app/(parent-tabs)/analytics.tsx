@@ -24,6 +24,8 @@ import { ParentNarrativeSummary } from '../../components/parent/parent-narrative
 import { ParentProgressTrend } from '../../components/parent/parent-progress-trend';
 import { ParentSkillPerformance } from '../../components/parent/parent-skill-performance';
 import { ParentStatsSection } from '../../components/parent/parent-stats-section';
+import { UniversalLegendModal } from '../../components/analytics/universal-legend-modal';
+import { HeaderButton } from '../../components/header-button';
 
 export default function ParentAnalyticsScreen() {
   const router = useRouter();
@@ -41,6 +43,7 @@ export default function ParentAnalyticsScreen() {
   const [globalFilter, setGlobalFilter] = useState<FilterPeriod>('overall');
   const [activityType, setActivityType] = useState<ActivityTypeFilter>('all');
   const [isFilterModalVisible, setFilterModalVisible] = useState(false);
+  const [isLegendModalVisible, setLegendModalVisible] = useState(false);
 
   const loadAnalyticsData = useCallback(async () => {
     setIsLoading(true);
@@ -239,16 +242,45 @@ export default function ParentAnalyticsScreen() {
           entering={FadeInRight.delay(50).duration(300)}
           className={`w-full ${isTablet ? 'px-12 pt-4' : 'px-6 pt-2'}`}
         >
-          <View className="flex-row flex-wrap items-center justify-between gap-3 mb-2">
+          {/* TITLE & HELP BUTTON ROW (FAR RIGHT) */}
+          <View className="flex-row items-center justify-between mb-3">
             <Text className={`font-fredoka-one text-[#484A4B] ${isTablet ? 'text-[44px]' : 'text-[28px]'}`}>
               Analytics
             </Text>
 
-            {/* CONTROL BUTTONS TO THE RIGHT OF TITLE */}
-            <View className="flex-row items-center gap-2 flex-wrap sm:flex-nowrap">
-              {/* Range Filter Selector */}
+            <HeaderButton
+              onPress={() => setLegendModalVisible(true)}
+              icon={<Ionicons name="help-circle-outline" size={isTablet ? 28 : 24} color="#62A9E6" />}
+            />
+          </View>
+
+          {/* CONTROL BUTTONS ROW */}
+          <View className="flex-row items-center gap-2 flex-wrap mb-2">
+            {/* Range Filter Selector */}
+            <Pressable
+              onPress={() => setFilterModalVisible(true)}
+              className="flex-row items-center justify-center gap-1.5 bg-white border-[2px] border-[#BBE8FB] px-3 h-[36px] rounded-xl active:scale-95 transition-transform"
+              style={{
+                borderColor: '#BBE8FB',
+                shadowColor: '#BBE8FB',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 1,
+                shadowRadius: 0,
+                elevation: 2,
+              }}
+            >
+              <Feather name="calendar" size={13} color="#62A9E6" />
+              <Text className="font-fredoka-one text-[#62A9E6] text-[11px] uppercase" numberOfLines={1}>
+                RANGE: {getFilterLabel(globalFilter).toUpperCase()}
+              </Text>
+              <Feather name="chevron-down" size={13} color="#62A9E6" />
+            </Pressable>
+
+            {/* Master Download Report Button (available when single child is active) */}
+            {!isCompareMode && (
               <Pressable
-                onPress={() => setFilterModalVisible(true)}
+                onPress={handleExportPdf}
+                disabled={isExporting}
                 className="flex-row items-center justify-center gap-1.5 bg-white border-[2px] border-[#BBE8FB] px-3 h-[36px] rounded-xl active:scale-95 transition-transform"
                 style={{
                   borderColor: '#BBE8FB',
@@ -259,46 +291,23 @@ export default function ParentAnalyticsScreen() {
                   elevation: 2,
                 }}
               >
-                <Feather name="calendar" size={13} color="#62A9E6" />
-                <Text className="font-fredoka-one text-[#62A9E6] text-[11px] uppercase" numberOfLines={1}>
-                  RANGE: {getFilterLabel(globalFilter).toUpperCase()}
-                </Text>
-                <Feather name="chevron-down" size={13} color="#62A9E6" />
+                {isExporting ? (
+                  <>
+                    <ActivityIndicator size="small" color="#62A9E6" style={{ height: 16 }} />
+                    <Text className="font-fredoka-one text-[#62A9E6] text-[11px] uppercase" numberOfLines={1}>
+                      EXPORTING...
+                    </Text>
+                  </>
+                ) : (
+                  <>
+                    <Feather name="download" size={13} color="#62A9E6" />
+                    <Text className="font-fredoka-one text-[#62A9E6] text-[11px] uppercase" numberOfLines={1}>
+                      DOWNLOAD REPORT
+                    </Text>
+                  </>
+                )}
               </Pressable>
-
-              {/* Master Download Report Button (available when single child is active) */}
-              {!isCompareMode && (
-                <Pressable
-                  onPress={handleExportPdf}
-                  disabled={isExporting}
-                  className="flex-row items-center justify-center gap-1.5 bg-white border-[2px] border-[#BBE8FB] px-3 h-[36px] rounded-xl active:scale-95 transition-transform"
-                  style={{
-                    borderColor: '#BBE8FB',
-                    shadowColor: '#BBE8FB',
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 1,
-                    shadowRadius: 0,
-                    elevation: 2,
-                  }}
-                >
-                  {isExporting ? (
-                    <>
-                      <ActivityIndicator size="small" color="#62A9E6" style={{ height: 16 }} />
-                      <Text className="font-fredoka-one text-[#62A9E6] text-[11px] uppercase" numberOfLines={1}>
-                        EXPORTING...
-                      </Text>
-                    </>
-                  ) : (
-                    <>
-                      <Feather name="download" size={13} color="#62A9E6" />
-                      <Text className="font-fredoka-one text-[#62A9E6] text-[11px] uppercase" numberOfLines={1}>
-                        DOWNLOAD REPORT
-                      </Text>
-                    </>
-                  )}
-                </Pressable>
-              )}
-            </View>
+            )}
           </View>
 
           {/* MULTI-CHILD VIEW SELECTOR BAR (Shown when parent has 2+ children linked) */}
@@ -492,6 +501,14 @@ export default function ParentAnalyticsScreen() {
         isTablet={isTablet}
         selectedFilter={globalFilter}
         onSelectFilter={setGlobalFilter}
+      />
+
+      {/* UNIVERSAL 3-TIER BENCHMARK LEGEND MODAL */}
+      <UniversalLegendModal
+        visible={isLegendModalVisible}
+        onClose={() => setLegendModalVisible(false)}
+        isTablet={isTablet}
+        role="parent"
       />
     </SafeAreaView>
   );

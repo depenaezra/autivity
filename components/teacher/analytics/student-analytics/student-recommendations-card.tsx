@@ -79,15 +79,31 @@ export default function StudentRecommendationsCard({ recommendations }: StudentR
                   onPress={() => toggleExpand(r.id)}
                   className="flex-row items-center justify-between py-1 active:opacity-75"
                 >
-                  {/* Left Side: Accent Circle Dot + Title */}
-                  <View className="flex-row items-center gap-2.5 flex-1 pr-3">
+                  {/* Left Side: Accent Circle Dot + Title + Universal Badge */}
+                  <View className="flex-row items-center gap-2 flex-wrap flex-1 pr-3">
                     <View
                       className="w-3.5 h-3.5 rounded-full shrink-0"
                       style={{ backgroundColor: accentColor }}
                     />
-                    <Text className="font-fredoka-one text-base text-[#374151] flex-1">
+                    <Text className="font-fredoka-one text-sm sm:text-base text-[#374151]">
                       {r.title}
                     </Text>
+                    {r.badgeLabel && (
+                      <View
+                        className="px-2 py-0.5 rounded-full border"
+                        style={{
+                          backgroundColor: r.bgColor || '#F9FAFB',
+                          borderColor: r.borderColor || '#E5E7EB',
+                        }}
+                      >
+                        <Text
+                          className="font-fredoka-one text-[9px] sm:text-[10px]"
+                          style={{ color: r.textColor || accentColor }}
+                        >
+                          {r.badgeLabel}
+                        </Text>
+                      </View>
+                    )}
                   </View>
 
                   {/* Right Side: Chevron Icon */}

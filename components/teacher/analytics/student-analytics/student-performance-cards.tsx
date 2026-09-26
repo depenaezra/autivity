@@ -13,6 +13,10 @@ import Animated, {
 import { StudentSessionStats, getStudentSessionStats } from '../../../../src/services/student-analytics';
 import { ActivityTypeFilter } from '../../../../src/services/analytics';
 import { StudentKpiCalculationModal, MetricKey } from './student-kpi-calculation-modal';
+import {
+  getMistakesTier,
+  getHintsTier,
+} from '../../../../src/constants/benchmarkLegend';
 
 interface StudentPerformanceCardsProps {
   studentId: string;
@@ -182,6 +186,72 @@ export default function StudentPerformanceCards({
 
   const hasNoSessions = !stats || stats.totalSessions === 0;
 
+  const getCardStatusBadge = (key: MetricKey) => {
+    if (hasNoSessions || !stats) {
+      return {
+        title: 'No Data',
+        range: '',
+        color: '#9CA3AF',
+        bgColor: '#F3F4F6',
+        borderColor: '#E5E7EB',
+      };
+    }
+
+    if (key === 'mistakes') {
+      const tier = getMistakesTier(stats.averageMistakes);
+      const isMastered = stats.averageMistakes <= 2.0;
+      const isDev = stats.averageMistakes <= 3.5;
+      return {
+        title: isMastered ? 'Target Met' : isDev ? 'Developing' : 'Needs Support',
+        range: isMastered ? '(≤ 2.0)' : isDev ? '(2.1–3.5)' : '(> 3.5)',
+        color: tier.accentColor,
+        bgColor: tier.bgColor,
+        borderColor: tier.borderColor,
+      };
+    }
+
+    if (key === 'hints') {
+      const tier = getHintsTier(stats.averageHints);
+      const isInd = stats.averageHints <= 1.0;
+      const isFade = stats.averageHints <= 2.0;
+      return {
+        title: isInd ? 'Independent' : isFade ? 'Prompt Fading' : 'Needs Support',
+        range: isInd ? '(≤ 1.0)' : isFade ? '(1.1–2.0)' : '(> 2.0)',
+        color: tier.accentColor,
+        bgColor: tier.bgColor,
+        borderColor: tier.borderColor,
+      };
+    }
+
+    // Duration (Target: 10 - 20 mins)
+    const mins = stats.averageDuration / 60;
+    if (mins >= 10 && mins <= 20) {
+      return {
+        title: 'Optimal Focus',
+        range: '(10–20m)',
+        color: '#0284C7',
+        bgColor: '#E0F2FE',
+        borderColor: '#BBE8FB',
+      };
+    } else if (mins < 10) {
+      return {
+        title: 'Short Session',
+        range: '(< 10m)',
+        color: '#FFAE02',
+        bgColor: '#FFFBEB',
+        borderColor: '#FFF3C4',
+      };
+    } else {
+      return {
+        title: 'Extended',
+        range: '(> 20m)',
+        color: '#FF8870',
+        bgColor: '#FFF7ED',
+        borderColor: '#FFDBD4',
+      };
+    }
+  };
+
   if (isLoading) {
     return (
       <View className="flex-col mt-4">
@@ -282,21 +352,14 @@ export default function StudentPerformanceCards({
                   : formatHints(stats!.averageHints);
 
             const iconSize = isTablet ? 36 : 24;
-
-            const totalSubtitle = hasNoSessions
-              ? '0 sessions'
-              : card.key === 'duration'
-                ? `${stats?.totalSessions ?? 0} sessions`
-                : card.key === 'mistakes'
-                  ? `${stats?.totalMistakes ?? 0} total`
-                  : `${stats?.totalHints ?? 0} total`;
+            const badge = getCardStatusBadge(card.key);
 
             return (
               <Pressable
                 key={card.key}
                 onPress={() => setSelectedCardForModal(card.key)}
                 className={`border-[4px] bg-white justify-between items-center flex-1 active:scale-95 transition-transform ${
-                  isTablet ? 'rounded-[32px] p-4 min-h-[175px]' : 'rounded-[20px] p-2.5 min-h-[148px]'
+                  isTablet ? 'rounded-[32px] p-4 min-h-[175px]' : 'rounded-[20px] p-2 min-h-[155px]'
                 }`}
                 style={{
                   borderColor: card.borderColor,
@@ -310,7 +373,7 @@ export default function StudentPerformanceCards({
                 {/* Label */}
                 <Text
                   className={`font-fredoka-one tracking-[0.06em] text-center ${
-                    isTablet ? 'text-sm mt-1' : 'text-[10px] mt-1'
+                    isTablet ? 'text-sm mt-1' : 'text-[10px] mt-0.5'
                   }`}
                   style={{ color: card.accentColor, letterSpacing: isTablet ? 1.2 : 0.6 }}
                   numberOfLines={1}
@@ -338,7 +401,7 @@ export default function StudentPerformanceCards({
                   {!hasNoSessions && (
                     <Text
                       className={`font-quicksand-bold text-[#9CA3AF] text-center ${
-                        isTablet ? 'text-xs mt-0.5' : 'text-[10px] mt-0.5'
+                        isTablet ? 'text-xs mt-0.5' : 'text-[9px] mt-0.5'
                       }`}
                     >
                       per session
@@ -346,22 +409,31 @@ export default function StudentPerformanceCards({
                   )}
                 </View>
 
-                {/* Totals Pill */}
+                {/* Universal Benchmark Status Pill */}
                 <View
-                  className={`rounded-full items-center justify-center mt-1.5 ${
-                    isTablet ? 'px-2.5 py-1' : 'px-2 py-0.5'
+                  className={`w-full items-center justify-center mt-1 border-[1.5px] ${
+                    isTablet ? 'rounded-full px-3 py-1' : 'rounded-xl px-1 py-1'
                   }`}
-                  style={{ backgroundColor: card.bgColor }}
+                  style={{ backgroundColor: badge.bgColor, borderColor: badge.borderColor }}
                 >
                   <Text
                     className={`font-quicksand-bold text-center ${
-                      isTablet ? 'text-xs' : 'text-[9px]'
+                      isTablet ? 'text-xs' : 'text-[9px] leading-[11px]'
                     }`}
-                    style={{ color: card.accentColor }}
-                    numberOfLines={1}
+                    style={{ color: badge.color }}
                   >
-                    {totalSubtitle}
+                    ● {badge.title}
                   </Text>
+                  {badge.range ? (
+                    <Text
+                      className={`font-quicksand-bold text-center ${
+                        isTablet ? 'text-[10px] mt-0.5' : 'text-[8px] leading-[10px]'
+                      } opacity-80`}
+                      style={{ color: badge.color }}
+                    >
+                      {badge.range}
+                    </Text>
+                  ) : null}
                 </View>
               </Pressable>
             );
