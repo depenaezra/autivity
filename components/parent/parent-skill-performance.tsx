@@ -2,11 +2,12 @@ import { Feather } from '@expo/vector-icons';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, Text, useWindowDimensions, View } from 'react-native';
 import Animated, { FadeInUp, FadeOutUp } from 'react-native-reanimated';
-import Svg, { Circle, Defs, Line, LinearGradient, Polygon, Stop } from 'react-native-svg';
+import Svg, { Circle, Defs, Line, LinearGradient, Polygon, Stop, Text as SvgText } from 'react-native-svg';
 import { ActivityTypeFilter } from '../../src/services/analytics';
 import { ParentSessionRecord } from '../../src/services/parentDashboard';
 import { filterSessionsByPeriod, FilterPeriod } from '../../src/utils/dashboardFilters';
 import { getSkillDomainTakeaways } from '../../src/services/parentAnalyticsEngine';
+import { getAccuracyTier } from '../../src/constants/benchmarkLegend';
 
 const filters: { label: string; value: FilterPeriod }[] = [
   { label: 'Today', value: 'today' },
@@ -99,13 +100,13 @@ export function ParentSkillPerformance({
   }, [activeData, activityType]);
 
   // Radar Chart Layout Metrics
-  const chartSize = isTablet ? 240 : Math.min(windowWidth - 90, 220);
-  const svgPadding = 16;
+  const chartSize = isTablet ? 240 : Math.min(windowWidth - 70, 220);
+  const svgPadding = 28;
   const svgWidth = chartSize + svgPadding * 2;
   const svgHeight = chartSize + svgPadding * 2;
   const cx = svgWidth / 2;
   const cy = svgHeight / 2;
-  const radius = chartSize / 2 - 10;
+  const radius = chartSize / 2 - 20;
 
   const sides = Math.max(activeData.length, 3);
   const angleFor = (i: number) => (Math.PI * 2 * i) / sides - Math.PI / 2;
@@ -186,12 +187,23 @@ export function ParentSkillPerformance({
           <Animated.View
             entering={FadeInUp.duration(200)}
             exiting={FadeOutUp.duration(150)}
-            className="w-full bg-[#E0F2FE] border border-[#BBE8FB] rounded-xl p-3 mt-3 flex-row items-center gap-2.5 overflow-hidden"
+            className="w-full bg-[#F0F9FF] border border-[#BBE8FB] rounded-2xl p-3.5 mt-3 flex-row items-start gap-2.5 overflow-hidden"
           >
-            <Feather name="info" size={isTablet ? 22 : 18} color="#62A9E6" />
-            <Text className={`font-quicksand-bold text-[#62A9E6] flex-1 leading-normal ${isTablet ? 'text-sm' : 'text-[11px]'}`}>
-              Visual evaluation of learner skill exposure and mastery across developmental domains.
-            </Text>
+            <Feather name="info" size={isTablet ? 20 : 16} color="#62A9E6" style={{ marginTop: 2 }} />
+            <View className="flex-1 flex-col gap-1.5">
+              <Text className={`font-fredoka-one text-[#62A9E6] ${isTablet ? 'text-sm' : 'text-xs'}`}>
+                WHAT DOES THIS CHART MEAN?
+              </Text>
+              <Text className={`font-quicksand-medium text-[#484A4B] leading-relaxed ${isTablet ? 'text-xs' : 'text-[11px]'}`}>
+                • <Text className="font-quicksand-bold text-[#62A9E6]">What this shows:</Text> A well-rounded look at your child's growth across key developmental skill areas (like Communication, Motor, and Cognitive skills).
+              </Text>
+              <Text className={`font-quicksand-medium text-[#484A4B] leading-relaxed ${isTablet ? 'text-xs' : 'text-[11px]'}`}>
+                • <Text className="font-quicksand-bold text-[#62A9E6]">Radar web:</Text> The wider the blue shape stretches outwards, the more confident and independent your child is in that domain.
+              </Text>
+              <Text className={`font-quicksand-medium text-[#484A4B] leading-relaxed ${isTablet ? 'text-xs' : 'text-[11px]'}`}>
+                • <Text className="font-quicksand-bold text-[#62A9E6]">Status levels:</Text> Scores of 80%+ indicate Mastered domains, 65%–79% Developing, and below 65% highlight domains where gentle practice helps most.
+              </Text>
+            </View>
           </Animated.View>
         )}
       </View>
@@ -283,6 +295,36 @@ export function ParentSkillPerformance({
                     </React.Fragment>
                   );
                 })}
+
+                {/* Spoke Domain Labels */}
+                {activeData.map((d, i) => {
+                  const p = pointAt(i, 1.25);
+                  const angle = angleFor(i);
+                  const cos = Math.cos(angle);
+                  const sin = Math.sin(angle);
+                  let textAnchor: 'middle' | 'start' | 'end' = 'middle';
+                  if (cos > 0.3) textAnchor = 'start';
+                  else if (cos < -0.3) textAnchor = 'end';
+
+                  let dy = 3;
+                  if (sin < -0.7) dy = -3;
+                  else if (sin > 0.7) dy = 9;
+
+                  const labelText = d.label.length > 13 ? `${d.label.slice(0, 12)}…` : d.label;
+                  return (
+                    <SvgText
+                      key={`spoke-label-${i}`}
+                      x={p.x}
+                      y={p.y + dy}
+                      fontSize={isTablet ? 11 : 9.5}
+                      fontFamily="Quicksand-Bold"
+                      fill="#484A4B"
+                      textAnchor={textAnchor}
+                    >
+                      {labelText}
+                    </SvgText>
+                  );
+                })}
               </Svg>
             </View>
 
@@ -291,13 +333,14 @@ export function ParentSkillPerformance({
               {activeData.map((item, idx) => {
                 const color = DOMAIN_COLORS[idx % DOMAIN_COLORS.length];
                 const scorePct = Math.round(item.value);
+                const tier = getAccuracyTier(scorePct);
 
                 return (
                   <View
                     key={item.label}
                     className="w-full bg-[#F9FAFB] border border-[#F3F4F6] rounded-xl p-3 flex-col"
                   >
-                    {/* Top Row: Color Dot + Full Domain Title + Percentage Badge Pill */}
+                    {/* Top Row: Color Dot + Full Domain Title + Benchmark Badge + Percentage Badge Pill */}
                     <View className="flex-row items-center justify-between">
                       <View className="flex-row items-center gap-2 flex-1 pr-2">
                         <View className="w-3 h-3 rounded-full" style={{ backgroundColor: color }} />
@@ -305,16 +348,29 @@ export function ParentSkillPerformance({
                           {item.label}
                         </Text>
                       </View>
-                      <View
-                        className="px-2.5 py-0.5 rounded-full border"
-                        style={{
-                          backgroundColor: `${color}18`,
-                          borderColor: `${color}50`,
-                        }}
-                      >
-                        <Text className="font-fredoka-one text-xs sm:text-sm" style={{ color: color }}>
-                          {scorePct}%
-                        </Text>
+                      <View className="flex-row items-center gap-1.5">
+                        <View
+                          className="px-2 py-0.5 rounded-full border"
+                          style={{
+                            backgroundColor: tier.bgColor,
+                            borderColor: tier.borderColor,
+                          }}
+                        >
+                          <Text className="font-fredoka-one text-[10px] uppercase" style={{ color: tier.accentColor }}>
+                            {tier.parentLabel}
+                          </Text>
+                        </View>
+                        <View
+                          className="px-2 py-0.5 rounded-full border"
+                          style={{
+                            backgroundColor: `${color}18`,
+                            borderColor: `${color}50`,
+                          }}
+                        >
+                          <Text className="font-fredoka-one text-xs sm:text-sm" style={{ color: color }}>
+                            {scorePct}%
+                          </Text>
+                        </View>
                       </View>
                     </View>
 

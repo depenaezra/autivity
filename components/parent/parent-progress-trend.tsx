@@ -4,7 +4,6 @@ import { Pressable, Text, useWindowDimensions, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp, FadeOutDown, FadeOutUp } from 'react-native-reanimated';
 import Svg, { Circle, Defs, Line, LinearGradient, Path, Stop, Text as SvgText } from 'react-native-svg';
 import { ActivityTypeFilter } from '../../src/services/analytics';
-import { getProgressTrendTakeaway } from '../../src/services/parentAnalyticsEngine';
 import { ParentSessionRecord } from '../../src/services/parentDashboard';
 import { FilterPeriod, filterSessionsByPeriod, getFilterLabel } from '../../src/utils/dashboardFilters';
 
@@ -19,7 +18,6 @@ export function ParentProgressTrend({ sessions, globalFilter, activityType = 'al
   const { width } = useWindowDimensions();
   const [filter, setFilter] = useState<FilterPeriod>(globalFilter || 'overall');
   const [showInfo, setShowInfo] = useState(false);
-  const [showCalculationInfo, setShowCalculationInfo] = useState(false);
   const [selectedPointIdx, setSelectedPointIdx] = useState<number | null>(null);
 
   useEffect(() => {
@@ -106,17 +104,6 @@ export function ParentProgressTrend({ sessions, globalFilter, activityType = 'al
     return Math.round((last - first) * 10) / 10;
   }, [chartData]);
 
-  // Dynamic Evidence-Based Takeaway
-  const trendTakeaway = useMemo(() => {
-    return getProgressTrendTakeaway({
-      trendDifference,
-      averageScore,
-      totalPoints: chartData.length,
-      timeframeLabel: getTimeframePeriodName(filter),
-      activityType,
-    });
-  }, [trendDifference, averageScore, chartData.length, filter, activityType]);
-
   const filters: { label: string; value: FilterPeriod }[] = [
     { label: 'Today', value: 'today' },
     { label: 'This Week', value: 'week' },
@@ -190,6 +177,7 @@ export function ParentProgressTrend({ sessions, globalFilter, activityType = 'al
             <Pressable
               onPress={() => setShowInfo(!showInfo)}
               className="active:opacity-75 p-1"
+              accessibilityLabel="Information about Progress Over Time"
             >
               <Feather name="info" size={isTablet ? 20 : 16} color="#62A9E6" />
             </Pressable>
@@ -233,12 +221,23 @@ export function ParentProgressTrend({ sessions, globalFilter, activityType = 'al
           <Animated.View
             entering={FadeInUp.duration(200)}
             exiting={FadeOutUp.duration(150)}
-            className="w-full bg-[#E0F2FE] border border-[#BBE8FB] rounded-xl p-3 mt-3 flex-row items-center gap-2.5 overflow-hidden"
+            className="w-full bg-[#F0F9FF] border border-[#BBE8FB] rounded-2xl p-3.5 mt-3 flex-row items-start gap-2.5 overflow-hidden"
           >
-            <Feather name="info" size={isTablet ? 22 : 18} color="#62A9E6" />
-            <Text className={`font-quicksand-bold text-[#62A9E6] flex-1 leading-normal ${isTablet ? 'text-sm' : 'text-[11px]'}`}>
-              Average daily performance percentage based on evaluated learning sessions.
-            </Text>
+            <Feather name="info" size={isTablet ? 20 : 16} color="#62A9E6" style={{ marginTop: 2 }} />
+            <View className="flex-1 flex-col gap-1.5">
+              <Text className={`font-fredoka-one text-[#62A9E6] ${isTablet ? 'text-sm' : 'text-xs'}`}>
+                WHAT DOES THIS CHART MEAN?
+              </Text>
+              <Text className={`font-quicksand-medium text-[#484A4B] leading-relaxed ${isTablet ? 'text-xs' : 'text-[11px]'}`}>
+                • <Text className="font-quicksand-bold text-[#62A9E6]">What this shows:</Text> How comfortably your child engages with learning tasks (looking, listening, and completing activity steps).
+              </Text>
+              <Text className={`font-quicksand-medium text-[#484A4B] leading-relaxed ${isTablet ? 'text-xs' : 'text-[11px]'}`}>
+                • <Text className="font-quicksand-bold text-[#62A9E6]">Daily changes:</Text> Minor ups and downs are completely normal depending on your child's mood, energy, or newly introduced lessons.
+              </Text>
+              <Text className={`font-quicksand-medium text-[#484A4B] leading-relaxed ${isTablet ? 'text-xs' : 'text-[11px]'}`}>
+                • <Text className="font-quicksand-bold text-[#62A9E6]">The 80% goal:</Text> Reaching 80% or higher means your child has mastered these skills and can complete them with confidence and independence!
+              </Text>
+            </View>
           </Animated.View>
         )}
       </View>
@@ -328,6 +327,24 @@ export function ParentProgressTrend({ sessions, globalFilter, activityType = 'al
             </View>
           </View>
 
+          {/* Visual Legend Row */}
+          <View className="flex-row items-center justify-between px-2 mb-3">
+            <View className="flex-row items-center gap-4">
+              <View className="flex-row items-center gap-1.5">
+                <View className="w-2.5 h-2.5 rounded-full bg-[#62A9E6]" />
+                <Text className="font-quicksand-bold text-[11px] text-[#64748B]">
+                  Daily Score
+                </Text>
+              </View>
+              <View className="flex-row items-center gap-1.5">
+                <View className="w-3 h-0.5 bg-[#8B5CF6]" style={{ borderRadius: 1 }} />
+                <Text className="font-quicksand-bold text-[11px] text-[#7C3AED]">
+                  Mastery Target (80%)
+                </Text>
+              </View>
+            </View>
+          </View>
+
           {/* SVG Chart Area */}
           <View className="items-center justify-center w-full">
             <Svg width={svgWidth} height={chartHeight}>
@@ -366,6 +383,35 @@ export function ParentProgressTrend({ sessions, globalFilter, activityType = 'al
                   </React.Fragment>
                 );
               })}
+
+              {/* 80% Mastery Reference Line */}
+              {(() => {
+                const masteryY = paddingTop + graphHeight - (80 / 100) * graphHeight;
+                return (
+                  <React.Fragment key="mastery-ref-line">
+                    <Line
+                      x1={paddingLeft}
+                      y1={masteryY}
+                      x2={paddingLeft + graphWidth}
+                      y2={masteryY}
+                      stroke="#8B5CF6"
+                      strokeDasharray="6,4"
+                      strokeWidth="1.5"
+                      strokeOpacity={0.85}
+                    />
+                    <SvgText
+                      x={paddingLeft + graphWidth - 4}
+                      y={masteryY - 4}
+                      fill="#7C3AED"
+                      fontSize="9"
+                      fontFamily="Quicksand-Bold"
+                      textAnchor="end"
+                    >
+                      Mastery Target
+                    </SvgText>
+                  </React.Fragment>
+                );
+              })()}
 
               {/* Gradient Area Fill */}
               {points.length > 0 && areaPath !== '' && (
@@ -503,106 +549,6 @@ export function ParentProgressTrend({ sessions, globalFilter, activityType = 'al
                 </Animated.View>
               );
             })()}
-          </View>
-
-          {/* Dynamic Evidence-Based Key Takeaway Box */}
-          <View className="mt-4 pt-4 border-t border-[#F3F4F6] flex-col gap-2.5">
-            <View className="flex-row items-center justify-between">
-              <View className="flex-row items-center gap-2 flex-1">
-                {/* Takeaway Status Pill */}
-                <View
-                  style={{
-                    backgroundColor:
-                      trendTakeaway.badgeType === 'growth'
-                        ? '#DCFCE7'
-                        : trendTakeaway.badgeType === 'focus'
-                          ? '#FFF3C4'
-                          : trendTakeaway.badgeType === 'steady'
-                            ? '#E0F2FE'
-                            : '#F3F4F6',
-                    borderColor:
-                      trendTakeaway.badgeType === 'growth'
-                        ? '#86EFAC'
-                        : trendTakeaway.badgeType === 'focus'
-                          ? '#FFAE02'
-                          : trendTakeaway.badgeType === 'steady'
-                            ? '#62A9E6'
-                            : '#D1D5DB',
-                    borderWidth: 1,
-                    borderRadius: 999,
-                    paddingHorizontal: 9,
-                    paddingVertical: 3,
-                  }}
-                >
-                  <Text
-                    style={{
-                      color:
-                        trendTakeaway.badgeType === 'growth'
-                          ? '#15803D'
-                          : trendTakeaway.badgeType === 'focus'
-                            ? '#D97706'
-                            : trendTakeaway.badgeType === 'steady'
-                              ? '#2563EB'
-                              : '#6B7280',
-                    }}
-                    className="font-fredoka-one text-[10px] uppercase"
-                  >
-                    {trendTakeaway.badgeLabel}
-                  </Text>
-                </View>
-
-                <Text className="font-fredoka-one text-sm text-[#374151] flex-1" numberOfLines={1}>
-                  {trendTakeaway.title}
-                </Text>
-              </View>
-
-              {/* Explainer Toggle */}
-              <Pressable
-                onPress={() => setShowCalculationInfo(!showCalculationInfo)}
-                className="flex-row items-center gap-1 active:opacity-75 p-1"
-              >
-                <Feather name="help-circle" size={13} color="#9CA3AF" />
-                <Text className="font-quicksand-bold text-[10px] text-[#9CA3AF]">
-                  {showCalculationInfo ? 'Hide' : 'How it works'}
-                </Text>
-              </Pressable>
-            </View>
-
-            <Text className="font-quicksand-medium text-xs text-[#64748B] leading-relaxed">
-              {trendTakeaway.description}
-            </Text>
-
-            {trendTakeaway.recommendation && (
-              <View className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl p-2.5 flex-row items-start gap-2">
-                <Feather name="info" size={13} color="#62A9E6" style={{ marginTop: 2 }} />
-                <Text className="font-quicksand-medium text-[11px] text-[#475569] flex-1 leading-normal">
-                  <Text className="font-quicksand-bold text-[#0F172A]">Takeaway: </Text>
-                  {trendTakeaway.recommendation}
-                </Text>
-              </View>
-            )}
-
-            {/* Collapsible Easy Parent Guide */}
-            {showCalculationInfo && (
-              <Animated.View
-                entering={FadeInUp.duration(150)}
-                exiting={FadeOutUp.duration(100)}
-                className="bg-[#EFF6FF] border border-[#BFDBFE] rounded-xl p-3 flex-col gap-1.5 mt-1"
-              >
-                <Text className="font-fredoka-one text-[11px] text-[#1E40AF]">
-                  WHAT DOES THIS CHART MEAN?
-                </Text>
-                <Text className="font-quicksand-medium text-[11px] text-[#1E3A8A] leading-relaxed">
-                  • <Text className="font-quicksand-bold">What this shows:</Text> How comfortably your child engages with learning tasks (looking, listening, and finishing steps).
-                </Text>
-                <Text className="font-quicksand-medium text-[11px] text-[#1E3A8A] leading-relaxed">
-                  • <Text className="font-quicksand-bold">Daily changes:</Text> Minor ups and downs are completely normal depending on your child's mood, energy, or newly introduced lessons.
-                </Text>
-                <Text className="font-quicksand-medium text-[11px] text-[#1E3A8A] leading-relaxed">
-                  • <Text className="font-quicksand-bold">The 85% goal:</Text> Reaching around 85% means your child can do these skills confidently and on their own!
-                </Text>
-              </Animated.View>
-            )}
           </View>
         </View>
       )}

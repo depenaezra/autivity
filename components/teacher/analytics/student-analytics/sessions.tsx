@@ -286,12 +286,23 @@ export default function Sessions({
           <AnimatedReanimated.View
             entering={FadeInUp.duration(200)}
             exiting={FadeOutUp.duration(150)}
-            className="w-full bg-[#E0F2FE] border border-[#BBE8FB] rounded-xl p-3 mt-3 flex-row items-center gap-2.5 overflow-hidden"
+            className="w-full bg-[#F0F9FF] border border-[#BBE8FB] rounded-2xl p-3.5 mt-3 flex-row items-start gap-2.5 overflow-hidden"
           >
-            <Feather name="info" size={isTablet ? 22 : 18} color="#62A9E6" />
-            <Text className={`font-quicksand-bold text-[#62A9E6] flex-1 leading-normal ${isTablet ? 'text-sm' : 'text-[11px]'}`}>
-              Validate pending sessions to evaluate student progress and publish updates directly to the Parent Portal. Swipe left on evaluated sessions to edit feedback.
-            </Text>
+            <Feather name="info" size={isTablet ? 20 : 16} color="#62A9E6" style={{ marginTop: 2 }} />
+            <View className="flex-1 flex-col gap-1.5">
+              <Text className={`font-fredoka-one text-[#62A9E6] ${isTablet ? 'text-sm' : 'text-xs'}`}>
+                WHAT DOES THIS SECTION MEAN?
+              </Text>
+              <Text className={`font-quicksand-medium text-[#484A4B] leading-relaxed ${isTablet ? 'text-xs' : 'text-[11px]'}`}>
+                • <Text className="font-quicksand-bold text-[#62A9E6]">Session Verification:</Text> Validate pending sessions to evaluate student progress and publish updates directly to the Parent Portal.
+              </Text>
+              <Text className={`font-quicksand-medium text-[#484A4B] leading-relaxed ${isTablet ? 'text-xs' : 'text-[11px]'}`}>
+                • <Text className="font-quicksand-bold text-[#62A9E6]">Rubric Scoring:</Text> Fill in 5-criterion rubric evaluations to capture concentration, instruction-following, and completion quality.
+              </Text>
+              <Text className={`font-quicksand-medium text-[#484A4B] leading-relaxed ${isTablet ? 'text-xs' : 'text-[11px]'}`}>
+                • <Text className="font-quicksand-bold text-[#62A9E6]">Editing Feedback:</Text> Tap or swipe left on evaluated sessions to revise rubrics, notes, or classroom observations.
+              </Text>
+            </View>
           </AnimatedReanimated.View>
         )}
       </View>

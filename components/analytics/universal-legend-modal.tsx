@@ -37,13 +37,13 @@ export function UniversalLegendModal({
       isTablet={isTablet}
       cancelLabel="GOT IT"
       heightClassName={isTablet ? 'h-[75%]' : 'h-[82%]'}
-      title={activeRole === 'teacher' ? 'Teacher Performance Legend' : 'Learning Progress Guide'}
+      title="Performance Guide"
     >
       <ScrollView showsVerticalScrollIndicator={false} className="flex-col pt-1">
         {/* Intro Banner */}
-        <View className="bg-[#E0F2FE]/50 border border-[#BBE8FB] rounded-2xl p-3 mb-4 flex-row items-center gap-2.5">
-          <Feather name="info" size={isTablet ? 20 : 16} color="#0284C7" />
-          <Text className="font-quicksand-medium text-xs text-[#0369A1] flex-1 leading-snug">
+        <View className="bg-[#F0F9FF] border border-[#BBE8FB] rounded-2xl p-3 mb-4 flex-row items-center gap-2.5">
+          <Feather name="info" size={isTablet ? 20 : 16} color="#62A9E6" />
+          <Text className="font-quicksand-medium text-xs text-[#484A4B] flex-1 leading-snug">
             {activeRole === 'teacher'
               ? 'AutiVity uses a standardized 3-tier benchmark grounded in ABA mastery criteria (≥80% threshold) across all charts and metrics.'
               : 'Every chart and score uses these 3 simple levels so you can easily understand your child’s learning journey.'}

@@ -7,6 +7,7 @@ import { ActivityTypeFilter } from '../../src/services/analytics';
 import { ParentSessionRecord } from '../../src/services/parentDashboard';
 import { filterSessionsByPeriod, FilterPeriod } from '../../src/utils/dashboardFilters';
 import { getActivityPerformanceTakeaway } from '../../src/services/parentAnalyticsEngine';
+import { getAccuracyTier } from '../../src/constants/benchmarkLegend';
 
 const filters: { label: string; value: FilterPeriod }[] = [
   { label: 'Today', value: 'today' },
@@ -298,15 +299,21 @@ export function ParentActivityPerformance({ sessions = [], data: initialData, gl
           <Animated.View
             entering={FadeInUp.duration(200)}
             exiting={FadeOutUp.duration(150)}
-            className="w-full bg-[#E0F2FE] border border-[#BBE8FB] rounded-xl p-3.5 mt-3 flex-row items-start gap-2.5 overflow-hidden"
+            className="w-full bg-[#F0F9FF] border border-[#BBE8FB] rounded-2xl p-3.5 mt-3 flex-row items-start gap-2.5 overflow-hidden"
           >
             <Feather name="info" size={isTablet ? 20 : 16} color="#62A9E6" style={{ marginTop: 2 }} />
-            <View className="flex-1">
-              <Text className={`font-fredoka-one text-[#0284C7] mb-0.5 ${isTablet ? 'text-sm' : 'text-xs'}`}>
-                WHAT DOES THIS CHART SHOW?
+            <View className="flex-1 flex-col gap-1.5">
+              <Text className={`font-fredoka-one text-[#62A9E6] ${isTablet ? 'text-sm' : 'text-xs'}`}>
+                WHAT DOES THIS CHART MEAN?
               </Text>
-              <Text className={`font-quicksand-bold text-[#0369A1] leading-relaxed ${isTablet ? 'text-sm' : 'text-[11px]'}`}>
-                Shows your child's average score across different learning activities (like Tracing, Matching, or Sorting). Each category has its own distinct color so you can easily see what types of activities they feel most confident with!
+              <Text className={`font-quicksand-medium text-[#484A4B] leading-relaxed ${isTablet ? 'text-xs' : 'text-[11px]'}`}>
+                • <Text className="font-quicksand-bold text-[#62A9E6]">What this shows:</Text> Your child's accuracy across different types of learning activities (such as Tracing, Matching, or Sorting).
+              </Text>
+              <Text className={`font-quicksand-medium text-[#484A4B] leading-relaxed ${isTablet ? 'text-xs' : 'text-[11px]'}`}>
+                • <Text className="font-quicksand-bold text-[#62A9E6]">Categories:</Text> Each activity type has its own distinct color so you can quickly see which areas your child feels most confident with.
+              </Text>
+              <Text className={`font-quicksand-medium text-[#484A4B] leading-relaxed ${isTablet ? 'text-xs' : 'text-[11px]'}`}>
+                • <Text className="font-quicksand-bold text-[#62A9E6]">Status levels:</Text> Scores of 80%+ indicate Mastered skills, 65%–79% show Developing skills, and below 65% highlight areas where extra support is helpful.
               </Text>
             </View>
           </Animated.View>
@@ -348,9 +355,9 @@ export function ParentActivityPerformance({ sessions = [], data: initialData, gl
               const gradientId = `activity-bar-grad-${idx}-${item.label.replace(/\s+/g, '')}`;
               const count = item.count || 1;
 
-              // Friendly mastery status per category
-              const statusLabel =
-                clampedVal >= 85 ? 'Mastered' : clampedVal >= 70 ? 'Proficient' : 'Needs Practice';
+              // Universal 3-tier benchmark status
+              const tier = getAccuracyTier(clampedVal);
+              const statusLabel = tier.parentLabel;
 
               return (
                 <View
@@ -382,16 +389,16 @@ export function ParentActivityPerformance({ sessions = [], data: initialData, gl
                       </View>
                     </View>
 
-                    {/* Right Side: Mastery Status Tag + Percentage Pill */}
+                    {/* Right Side: Universal Benchmark Status Tag + Percentage Pill */}
                     <View className="flex-row items-center gap-1.5">
                       <View
                         className="px-2 py-0.5 rounded-full border"
                         style={{
-                          backgroundColor: theme.badgeBg,
-                          borderColor: theme.badgeBorder,
+                          backgroundColor: tier.bgColor,
+                          borderColor: tier.borderColor,
                         }}
                       >
-                        <Text className="font-fredoka-one text-[10px] uppercase" style={{ color: theme.badgeText }}>
+                        <Text className="font-fredoka-one text-[10px] uppercase" style={{ color: tier.accentColor }}>
                           {statusLabel}
                         </Text>
                       </View>

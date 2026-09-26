@@ -124,7 +124,6 @@ export default function StudentPerformanceCards({
   const [stats, setStats] = useState<StudentSessionStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showInfo, setShowInfo] = useState(false);
   const [selectedCardForModal, setSelectedCardForModal] = useState<MetricKey | null>(null);
 
   useEffect(() => {
@@ -265,18 +264,9 @@ export default function StudentPerformanceCards({
       {/* Header and Filter Controls */}
       <View className="mb-4">
         <View className="flex-row flex-wrap justify-between items-center gap-3">
-          <View className="flex-row items-center gap-2">
-            <Text className={`font-fredoka-one text-[#484A4B] ${isTablet ? 'text-[32px]' : 'text-[22px]'}`}>
-              Student Performance
-            </Text>
-            <Pressable
-              onPress={() => setShowInfo(!showInfo)}
-              className="active:opacity-75 p-1"
-              accessibilityLabel="Information about student performance metrics"
-            >
-              <Feather name="info" size={isTablet ? 20 : 16} color="#62A9E6" />
-            </Pressable>
-          </View>
+          <Text className={`font-fredoka-one text-[#484A4B] ${isTablet ? 'text-[32px]' : 'text-[22px]'}`}>
+            Student Performance
+          </Text>
 
           <View className="flex-row items-center gap-1.5 flex-wrap">
             {filterButtons.map((btn) => {
@@ -310,27 +300,6 @@ export default function StudentPerformanceCards({
             })}
           </View>
         </View>
-
-        {/* Full-width Info Banner Row below Title & Filters */}
-        {showInfo && (
-          <Animated.View
-            entering={FadeInUp.duration(200)}
-            exiting={FadeOutUp.duration(150)}
-            className="w-full bg-[#E0F2FE] border border-[#BBE8FB] rounded-2xl p-3.5 mt-3 flex-row items-start gap-3 overflow-hidden"
-          >
-            <View className="mt-0.5">
-              <Feather name="info" size={isTablet ? 22 : 18} color="#62A9E6" />
-            </View>
-            <View className="flex-1">
-              <Text className={`font-quicksand-bold text-[#1E40AF] leading-snug ${isTablet ? 'text-sm' : 'text-xs'}`}>
-                Averages are calculated per completed session (Total ÷ Sessions).
-              </Text>
-              <Text className={`font-quicksand-medium text-[#2563EB] mt-1 leading-relaxed ${isTablet ? 'text-xs' : 'text-[11px]'}`}>
-                Unlike 1.0–4.0 rubric scores, mistakes and hints have no max cap—lower numbers indicate greater accuracy and independence. Tap any card below to view its formula and breakdown.
-              </Text>
-            </View>
-          </Animated.View>
-        )}
       </View>
 
       {error ? (

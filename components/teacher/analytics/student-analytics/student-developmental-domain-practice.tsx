@@ -5,6 +5,7 @@ import Animated, { FadeInUp, FadeOutUp } from 'react-native-reanimated';
 import Svg, { Defs, Line, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { ActivityTypeFilter } from '../../../../src/services/analytics';
 import { getStudentDevelopmentalSkillsExposure, MasterDomainExposure } from '../../../../src/services/student-analytics';
+import { getRubricTier } from '../../../../src/constants/benchmarkLegend';
 
 interface StudentDevelopmentalDomainPracticeProps {
   studentId: string;
@@ -211,12 +212,23 @@ export default function StudentDevelopmentalDomainPractice({ studentId, filter: 
           <Animated.View
             entering={FadeInUp.duration(200)}
             exiting={FadeOutUp.duration(150)}
-            className="w-full bg-[#E0F2FE] border border-[#BBE8FB] rounded-xl p-3 mt-3 flex-row items-center gap-2.5 overflow-hidden"
+            className="w-full bg-[#F0F9FF] border border-[#BBE8FB] rounded-2xl p-3.5 mt-3 flex-row items-start gap-2.5 overflow-hidden"
           >
-            <Feather name="info" size={isTablet ? 22 : 18} color="#62A9E6" />
-            <Text className={`font-quicksand-bold text-[#62A9E6] flex-1 leading-normal ${isTablet ? 'text-sm' : 'text-[11px]'}`}>
-              Tracks total practices alongside rubric evaluations (0.0 to 4.0). High mastery areas (≥3.5) and support areas (&lt;3.0) are labeled to quickly identify where the learner excels or needs guidance.
-            </Text>
+            <Feather name="info" size={isTablet ? 20 : 16} color="#62A9E6" style={{ marginTop: 2 }} />
+            <View className="flex-1 flex-col gap-1.5">
+              <Text className={`font-fredoka-one text-[#62A9E6] ${isTablet ? 'text-sm' : 'text-xs'}`}>
+                WHAT DOES THIS SECTION MEAN?
+              </Text>
+              <Text className={`font-quicksand-medium text-[#484A4B] leading-relaxed ${isTablet ? 'text-xs' : 'text-[11px]'}`}>
+                • <Text className="font-quicksand-bold text-[#62A9E6]">Domain Practice Volume:</Text> Tracks completed learning activity trials categorized by developmental domains.
+              </Text>
+              <Text className={`font-quicksand-medium text-[#484A4B] leading-relaxed ${isTablet ? 'text-xs' : 'text-[11px]'}`}>
+                • <Text className="font-quicksand-bold text-[#62A9E6]">Rubric Performance (1.0–4.0):</Text> Averages classroom evaluation rubrics across looking, concentrating, performing, following instructions, and completion.
+              </Text>
+              <Text className={`font-quicksand-medium text-[#484A4B] leading-relaxed ${isTablet ? 'text-xs' : 'text-[11px]'}`}>
+                • <Text className="font-quicksand-bold text-[#62A9E6]">Benchmark Tiers:</Text> Scores of ≥3.2 (80%+) are <Text className="font-quicksand-bold text-[#179D33]">Mastered</Text>, 2.6–3.19 are <Text className="font-quicksand-bold text-[#FFAE02]">Developing</Text>, and &lt;2.6 are <Text className="font-quicksand-bold text-[#FF8870]">Needs Support</Text>.
+              </Text>
+            </View>
           </Animated.View>
         )}
       </View>
@@ -291,8 +303,7 @@ export default function StudentDevelopmentalDomainPractice({ studentId, filter: 
 
               const score = domain.averageScore;
               const hasScore = score !== null && score !== undefined;
-              const isStrength = hasScore && score >= 3.5;
-              const isNeedsSupport = hasScore && score < 3.0;
+              const tier = hasScore ? getRubricTier(score) : null;
 
               return (
                 <View
@@ -343,27 +354,27 @@ export default function StudentDevelopmentalDomainPractice({ studentId, filter: 
                         </Text>
                       </View>
 
-                      {/* Domain Score Badge (High / Low / Proficient) */}
-                      {hasScore ? (
+                      {/* Domain Score Badge (Universal Benchmark Tiers) */}
+                      {hasScore && tier ? (
                         <View
                           className="flex-row items-center gap-1.5 px-2.5 py-1 rounded-full border"
                           style={{
-                            backgroundColor: isStrength ? '#F0FDF4' : isNeedsSupport ? '#FFF7ED' : '#F0F9FF',
-                            borderColor: isStrength ? '#CBFAC4' : isNeedsSupport ? '#FFDBD4' : '#BBE8FB',
+                            backgroundColor: tier.bgColor,
+                            borderColor: tier.borderColor,
                           }}
                         >
                           <Feather
-                            name={isStrength ? 'check-circle' : isNeedsSupport ? 'alert-circle' : 'award'}
+                            name={tier.iconName as any}
                             size={12}
-                            color={isStrength ? '#16A34A' : isNeedsSupport ? '#FF8870' : '#62A9E6'}
+                            color={tier.accentColor}
                           />
                           <Text
                             className="font-fredoka-one text-[10px] uppercase tracking-wider"
                             style={{
-                              color: isStrength ? '#16A34A' : isNeedsSupport ? '#FF8870' : '#62A9E6',
+                              color: tier.accentColor,
                             }}
                           >
-                            {score.toFixed(1)} / 4.0 • {isStrength ? 'Strength' : isNeedsSupport ? 'Needs Support' : 'Proficient'}
+                            {score.toFixed(1)} / 4.0 • {tier.shortLabel}
                           </Text>
                         </View>
                       ) : (
@@ -400,8 +411,7 @@ export default function StudentDevelopmentalDomainPractice({ studentId, filter: 
 
                           const skillScore = skill.averageScore;
                           const hasSkillScore = skillScore !== null && skillScore !== undefined;
-                          const isSkillStrength = hasSkillScore && skillScore >= 3.5;
-                          const isSkillNeedsSupport = hasSkillScore && skillScore < 3.0;
+                          const skillTier = hasSkillScore ? getRubricTier(skillScore) : null;
 
                           return (
                             <View key={skill.name} className="flex-col">
@@ -474,21 +484,21 @@ export default function StudentDevelopmentalDomainPractice({ studentId, filter: 
                                   >
                                     {skill.count} {skill.count === 1 ? 'practice' : 'practices'}
                                   </Text>
-                                  {hasSkillScore ? (
+                                  {hasSkillScore && skillTier ? (
                                     <View
-                                      className="flex-row items-center gap-1 mt-0.5 px-1.5 py-0.2 rounded-[4px] border"
+                                      className="flex-row items-center gap-1 mt-0.5 px-1.5 py-0.5 rounded-[4px] border"
                                       style={{
-                                        backgroundColor: isSkillStrength ? '#F0FDF4' : isSkillNeedsSupport ? '#FFF7ED' : '#F0F9FF',
-                                        borderColor: isSkillStrength ? '#CBFAC4' : isSkillNeedsSupport ? '#FFDBD4' : '#BBE8FB',
+                                        backgroundColor: skillTier.bgColor,
+                                        borderColor: skillTier.borderColor,
                                       }}
                                     >
                                       <Text
                                         className="font-fredoka-one text-[9px] uppercase"
                                         style={{
-                                          color: isSkillStrength ? '#16A34A' : isSkillNeedsSupport ? '#FF8870' : '#62A9E6',
+                                          color: skillTier.accentColor,
                                         }}
                                       >
-                                        ★ {skillScore.toFixed(1)}
+                                        ★ {skillScore.toFixed(1)} • {skillTier.shortLabel}
                                       </Text>
                                     </View>
                                   ) : (

@@ -363,12 +363,23 @@ export default function StudentEvaluationTrend({ studentId, filter: externalFilt
           <Animated.View
             entering={FadeInUp.duration(200)}
             exiting={FadeOutUp.duration(150)}
-            className="w-full bg-[#E0F2FE] border border-[#BBE8FB] rounded-xl p-3 mt-3 flex-row items-center gap-2.5 overflow-hidden"
+            className="w-full bg-[#F0F9FF] border border-[#BBE8FB] rounded-2xl p-3.5 mt-3 flex-row items-start gap-2.5 overflow-hidden"
           >
-            <Feather name="info" size={isTablet ? 22 : 18} color="#62A9E6" />
-            <Text className={`font-quicksand-bold text-[#62A9E6] flex-1 leading-normal ${isTablet ? 'text-sm' : 'text-[11px]'}`}>
-              Dual-axis trend: Blue shows Teacher Evaluation Score (0–4), Amber shows Hints Used per session. Points at zero hints highlight independent mastery.
-            </Text>
+            <Feather name="info" size={isTablet ? 20 : 16} color="#62A9E6" style={{ marginTop: 2 }} />
+            <View className="flex-1 flex-col gap-1.5">
+              <Text className={`font-fredoka-one text-[#62A9E6] ${isTablet ? 'text-sm' : 'text-xs'}`}>
+                WHAT DOES THIS CHART MEAN?
+              </Text>
+              <Text className={`font-quicksand-medium text-[#484A4B] leading-relaxed ${isTablet ? 'text-xs' : 'text-[11px]'}`}>
+                • <Text className="font-quicksand-bold text-[#62A9E6]">Dual-Axis Trend:</Text> The blue line tracks the 5-criterion rubric evaluation score (1.0–4.0 scale), while the amber line tracks hints used per session.
+              </Text>
+              <Text className={`font-quicksand-medium text-[#484A4B] leading-relaxed ${isTablet ? 'text-xs' : 'text-[11px]'}`}>
+                • <Text className="font-quicksand-bold text-[#62A9E6]">Mastery Target (3.2 • 80%):</Text> Scores at or above 3.2 signify stimulus acquisition and autonomous task performance.
+              </Text>
+              <Text className={`font-quicksand-medium text-[#484A4B] leading-relaxed ${isTablet ? 'text-xs' : 'text-[11px]'}`}>
+                • <Text className="font-quicksand-bold text-[#62A9E6]">Prompt Fading:</Text> A decreasing amber line alongside an increasing blue line indicates successful fading of teacher prompts.
+              </Text>
+            </View>
           </Animated.View>
         )}
       </View>
@@ -485,11 +496,17 @@ export default function StudentEvaluationTrend({ studentId, filter: externalFilt
 
           {/* Dual-Axis Visual Legend */}
           <View className="flex-row items-center justify-between mb-3 px-2 flex-wrap gap-2">
-            <View className="flex-row items-center gap-4">
+            <View className="flex-row items-center gap-3.5 flex-wrap">
               <View className="flex-row items-center gap-1.5">
                 <View className="w-2.5 h-2.5 rounded-full bg-[#62A9E6]" />
                 <Text className="font-quicksand-bold text-[11px] text-[#64748B]">
                   Score (0 - 4.0)
+                </Text>
+              </View>
+              <View className="flex-row items-center gap-1.5">
+                <View className="w-3 h-0.5 bg-[#8B5CF6]" style={{ borderRadius: 1 }} />
+                <Text className="font-quicksand-bold text-[11px] text-[#7C3AED]">
+                  Mastery Target (3.2 / 80%)
                 </Text>
               </View>
               <View className="flex-row items-center gap-1.5">
@@ -547,6 +564,35 @@ export default function StudentEvaluationTrend({ studentId, filter: externalFilt
                   </React.Fragment>
                 );
               })}
+
+              {/* 3.2 ABA Mastery Benchmark Line (80%) */}
+              {(() => {
+                const masteryY = paddingTop + graphHeight - (3.2 / 4) * graphHeight;
+                return (
+                  <React.Fragment key="teacher-mastery-line">
+                    <Line
+                      x1={paddingLeft}
+                      y1={masteryY}
+                      x2={paddingLeft + graphWidth}
+                      y2={masteryY}
+                      stroke="#8B5CF6"
+                      strokeDasharray="6,4"
+                      strokeWidth="1.5"
+                      strokeOpacity={0.85}
+                    />
+                    <SvgText
+                      x={paddingLeft + graphWidth - 4}
+                      y={masteryY - 4}
+                      fill="#7C3AED"
+                      fontSize="9"
+                      fontFamily="Quicksand-Bold"
+                      textAnchor="end"
+                    >
+                      Mastery Target
+                    </SvgText>
+                  </React.Fragment>
+                );
+              })()}
 
               {/* Right Y-Axis Scale (Hints 0 to maxHintsScale) */}
               {[0, 1, 2, 3, 4].map((stepIdx) => {
