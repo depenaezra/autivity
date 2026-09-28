@@ -16,6 +16,7 @@ interface ParentKpiExplanationModalProps {
     totalSessions: number;
   };
   isTablet: boolean;
+  language?: 'en' | 'tl';
 }
 
 interface MetricGuideContent {
@@ -35,7 +36,7 @@ interface MetricGuideContent {
   friendlyTip: string;
 }
 
-const METRIC_GUIDES: MetricGuideContent[] = [
+const METRIC_GUIDES_EN: MetricGuideContent[] = [
   {
     key: 'performance',
     tabLabel: 'Performance',
@@ -112,7 +113,84 @@ const METRIC_GUIDES: MetricGuideContent[] = [
   },
 ];
 
-function formatDuration(stats: ParentKpiExplanationModalProps['stats']): string {
+const METRIC_GUIDES_TL: MetricGuideContent[] = [
+  {
+    key: 'performance',
+    tabLabel: 'Pagganap',
+    title: 'Pangkalahatang Pagganap',
+    iconName: 'award',
+    accentColor: '#62A9E6',
+    bgColor: '#E0F2FE',
+    borderColor: '#BBE8FB',
+    whatItIs: 'Ipinapakita kung gaano kawasto ang mga sagot at natapos na gawain ng iyong anak sa mga aktibidad.',
+    levels: [
+      {
+        label: 'Mastered',
+        description: 'Naiintindihan ng iyong anak ang mga aralin at kaya itong tapusin nang mag-isa at kumportable.',
+        dotColor: '#179D33',
+      },
+      {
+        label: 'Developing',
+        description: 'Tuloy-tuloy ang pag-unlad ng iyong anak habang nasasanay sa mga bagong kasanayan.',
+        dotColor: '#FFAE02',
+      },
+      {
+        label: 'Needs Support',
+        description: 'Nagsisimula pa lamang ang iyong anak sa kasanayang ito at matutulungan ng marahang paalala o pahiwatig.',
+        dotColor: '#FF8870',
+      },
+    ],
+    friendlyTip: 'Ang pagkakamali ay mahalagang bahagi ng pagkatuto. Ipagdiwang ang pagsisikap ng bata!',
+  },
+  {
+    key: 'avgSession',
+    tabLabel: 'Karaniwang Sesyon',
+    title: 'Karaniwang Tagal ng Sesyon',
+    iconName: 'clock',
+    accentColor: '#179D33',
+    bgColor: '#F0FDF4',
+    borderColor: '#CBFAC4',
+    whatItIs: 'Ang karaniwang tagal ng oras na nakatutok ang iyong anak sa bawat sesyon ng pag-aaral.',
+    levels: [
+      {
+        label: 'Optimal Focus',
+        description: 'Tamang-tamang haba ng oras upang manatiling nakatutok nang hindi napapagod o nagmamadali.',
+        dotColor: '#0284C7',
+      },
+      {
+        label: 'Short Session',
+        description: 'Maikling pagsasanay. Maganda para sa mga araw na marami ang ginagawa upang maging magaang ang pag-aaral.',
+        dotColor: '#FFAE02',
+      },
+      {
+        label: 'Extended',
+        description: 'Mas mahabang sesyon. Maglaan ng kaunting pahinga at stretching upang makapagpahinga ang mga mata.',
+        dotColor: '#FF8870',
+      },
+    ],
+    friendlyTip: 'Ang maiikli ngunit masayang sesyon araw-araw ay mas mabisa kaysa sa mahahaba at nakapapagod na pag-aaral.',
+  },
+  {
+    key: 'totalSessions',
+    tabLabel: 'Mga Sesyon',
+    title: 'Mga Natapos na Sesyon',
+    iconName: 'activity',
+    accentColor: '#FFAE02',
+    bgColor: '#FFFBEB',
+    borderColor: '#FFF3C4',
+    whatItIs: 'Ang kabuuang bilang ng mga aktibidad at laro sa silid-aralan na natapos ng iyong anak.',
+    levels: [
+      {
+        label: 'Active Logs',
+        description: 'Bawat sesyon ay nagpapakita ng takbo ng routine, kumpiyansa, at paglago ng iyong anak.',
+        dotColor: '#179D33',
+      },
+    ],
+    friendlyTip: 'Ang maayos at tuloy-tuloy na routine araw-araw ay nagbibigay ng kapanatagan at sigla sa pag-aaral.',
+  },
+];
+
+function formatDuration(stats: ParentKpiExplanationModalProps['stats'], isTl = false): string {
   if (stats.avgSessionSeconds !== undefined) {
     const mins = Math.floor(stats.avgSessionSeconds / 60);
     const secs = Math.round(stats.avgSessionSeconds % 60);
@@ -130,8 +208,11 @@ export function ParentKpiExplanationModal({
   initialMetric,
   stats,
   isTablet,
+  language = 'en',
 }: ParentKpiExplanationModalProps) {
   const [selectedMetric, setSelectedMetric] = useState<ParentMetricKey>('performance');
+  const isTl = language === 'tl';
+  const metricGuides = isTl ? METRIC_GUIDES_TL : METRIC_GUIDES_EN;
 
   useEffect(() => {
     if (initialMetric) {
@@ -139,18 +220,18 @@ export function ParentKpiExplanationModal({
     }
   }, [initialMetric, visible]);
 
-  const activeGuide = METRIC_GUIDES.find((g) => g.key === selectedMetric) || METRIC_GUIDES[0];
+  const activeGuide = metricGuides.find((g) => g.key === selectedMetric) || metricGuides[0];
 
   const getMetricSummary = (key: ParentMetricKey) => {
     if (stats.totalSessions === 0) {
-      return { value: 'No sessions recorded yet', status: 'No Data' };
+      return { value: isTl ? 'Wala pang naitalang sesyon' : 'No sessions recorded yet', status: isTl ? 'Walang Datos' : 'No Data' };
     }
     if (key === 'performance') {
       const isMastered = stats.overallPerformance >= 80;
       const isDev = stats.overallPerformance >= 65 && stats.overallPerformance < 80;
       return {
-        value: `${stats.overallPerformance}% accuracy`,
-        status: isMastered ? 'Mastered' : isDev ? 'Developing' : 'Needs Support',
+        value: `${stats.overallPerformance}% ${isTl ? 'kawastuhan' : 'accuracy'}`,
+        status: isMastered ? (isTl ? 'Mastered' : 'Mastered') : isDev ? (isTl ? 'Developing' : 'Developing') : (isTl ? 'Needs Support' : 'Needs Support'),
       };
     }
     if (key === 'avgSession') {
@@ -160,13 +241,13 @@ export function ParentKpiExplanationModal({
           : stats.avgSessionMinutes ?? 0;
       const status = mins >= 10 && mins <= 20 ? 'Optimal Focus' : mins > 0 && mins < 10 ? 'Short Session' : 'Extended';
       return {
-        value: `${formatDuration(stats)} per session`,
+        value: `${formatDuration(stats, isTl)} ${isTl ? 'bawat sesyon' : 'per session'}`,
         status,
       };
     }
     return {
-      value: `${stats.totalSessions} sessions completed`,
-      status: 'Active Logs',
+      value: `${stats.totalSessions} ${isTl ? 'sesyon na natapos' : 'sessions completed'}`,
+      status: isTl ? 'Aktibong Tala' : 'Active Logs',
     };
   };
 
@@ -177,14 +258,14 @@ export function ParentKpiExplanationModal({
       visible={visible}
       onClose={onClose}
       isTablet={isTablet}
-      cancelLabel="GOT IT"
+      cancelLabel={isTl ? 'NAINTINDIHAN' : 'GOT IT'}
       heightClassName={isTablet ? 'h-[64%]' : 'h-[74%]'}
-      title="Card Guide"
+      title={isTl ? 'Gabay sa Kard' : 'Card Guide'}
     >
       <View className="flex-col gap-3 pt-1">
         {/* Metric Selector Tabs */}
         <View className="flex-row gap-2 bg-[#F5F7FA] p-1.5 rounded-xl">
-          {METRIC_GUIDES.map((guide) => {
+          {metricGuides.map((guide) => {
             const isTabActive = guide.key === activeGuide.key;
             return (
               <Pressable
@@ -258,7 +339,7 @@ export function ParentKpiExplanationModal({
           <View className="flex-row items-center gap-2 mb-1.5">
             <Feather name="info" size={16} color="#62A9E6" />
             <Text className="font-fredoka-one text-sm text-[#484A4B]">
-              What does this mean?
+              {isTl ? 'Ano ang ibig sabihin nito?' : 'What does this mean?'}
             </Text>
           </View>
           <Text className="font-quicksand-medium text-xs text-[#4B5563] leading-relaxed">
@@ -269,7 +350,7 @@ export function ParentKpiExplanationModal({
         {/* Level Breakdown */}
         <View className="bg-white border-[2px] border-[#F1F1F1] rounded-2xl p-3.5">
           <Text className="font-fredoka-one text-sm text-[#484A4B] mb-2">
-            Status Breakdown
+            {isTl ? 'Pagsusuri ng Katayuan' : 'Status Breakdown'}
           </Text>
           <View className="flex-col gap-2.5">
             {activeGuide.levels.map((lvl) => (
@@ -293,7 +374,7 @@ export function ParentKpiExplanationModal({
           <Feather name="smile" size={16} color="#D97706" style={{ marginTop: 2 }} />
           <View className="flex-1">
             <Text className="font-fredoka-one text-xs text-[#92400E]">
-              Helpful Tip
+              {isTl ? 'Mahalagang Tip' : 'Helpful Tip'}
             </Text>
             <Text className="font-quicksand-medium text-[11px] text-[#B45309] leading-relaxed mt-0.5">
               {activeGuide.friendlyTip}

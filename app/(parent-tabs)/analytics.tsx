@@ -1,6 +1,8 @@
 import { Feather, Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Haptics from 'expo-haptics';
 import { useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import Animated, { FadeInRight } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -42,8 +44,29 @@ export default function ParentAnalyticsScreen() {
   const [isExporting, setIsExporting] = useState(false);
   const [globalFilter, setGlobalFilter] = useState<FilterPeriod>('overall');
   const [activityType, setActivityType] = useState<ActivityTypeFilter>('all');
+  const [language, setLanguage] = useState<'en' | 'tl'>('en');
   const [isFilterModalVisible, setFilterModalVisible] = useState(false);
   const [isLegendModalVisible, setLegendModalVisible] = useState(false);
+
+  // Load language preference from AsyncStorage
+  useEffect(() => {
+    AsyncStorage.getItem('@parent_analytics_lang').then((saved) => {
+      if (saved === 'tl' || saved === 'en') {
+        setLanguage(saved);
+      }
+    });
+  }, []);
+
+  const toggleLanguage = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const nextLang = language === 'en' ? 'tl' : 'en';
+    setLanguage(nextLang);
+    try {
+      await AsyncStorage.setItem('@parent_analytics_lang', nextLang);
+    } catch (err) {
+      console.error('Error saving language preference:', err);
+    }
+  };
 
   const loadAnalyticsData = useCallback(async () => {
     setIsLoading(true);
@@ -146,8 +169,8 @@ export default function ParentAnalyticsScreen() {
   }, [filteredSessionsForStats, evaluatedSessions]);
 
   const narrativeHighlights = useMemo(() => {
-    return generateNarrativeHighlights(evaluatedSessions, dashboard?.masterDomains || [], activityType);
-  }, [evaluatedSessions, dashboard, activityType]);
+    return generateNarrativeHighlights(evaluatedSessions, dashboard?.masterDomains || [], activityType, language);
+  }, [evaluatedSessions, dashboard, activityType, language]);
 
   const radarData = useMemo(() => {
     const domains = dashboard?.masterDomains || [];
@@ -242,72 +265,45 @@ export default function ParentAnalyticsScreen() {
           entering={FadeInRight.delay(50).duration(300)}
           className={`w-full ${isTablet ? 'px-12 pt-4' : 'px-6 pt-2'}`}
         >
-          {/* TITLE & HELP BUTTON ROW (FAR RIGHT) */}
+          {/* TITLE & UTILITY ACTIONS ROW */}
           <View className="flex-row items-center justify-between mb-3">
-            <Text className={`font-fredoka-one text-[#484A4B] ${isTablet ? 'text-[44px]' : 'text-[28px]'}`}>
+            <Text className={`font-fredoka-one text-[#484A4B] ${isTablet ? 'text-[40px]' : 'text-[28px]'}`}>
               Analytics
             </Text>
 
-            <HeaderButton
-              onPress={() => setLegendModalVisible(true)}
-              icon={<Ionicons name="help-circle-outline" size={isTablet ? 28 : 24} color="#62A9E6" />}
-            />
-          </View>
+            {/* Top Right Utility Group: Language Toggle (Placeholder) + Export + Help */}
+            <View className="flex-row items-center gap-2">
+              {/* Language Translate Button (Single Icon/Badge - Toggles EN <-> TL) */}
+              <HeaderButton
+                onPress={toggleLanguage}
+                icon={
+                  <Text className={`font-fredoka-one ${isTablet ? 'text-base' : 'text-sm'} text-[#62A9E6]`}>
+                    {language === 'en' ? 'TL' : 'EN'}
+                  </Text>
+                }
+              />
 
-          {/* CONTROL BUTTONS ROW */}
-          <View className="flex-row items-center gap-2 flex-wrap mb-2">
-            {/* Range Filter Selector */}
-            <Pressable
-              onPress={() => setFilterModalVisible(true)}
-              className="flex-row items-center justify-center gap-1.5 bg-white border-[2px] border-[#BBE8FB] px-3 h-[36px] rounded-xl active:scale-95 transition-transform"
-              style={{
-                borderColor: '#BBE8FB',
-                shadowColor: '#BBE8FB',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 1,
-                shadowRadius: 0,
-                elevation: 2,
-              }}
-            >
-              <Feather name="calendar" size={13} color="#62A9E6" />
-              <Text className="font-fredoka-one text-[#62A9E6] text-[11px] uppercase" numberOfLines={1}>
-                RANGE: {getFilterLabel(globalFilter).toUpperCase()}
-              </Text>
-              <Feather name="chevron-down" size={13} color="#62A9E6" />
-            </Pressable>
+              {/* Master Download Report Button */}
+              {!isCompareMode && (
+                <HeaderButton
+                  onPress={handleExportPdf}
+                  disabled={isExporting}
+                  icon={
+                    isExporting ? (
+                      <ActivityIndicator size="small" color="#62A9E6" />
+                    ) : (
+                      <Feather name="download" size={isTablet ? 22 : 18} color="#62A9E6" />
+                    )
+                  }
+                />
+              )}
 
-            {/* Master Download Report Button (available when single child is active) */}
-            {!isCompareMode && (
-              <Pressable
-                onPress={handleExportPdf}
-                disabled={isExporting}
-                className="flex-row items-center justify-center gap-1.5 bg-white border-[2px] border-[#BBE8FB] px-3 h-[36px] rounded-xl active:scale-95 transition-transform"
-                style={{
-                  borderColor: '#BBE8FB',
-                  shadowColor: '#BBE8FB',
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 1,
-                  shadowRadius: 0,
-                  elevation: 2,
-                }}
-              >
-                {isExporting ? (
-                  <>
-                    <ActivityIndicator size="small" color="#62A9E6" style={{ height: 16 }} />
-                    <Text className="font-fredoka-one text-[#62A9E6] text-[11px] uppercase" numberOfLines={1}>
-                      EXPORTING...
-                    </Text>
-                  </>
-                ) : (
-                  <>
-                    <Feather name="download" size={13} color="#62A9E6" />
-                    <Text className="font-fredoka-one text-[#62A9E6] text-[11px] uppercase" numberOfLines={1}>
-                      DOWNLOAD REPORT
-                    </Text>
-                  </>
-                )}
-              </Pressable>
-            )}
+              {/* Universal Legend / Help Button */}
+              <HeaderButton
+                onPress={() => setLegendModalVisible(true)}
+                icon={<Ionicons name="help-circle-outline" size={isTablet ? 26 : 22} color="#62A9E6" />}
+              />
+            </View>
           </View>
 
           {/* MULTI-CHILD VIEW SELECTOR BAR (Shown when parent has 2+ children linked) */}
@@ -381,21 +377,37 @@ export default function ParentAnalyticsScreen() {
             </View>
           )}
 
-          {/* ACTIVITY SOURCE SWITCHER (Icon Capsule Bar) */}
-          <View className="flex-row items-center justify-between px-1 pt-1 pb-1 mt-1 mb-2">
-            <Text className="font-fredoka-one text-[14px] sm:text-[16px] text-[#484A4B]">
-              {currentActivityOption.label}
-            </Text>
+          {/* COMBINED CONTROLS BAR: RANGE FILTER (LEFT) & ACTIVITY SOURCE CAPSULE (RIGHT) */}
+          <View className="flex-row items-center justify-between gap-2 mt-1 mb-3">
+            {/* Range Filter Selector */}
+            <Pressable
+              onPress={() => setFilterModalVisible(true)}
+              className="flex-row items-center justify-center gap-1.5 bg-white border-[2px] border-[#BBE8FB] px-3 h-[40px] rounded-xl active:scale-95 transition-transform"
+              style={{
+                borderColor: '#BBE8FB',
+                shadowColor: '#BBE8FB',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 1,
+                shadowRadius: 0,
+                elevation: 2,
+              }}
+            >
+              <Feather name="calendar" size={13} color="#62A9E6" />
+              <Text className="font-fredoka-one text-[#62A9E6] text-[11px] uppercase" numberOfLines={1}>
+                {getFilterLabel(globalFilter).toUpperCase()}
+              </Text>
+              <Feather name="chevron-down" size={13} color="#62A9E6" />
+            </Pressable>
 
-            {/* Capsule Container with 3 Icons */}
-            <View className="flex-row items-center bg-[#ECEFF3] p-1 rounded-full border border-[#E2E8F0]">
+            {/* Activity Source Capsule Switcher */}
+            <View className="flex-row items-center bg-[#ECEFF3] p-1 rounded-full border border-[#E2E8F0] h-[40px]">
               {activityTypeOptions.map((opt) => {
                 const isActive = activityType === opt.value;
                 return (
                   <Pressable
                     key={opt.value}
                     onPress={() => setActivityType(opt.value)}
-                    className={`w-9 h-8 sm:w-10 sm:h-9 items-center justify-center rounded-full transition-all active:scale-90 ${
+                    className={`w-9 h-7 sm:w-10 sm:h-8 items-center justify-center rounded-full transition-all active:scale-90 ${
                       isActive ? 'bg-[#62A9E6]' : 'bg-transparent'
                     }`}
                     style={
@@ -444,12 +456,12 @@ export default function ParentAnalyticsScreen() {
             <View className="flex-col gap-4">
               {/* STAT CARDS */}
               <Animated.View key={`stats-${focusKey}`} entering={FadeInRight.delay(100).duration(300)} className="w-full">
-                <ParentStatsSection stats={stats} isTablet={isTablet} />
+                <ParentStatsSection stats={stats} isTablet={isTablet} language={language} />
               </Animated.View>
 
               {/* EXECUTIVE NARRATIVE SUMMARY */}
               <Animated.View key={`summary-${focusKey}`} entering={FadeInRight.delay(120).duration(300)} className="w-full">
-                <ParentNarrativeSummary highlights={narrativeHighlights} isTablet={isTablet} />
+                <ParentNarrativeSummary highlights={narrativeHighlights} isTablet={isTablet} language={language} />
               </Animated.View>
 
               {/* DAILY PROGRESS TREND */}
@@ -459,6 +471,7 @@ export default function ParentAnalyticsScreen() {
                   globalFilter={globalFilter}
                   activityType={activityType}
                   isTablet={isTablet}
+                  language={language}
                 />
               </Animated.View>
 
@@ -470,6 +483,7 @@ export default function ParentAnalyticsScreen() {
                     globalFilter={globalFilter}
                     activityType={activityType}
                     isTablet={isTablet}
+                    language={language}
                   />
                 </Animated.View>
               )}
@@ -482,12 +496,13 @@ export default function ParentAnalyticsScreen() {
                   globalFilter={globalFilter}
                   activityType={activityType}
                   isTablet={isTablet}
+                  language={language}
                 />
               </Animated.View>
 
               {/* SPED DOMAIN EDUCATIONAL EXPLAINERS */}
               <Animated.View key={`explainers-${focusKey}`} entering={FadeInRight.delay(300).duration(300)} className="w-full">
-                <ParentDomainExplainers isTablet={isTablet} />
+                <ParentDomainExplainers isTablet={isTablet} language={language} />
               </Animated.View>
             </View>
           )}

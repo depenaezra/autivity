@@ -171,6 +171,7 @@ interface ActivitiesSectionProps {
   assignedPaths: string[];
   isLoading: boolean;
   isTablet: boolean;
+  language?: 'en' | 'tl';
   onNavigateToLesson: (
     type:
       | 'tracing'
@@ -186,6 +187,7 @@ export function ActivitiesSection({
   assignedPaths,
   isLoading,
   isTablet,
+  language = 'en',
   onNavigateToLesson,
 }: ActivitiesSectionProps) {
   const { width } = useWindowDimensions();
@@ -390,7 +392,7 @@ export function ActivitiesSection({
               isTablet ? 'text-[32px]' : 'text-[22px]'
             }`}
           >
-            Activities
+            {language === 'tl' ? 'Mga Gawain' : 'Activities'}
           </Text>
         </View>
       </View>

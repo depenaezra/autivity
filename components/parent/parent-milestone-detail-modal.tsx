@@ -25,6 +25,7 @@ import { HeaderButton } from '../header-button';
 export interface ParentMilestoneItem {
   id: string;
   title: string;
+  description?: string | null;
   status: string;
   targetDate?: string | null;
 }
@@ -132,6 +133,24 @@ function FullScreenConfetti() {
     </View>
   );
 }
+
+const formatTargetDate = (dateStr?: string | null): string => {
+  if (!dateStr) return '';
+  const parts = dateStr.split('T')[0].split('-');
+  if (parts.length === 3) {
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+    const months = ['Jan.', 'Feb.', 'Mar.', 'Apr.', 'May.', 'Jun.', 'Jul.', 'Aug.', 'Sep.', 'Oct.', 'Nov.', 'Dec.'];
+    if (!isNaN(year) && !isNaN(month) && !isNaN(day) && month >= 0 && month < 12) {
+      return `${months[month]} ${day}, ${year}`;
+    }
+  }
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+  const months = ['Jan.', 'Feb.', 'Mar.', 'Apr.', 'May.', 'Jun.', 'Jul.', 'Aug.', 'Sep.', 'Oct.', 'Nov.', 'Dec.'];
+  return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+};
 
 export function ParentMilestoneDetailModal({
   milestone,
@@ -262,6 +281,18 @@ export function ParentMilestoneDetailModal({
             {milestone.title}
           </Text>
 
+          {/* Optional Milestone Description Card */}
+          {milestone.description ? (
+            <View className="w-full bg-[#F8FAFC] border border-[#E5E7EB] rounded-2xl p-4 mt-3.5">
+              <Text className="font-fredoka-one text-xs text-[#62A9E6] uppercase tracking-wider mb-1 text-center">
+                MILESTONE DETAILS
+              </Text>
+              <Text className="font-quicksand-medium text-xs sm:text-sm text-[#484A4B] leading-relaxed text-center">
+                {milestone.description}
+              </Text>
+            </View>
+          ) : null}
+
           {/* Status Badge */}
           <View
             className="px-4 py-1.5 rounded-full border-2 mt-4"
@@ -280,7 +311,7 @@ export function ParentMilestoneDetailModal({
             <View className="flex-row items-center gap-1.5 mt-3">
               <Feather name="calendar" size={14} color="#9CA3AF" />
               <Text className="font-quicksand-semibold text-sm text-[#9CA3AF]">
-                Target Date: {milestone.targetDate}
+                Target Date: {formatTargetDate(milestone.targetDate)}
               </Text>
             </View>
           ) : null}

@@ -28,6 +28,7 @@ interface ParentActivityPerformanceProps {
   globalFilter?: FilterPeriod;
   activityType?: ActivityTypeFilter;
   isTablet: boolean;
+  language?: 'en' | 'tl';
 }
 
 export interface CategoryColorTheme {
@@ -182,9 +183,10 @@ export function formatCategoryLabel(category: string): string {
     .join(' ');
 }
 
-export function ParentActivityPerformance({ sessions = [], data: initialData, globalFilter, activityType = 'all', isTablet }: ParentActivityPerformanceProps) {
+export function ParentActivityPerformance({ sessions = [], data: initialData, globalFilter, activityType = 'all', isTablet, language = 'en' }: ParentActivityPerformanceProps) {
   const [filter, setFilter] = useState<FilterPeriod>(globalFilter || 'overall');
   const [showInfo, setShowInfo] = useState(false);
+  const isTl = language === 'tl';
 
   useEffect(() => {
     if (globalFilter !== undefined) {
@@ -240,8 +242,8 @@ export function ParentActivityPerformance({ sessions = [], data: initialData, gl
   }, [filteredSessions, initialData, sessions.length]);
 
   const activityTakeaway = useMemo(() => {
-    return getActivityPerformanceTakeaway(activityData, activityType);
-  }, [activityData, activityType]);
+    return getActivityPerformanceTakeaway(activityData, activityType, language);
+  }, [activityData, activityType, language]);
 
   return (
     <View className="flex-col mt-6 w-full">
@@ -250,7 +252,7 @@ export function ParentActivityPerformance({ sessions = [], data: initialData, gl
         <View className="flex-row flex-wrap items-center justify-between gap-4">
           <View className="flex-row items-center gap-2">
             <Text className={`font-fredoka-one text-[#484A4B] ${isTablet ? 'text-[28px]' : 'text-[20px]'}`}>
-              Activity Performance
+              {isTl ? 'Pagganap sa Bawat Aktibidad' : 'Activity Performance'}
             </Text>
             <Pressable
               onPress={() => setShowInfo(!showInfo)}
@@ -304,16 +306,25 @@ export function ParentActivityPerformance({ sessions = [], data: initialData, gl
             <Feather name="info" size={isTablet ? 20 : 16} color="#62A9E6" style={{ marginTop: 2 }} />
             <View className="flex-1 flex-col gap-1.5">
               <Text className={`font-fredoka-one text-[#62A9E6] ${isTablet ? 'text-sm' : 'text-xs'}`}>
-                WHAT DOES THIS CHART MEAN?
+                {isTl ? 'ANO ANG IBIG SABIHIN NG TSART NA ITO?' : 'WHAT DOES THIS CHART MEAN?'}
               </Text>
               <Text className={`font-quicksand-medium text-[#484A4B] leading-relaxed ${isTablet ? 'text-xs' : 'text-[11px]'}`}>
-                • <Text className="font-quicksand-bold text-[#62A9E6]">What this shows:</Text> Your child's accuracy across different types of learning activities (such as Tracing, Matching, or Sorting).
+                • <Text className="font-quicksand-bold text-[#62A9E6]">{isTl ? 'Ipinapakita nito:' : 'What this shows:'}</Text>{' '}
+                {isTl
+                  ? "Ang kawastuhan ng iyong anak sa iba't ibang uri ng mga aktibidad (tulad ng Tracing, Matching, o Sorting)."
+                  : "Your child's accuracy across different types of learning activities (such as Tracing, Matching, or Sorting)."}
               </Text>
               <Text className={`font-quicksand-medium text-[#484A4B] leading-relaxed ${isTablet ? 'text-xs' : 'text-[11px]'}`}>
-                • <Text className="font-quicksand-bold text-[#62A9E6]">Categories:</Text> Each activity type has its own distinct color so you can quickly see which areas your child feels most confident with.
+                • <Text className="font-quicksand-bold text-[#62A9E6]">{isTl ? 'Mga kategorya:' : 'Categories:'}</Text>{' '}
+                {isTl
+                  ? 'Bawat uri ng aktibidad ay may sariling kulay upang madaling makita kung saan higit na may kumpiyansa ang iyong anak.'
+                  : 'Each activity type has its own distinct color so you can quickly see which areas your child feels most confident with.'}
               </Text>
               <Text className={`font-quicksand-medium text-[#484A4B] leading-relaxed ${isTablet ? 'text-xs' : 'text-[11px]'}`}>
-                • <Text className="font-quicksand-bold text-[#62A9E6]">Status levels:</Text> Scores of 80%+ indicate Mastered skills, 65%–79% show Developing skills, and below 65% highlight areas where extra support is helpful.
+                • <Text className="font-quicksand-bold text-[#62A9E6]">{isTl ? 'Mga antas:' : 'Status levels:'}</Text>{' '}
+                {isTl
+                  ? 'Ang markang 80%+ ay nagpapakita ng Mastered, 65%–79% Developing, at mas mababa sa 65% ay nagpapahiwatig ng mga kasanayang kailangan ng karagdagang gabay.'
+                  : 'Scores of 80%+ indicate Mastered skills, 65%–79% show Developing skills, and below 65% highlight areas where extra support is helpful.'}
               </Text>
             </View>
           </Animated.View>

@@ -28,6 +28,7 @@ interface ParentSkillPerformanceProps {
   globalFilter?: FilterPeriod;
   activityType?: ActivityTypeFilter;
   isTablet: boolean;
+  language?: 'en' | 'tl';
 }
 
 const DOMAIN_COLORS = ['#62A9E6', '#FFAE02', '#179D33', '#FF8870', '#A855F7', '#EC4899'];
@@ -39,10 +40,12 @@ export function ParentSkillPerformance({
   globalFilter,
   activityType = 'all',
   isTablet,
+  language = 'en',
 }: ParentSkillPerformanceProps) {
   const { width: windowWidth } = useWindowDimensions();
   const [filter, setFilter] = useState<FilterPeriod>(globalFilter || 'overall');
   const [showInfo, setShowInfo] = useState(false);
+  const isTl = language === 'tl';
 
   useEffect(() => {
     if (globalFilter !== undefined) {
@@ -96,8 +99,8 @@ export function ParentSkillPerformance({
   const activeData = skillData.length > 0 ? skillData : initialData || [];
 
   const domainTakeaways = useMemo(() => {
-    return getSkillDomainTakeaways(activeData, activityType);
-  }, [activeData, activityType]);
+    return getSkillDomainTakeaways(activeData, activityType, language);
+  }, [activeData, activityType, language]);
 
   // Radar Chart Layout Metrics
   const chartSize = isTablet ? 240 : Math.min(windowWidth - 70, 220);
@@ -139,7 +142,7 @@ export function ParentSkillPerformance({
         <View className="flex-row flex-wrap items-center justify-between gap-4">
           <View className="flex-row items-center gap-2">
             <Text className={`font-fredoka-one text-[#484A4B] ${isTablet ? 'text-[28px]' : 'text-[20px]'}`}>
-              Skill Performance
+              {isTl ? 'Pagganap sa mga Kasanayan' : 'Skill Performance'}
             </Text>
             <Pressable
               onPress={() => setShowInfo(!showInfo)}
@@ -192,16 +195,25 @@ export function ParentSkillPerformance({
             <Feather name="info" size={isTablet ? 20 : 16} color="#62A9E6" style={{ marginTop: 2 }} />
             <View className="flex-1 flex-col gap-1.5">
               <Text className={`font-fredoka-one text-[#62A9E6] ${isTablet ? 'text-sm' : 'text-xs'}`}>
-                WHAT DOES THIS CHART MEAN?
+                {isTl ? 'ANO ANG IBIG SABIHIN NG TSART NA ITO?' : 'WHAT DOES THIS CHART MEAN?'}
               </Text>
               <Text className={`font-quicksand-medium text-[#484A4B] leading-relaxed ${isTablet ? 'text-xs' : 'text-[11px]'}`}>
-                • <Text className="font-quicksand-bold text-[#62A9E6]">What this shows:</Text> A well-rounded look at your child's growth across key developmental skill areas (like Communication, Motor, and Cognitive skills).
+                • <Text className="font-quicksand-bold text-[#62A9E6]">{isTl ? 'Ipinapakita nito:' : 'What this shows:'}</Text>{' '}
+                {isTl
+                  ? "Isang komprehensibong pagtingin sa pag-unlad ng iyong anak sa iba't ibang kasanayan (tulad ng Communication, Motor, at Cognitive skills)."
+                  : "A well-rounded look at your child's growth across key developmental skill areas (like Communication, Motor, and Cognitive skills)."}
               </Text>
               <Text className={`font-quicksand-medium text-[#484A4B] leading-relaxed ${isTablet ? 'text-xs' : 'text-[11px]'}`}>
-                • <Text className="font-quicksand-bold text-[#62A9E6]">Radar web:</Text> The wider the blue shape stretches outwards, the more confident and independent your child is in that domain.
+                • <Text className="font-quicksand-bold text-[#62A9E6]">{isTl ? 'Radar web:' : 'Radar web:'}</Text>{' '}
+                {isTl
+                  ? 'Kung mas malawak ang asul na hugis papalabas, mas may kumpiyansa at kalayaan ang iyong anak sa kasanayang iyon.'
+                  : 'The wider the blue shape stretches outwards, the more confident and independent your child is in that domain.'}
               </Text>
               <Text className={`font-quicksand-medium text-[#484A4B] leading-relaxed ${isTablet ? 'text-xs' : 'text-[11px]'}`}>
-                • <Text className="font-quicksand-bold text-[#62A9E6]">Status levels:</Text> Scores of 80%+ indicate Mastered domains, 65%–79% Developing, and below 65% highlight domains where gentle practice helps most.
+                • <Text className="font-quicksand-bold text-[#62A9E6]">{isTl ? 'Mga antas:' : 'Status levels:'}</Text>{' '}
+                {isTl
+                  ? 'Ang markang 80%+ ay nagpapakita ng Mastered, 65%–79% Developing, at mas mababa sa 65% ay mga kasanayang higit na matutulungan ng marahang pagsasanay.'
+                  : 'Scores of 80%+ indicate Mastered domains, 65%–79% Developing, and below 65% highlight domains where gentle practice helps most.'}
               </Text>
             </View>
           </Animated.View>

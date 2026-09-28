@@ -7,9 +7,10 @@ import { NarrativeHighlight } from '../../src/services/parentAnalyticsEngine';
 interface ParentNarrativeSummaryProps {
   highlights: NarrativeHighlight[];
   isTablet: boolean;
+  language?: 'en' | 'tl';
 }
 
-export function ParentNarrativeSummary({ highlights, isTablet }: ParentNarrativeSummaryProps) {
+export function ParentNarrativeSummary({ highlights, isTablet, language = 'en' }: ParentNarrativeSummaryProps) {
   // Initialize all highlight cards as expanded by default
   const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {};
@@ -35,7 +36,7 @@ export function ParentNarrativeSummary({ highlights, isTablet }: ParentNarrative
       {/* Header section matching Milestones title layout */}
       <View className="flex-row items-center justify-between mb-4">
         <Text className={`font-fredoka-one text-[#484A4B] ${isTablet ? 'text-[32px]' : 'text-[22px]'}`}>
-          Summary
+          {language === 'tl' ? 'Buod ng Pag-unlad' : 'Summary'}
         </Text>
       </View>
 

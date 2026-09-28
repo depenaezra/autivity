@@ -12,13 +12,15 @@ interface ParentProgressTrendProps {
   globalFilter?: FilterPeriod;
   activityType?: ActivityTypeFilter;
   isTablet: boolean;
+  language?: 'en' | 'tl';
 }
 
-export function ParentProgressTrend({ sessions, globalFilter, activityType = 'all', isTablet }: ParentProgressTrendProps) {
+export function ParentProgressTrend({ sessions, globalFilter, activityType = 'all', isTablet, language = 'en' }: ParentProgressTrendProps) {
   const { width } = useWindowDimensions();
   const [filter, setFilter] = useState<FilterPeriod>(globalFilter || 'overall');
   const [showInfo, setShowInfo] = useState(false);
   const [selectedPointIdx, setSelectedPointIdx] = useState<number | null>(null);
+  const isTl = language === 'tl';
 
   useEffect(() => {
     if (globalFilter !== undefined) {
@@ -172,7 +174,7 @@ export function ParentProgressTrend({ sessions, globalFilter, activityType = 'al
         <View className="flex-row flex-wrap items-center justify-between gap-4">
           <View className="flex-row items-center gap-2">
             <Text className={`font-fredoka-one text-[#484A4B] ${isTablet ? 'text-[28px]' : 'text-[20px]'}`}>
-              Progress Over Time
+              {isTl ? 'Takbo ng Pag-unlad' : 'Progress Over Time'}
             </Text>
             <Pressable
               onPress={() => setShowInfo(!showInfo)}
@@ -226,16 +228,25 @@ export function ParentProgressTrend({ sessions, globalFilter, activityType = 'al
             <Feather name="info" size={isTablet ? 20 : 16} color="#62A9E6" style={{ marginTop: 2 }} />
             <View className="flex-1 flex-col gap-1.5">
               <Text className={`font-fredoka-one text-[#62A9E6] ${isTablet ? 'text-sm' : 'text-xs'}`}>
-                WHAT DOES THIS CHART MEAN?
+                {isTl ? 'ANO ANG IBIG SABIHIN NG TSART NA ITO?' : 'WHAT DOES THIS CHART MEAN?'}
               </Text>
               <Text className={`font-quicksand-medium text-[#484A4B] leading-relaxed ${isTablet ? 'text-xs' : 'text-[11px]'}`}>
-                • <Text className="font-quicksand-bold text-[#62A9E6]">What this shows:</Text> How comfortably your child engages with learning tasks (looking, listening, and completing activity steps).
+                • <Text className="font-quicksand-bold text-[#62A9E6]">{isTl ? 'Ipinapakita nito:' : 'What this shows:'}</Text>{' '}
+                {isTl
+                  ? 'Kung gaano kakumportableng nakatutok ang iyong anak sa mga gawain (pagtingin, pakikinig, at pagtapos ng mga hakbang).'
+                  : 'How comfortably your child engages with learning tasks (looking, listening, and completing activity steps).'}
               </Text>
               <Text className={`font-quicksand-medium text-[#484A4B] leading-relaxed ${isTablet ? 'text-xs' : 'text-[11px]'}`}>
-                • <Text className="font-quicksand-bold text-[#62A9E6]">Daily changes:</Text> Minor ups and downs are completely normal depending on your child's mood, energy, or newly introduced lessons.
+                • <Text className="font-quicksand-bold text-[#62A9E6]">{isTl ? 'Mga pagbabago araw-araw:' : 'Daily changes:'}</Text>{' '}
+                {isTl
+                  ? 'Normal lamang ang bahagyang pagtaas o pagbaba ng marka depende sa sigla, mood, o bagong aralin ng bata.'
+                  : "Minor ups and downs are completely normal depending on your child's mood, energy, or newly introduced lessons."}
               </Text>
               <Text className={`font-quicksand-medium text-[#484A4B] leading-relaxed ${isTablet ? 'text-xs' : 'text-[11px]'}`}>
-                • <Text className="font-quicksand-bold text-[#62A9E6]">The 80% goal:</Text> Reaching 80% or higher means your child has mastered these skills and can complete them with confidence and independence!
+                • <Text className="font-quicksand-bold text-[#62A9E6]">{isTl ? 'Ang 80% na layunin:' : 'The 80% goal:'}</Text>{' '}
+                {isTl
+                  ? 'Ang pag-abot sa 80% o higit pa ay nangangahulugang nakamit na ng bata ang kasanayan nang may kumpiyansa at kalayaan!'
+                  : 'Reaching 80% or higher means your child has mastered these skills and can complete them with confidence and independence!'}
               </Text>
             </View>
           </Animated.View>

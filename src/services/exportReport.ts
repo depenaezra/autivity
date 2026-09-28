@@ -32,6 +32,13 @@ import {
   StudentHeaderDetails,
 } from './student-analytics';
 import { getStudentCheckInsForFilter } from './check-ins';
+import {
+  UNIVERSAL_BENCHMARK_TIERS,
+  getAccuracyTier,
+  getMistakesTier,
+  getHintsTier,
+  getRubricTier,
+} from '../constants/benchmarkLegend';
 
 interface ReportStats {
   overallPerformance: number;
@@ -60,7 +67,7 @@ const RUBRIC_SCALE: Record<number, { label: string; description: string; color: 
 const DOMAIN_COLORS = ['#62A9E6', '#FFAE02', '#179D33', '#FF8870', '#A855F7', '#EC4899'];
 
 const escapeHtml = (text: string) =>
-  text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  text ? text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') : '';
 
 const generateNarrativeSummaryHtml = (highlights: NarrativeHighlight[]) => {
   if (!highlights || highlights.length === 0) return '';
@@ -117,8 +124,6 @@ const generateTrendChartSvg = (sessions: ParentSessionRecord[]) => {
     return `<div style="background:#FFFFFF; border:2px solid #E2E8F0; border-radius:12px; padding:20px; text-align:center; color:#94A3B8; font-size:13px; font-weight:600;">No session trend data available for this timeframe.</div>`;
   }
 
-  const evaluatedSessions = sessions.filter((s) => s.status === 'validated' && s.rubricEvaluation);
-
   const dateMap: Record<string, { sum: number; count: number }> = {};
   const sorted = [...sessions].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
@@ -168,7 +173,7 @@ const generateTrendChartSvg = (sessions: ParentSessionRecord[]) => {
       <div style="font-weight:700; font-size:10px; color:#15803D; text-transform:uppercase; letter-spacing:0.5px;">2-WEEK OUTLOOK</div>
       <div style="font-weight:800; font-size:15px; color:#166534; margin-top:2px;">~${forecast.projected14DayScore}% Predicted</div>
       <div style="font-weight:700; font-size:10px; color:#15803D; margin-top:2px;">
-        ${forecast.estimatedDaysToMastery ? `~${forecast.estimatedDaysToMastery} days to 85% goal` : 'Based on current pace'}
+        ${forecast.estimatedDaysToMastery ? `~${forecast.estimatedDaysToMastery} days to 80% goal` : 'Based on current pace'}
       </div>
     </div>
   ` : '';
@@ -231,6 +236,12 @@ const generateTrendChartSvg = (sessions: ParentSessionRecord[]) => {
     `;
   }).join('');
 
+  const target80Y = paddingTop + chartH - (80 / 100) * chartH;
+  const target80Line = `
+    <line x1="${paddingLeft}" y1="${target80Y}" x2="${svgWidth - paddingRight}" y2="${target80Y}" stroke="#8B5CF6" stroke-dasharray="4,4" stroke-width="1.5" />
+    <text x="${svgWidth - paddingRight}" y="${target80Y - 5}" font-size="10" font-weight="700" fill="#7C3AED" text-anchor="end">Mastery Target (80%)</text>
+  `;
+
   return `
     <div style="background:#FFFFFF; border:2px solid #E2E8F0; border-radius:16px; padding:18px; margin-bottom:20px; page-break-inside:avoid;">
       <div style="font-weight:800; font-size:14px; color:#1E293B; margin-bottom:12px; text-transform:uppercase; letter-spacing:0.5px;">Progress Over Time</div>
@@ -240,9 +251,20 @@ const generateTrendChartSvg = (sessions: ParentSessionRecord[]) => {
             <span style="font-size:32px; font-weight:800; color:#484A4B; line-height:1;">${averageScore}%</span>
             ${trendBadgeHtml}
           </div>
-          <div style="font-weight:700; font-size:11px; color:#9CA3AF; text-transform:uppercase; tracking:0.5px; margin-top:4px;">Average Progress Score</div>
+          <div style="font-weight:700; font-size:11px; color:#9CA3AF; text-transform:uppercase; letter-spacing:0.5px; margin-top:4px;">Average Progress Score</div>
         </div>
         ${forecastBoxHtml}
+      </div>
+
+      <div style="display:flex; align-items:center; gap:16px; margin-bottom:12px;">
+        <div style="display:flex; align-items:center; gap:6px;">
+          <div style="width:10px; height:10px; border-radius:50%; background:#62A9E6;"></div>
+          <span style="font-size:11px; font-weight:700; color:#64748B;">Daily Score</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <div style="width:12px; height:2px; background:#8B5CF6; border-radius:1px;"></div>
+          <span style="font-size:11px; font-weight:700; color:#7C3AED;">Mastery Target (80%)</span>
+        </div>
       </div>
 
       <svg viewBox="0 0 ${svgWidth} ${svgHeight}" style="width:100%; height:auto; overflow:visible;">
@@ -253,6 +275,7 @@ const generateTrendChartSvg = (sessions: ParentSessionRecord[]) => {
           </linearGradient>
         </defs>
         ${gridLines}
+        ${target80Line}
         <path d="${areaPathD}" fill="rgba(98, 169, 230, 0.20)" />
         <path d="${areaPathD}" fill="url(#trendGrad)" />
         <path d="${linePathD}" fill="none" stroke="#62A9E6" stroke-width="3" stroke-linecap="round" />
@@ -297,19 +320,28 @@ const generateActivityPerformanceSvg = (sessions: ParentSessionRecord[]) => {
     return `<div style="background:#FFFFFF; border:2px solid #E2E8F0; border-radius:12px; padding:20px; text-align:center; color:#94A3B8; font-size:13px; font-weight:600;">No activity performance data available.</div>`;
   }
 
-  const barsHtml = activityData.map((item, idx) => {
+  const barsHtml = activityData.map((item) => {
     const val = Math.min(100, Math.max(0, item.value));
+    const tier = getAccuracyTier(val);
+
     return `
       <div style="background:#F9FAFB; border:1px solid #F3F4F6; border-radius:14px; padding:12px 14px; margin-bottom:10px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
           <span style="font-weight:700; font-size:14px; color:#374151;">${escapeHtml(item.label)}</span>
-          <span style="font-weight:700; font-size:12px; color:#62A9E6; background:#E0F2FE; border:1px solid #BBE8FB; border-radius:999px; padding:3px 10px;">${val}%</span>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span style="font-weight:700; font-size:10px; text-transform:uppercase; padding:2px 8px; border-radius:999px; border:1px solid ${tier.borderColor}; background:${tier.bgColor}; color:${tier.accentColor};">
+              ${tier.parentLabel}
+            </span>
+            <span style="font-weight:700; font-size:12px; color:${tier.accentColor}; background:${tier.bgColor}; border:1px solid ${tier.borderColor}; border-radius:999px; padding:3px 10px;">
+              ${val}%
+            </span>
+          </div>
         </div>
         <div style="width:100%; height:12px; border-radius:999px; background:#F3F4F6; position:relative; overflow:hidden;">
           <div style="position:absolute; top:0; left:25%; height:100%; border-left:1px dashed #CBD5E1; z-index:1;"></div>
           <div style="position:absolute; top:0; left:50%; height:100%; border-left:1px dashed #CBD5E1; z-index:1;"></div>
           <div style="position:absolute; top:0; left:75%; height:100%; border-left:1px dashed #CBD5E1; z-index:1;"></div>
-          ${val > 0 ? `<div style="width:${val}%; height:100%; border-radius:999px; background:linear-gradient(90deg, #62A9E6 0%, #3B82F6 100%); position:relative; z-index:2;"></div>` : ''}
+          ${val > 0 ? `<div style="width:${val}%; height:100%; border-radius:999px; background:${tier.accentColor}; position:relative; z-index:2;"></div>` : ''}
         </div>
       </div>
     `;
@@ -331,6 +363,7 @@ const generateSkillRadarSvg = (skillBreakdown: { label: string; value: number }[
   const legendListHtml = skillBreakdown.map((s, idx) => {
     const val = Math.min(100, Math.max(0, Math.round(s.value)));
     const domainColor = DOMAIN_COLORS[idx % DOMAIN_COLORS.length];
+    const tier = getAccuracyTier(val);
 
     return `
       <div style="background:#F9FAFB; border:1px solid #F3F4F6; border-radius:12px; padding:10px 14px; margin-bottom:8px;">
@@ -339,7 +372,12 @@ const generateSkillRadarSvg = (skillBreakdown: { label: string; value: number }[
             <div style="width:10px; height:10px; border-radius:50%; background:${domainColor}; flex-shrink:0;"></div>
             <span style="font-weight:700; font-size:13px; color:#374151;">${escapeHtml(s.label)}</span>
           </div>
-          <span style="font-weight:700; font-size:12px; color:${domainColor}; background:${domainColor}18; border:1px solid ${domainColor}50; border-radius:999px; padding:2px 10px;">${val}%</span>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span style="font-weight:700; font-size:10px; text-transform:uppercase; padding:2px 8px; border-radius:999px; border:1px solid ${tier.borderColor}; background:${tier.bgColor}; color:${tier.accentColor};">
+              ${tier.parentLabel}
+            </span>
+            <span style="font-weight:700; font-size:12px; color:${domainColor}; background:${domainColor}18; border:1px solid ${domainColor}50; border-radius:999px; padding:2px 10px;">${val}%</span>
+          </div>
         </div>
         <div style="width:100%; height:6px; background:#E5E7EB; border-radius:999px; overflow:hidden;">
           <div style="width:${val}%; height:100%; background:${domainColor}; border-radius:999px;"></div>
@@ -548,6 +586,11 @@ const buildReportHtml = (
     </div>
   ` : '';
 
+  const perfTier = getAccuracyTier(stats.overallPerformance);
+  const sessionMins = stats.avgSessionSeconds !== undefined
+    ? stats.avgSessionSeconds / 60
+    : stats.avgSessionMinutes ?? 0;
+
   return `
   <html>
     <head>
@@ -577,22 +620,37 @@ const buildReportHtml = (
       </div>
 
       <div class="stat-row">
-        <div class="stat-box">
-          <div class="stat-value">${stats.overallPerformance}%</div>
+        <div class="stat-box" style="border-color:${perfTier.borderColor};">
+          <div class="stat-value" style="color:${perfTier.accentColor};">${stats.overallPerformance}%</div>
           <div class="stat-label">Overall Performance</div>
+          <div style="margin-top:4px;">
+            <span style="font-weight:800; font-size:10px; text-transform:uppercase; padding:2px 8px; border-radius:999px; border:1px solid ${perfTier.borderColor}; background:${perfTier.bgColor}; color:${perfTier.accentColor};">
+              ${perfTier.parentLabel}
+            </span>
+          </div>
         </div>
-        <div class="stat-box">
-          <div class="stat-value">${stats.avgSessionSeconds !== undefined
+        <div class="stat-box" style="border-color:#CBFAC4;">
+          <div class="stat-value" style="color:#15803D;">${stats.avgSessionSeconds !== undefined
       ? (Math.floor(stats.avgSessionSeconds / 60) > 0
         ? `${Math.floor(stats.avgSessionSeconds / 60)}m ${Math.round(stats.avgSessionSeconds % 60)}s`
         : `${Math.round(stats.avgSessionSeconds % 60)}s`)
       : `${stats.avgSessionMinutes ?? 0}m`
     }</div>
           <div class="stat-label">Avg Session Duration</div>
+          <div style="margin-top:4px;">
+            <span style="font-weight:800; font-size:10px; text-transform:uppercase; padding:2px 8px; border-radius:999px; border:1px solid #BBE8FB; background:#E0F2FE; color:#0284C7;">
+              ${sessionMins >= 10 && sessionMins <= 20 ? 'Optimal Focus' : sessionMins > 0 && sessionMins < 10 ? 'Short Session' : 'Extended'}
+            </span>
+          </div>
         </div>
-        <div class="stat-box">
-          <div class="stat-value">${stats.totalSessions}</div>
+        <div class="stat-box" style="border-color:#FFF3C4;">
+          <div class="stat-value" style="color:#FFAE02;">${stats.totalSessions}</div>
           <div class="stat-label">Total Sessions</div>
+          <div style="margin-top:4px;">
+            <span style="font-weight:800; font-size:10px; text-transform:uppercase; padding:2px 8px; border-radius:999px; border:1px solid #CBFAC4; background:#F0FDF4; color:#15803D;">
+              Active Logs
+            </span>
+          </div>
         </div>
       </div>
 
@@ -611,7 +669,7 @@ const buildReportHtml = (
   </html>`;
 };
 
-// Generates a PDF summary of the child's analytics and opens native share sheet.
+// Generates a PDF summary of the student's analytics and opens native share sheet.
 export const exportStudentAnalyticsReportPdf = async (
   studentId: string,
   studentDetails: StudentHeaderDetails,
@@ -622,7 +680,7 @@ export const exportStudentAnalyticsReportPdf = async (
   const generatedOn = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
   // 1. Fetch live metrics directly from database
-  let stats = { averageDuration: 0, averageMistakes: 0, totalSessions: 0 };
+  let stats = { averageDuration: 0, averageMistakes: 0, averageHints: 0, totalSessions: 0 };
   let evaluations: SessionEvaluation[] = [];
   let domainExposure: MasterDomainExposure[] = [];
   let rawSessions: any[] = [];
@@ -631,7 +689,7 @@ export const exportStudentAnalyticsReportPdf = async (
 
   try {
     const [statsRes, evalsRes, domRes, sessRes, milestonesRes, checkInsRes] = await Promise.all([
-      getStudentSessionStats(studentId, filter, activityType).catch(() => ({ averageDuration: 0, averageMistakes: 0, totalSessions: 0 })),
+      getStudentSessionStats(studentId, filter, activityType).catch(() => ({ averageDuration: 0, averageMistakes: 0, averageHints: 0, totalSessions: 0 })),
       getStudentValidatedSessionsEvaluations(studentId, activityType).catch(() => []),
       getStudentDevelopmentalSkillsExposure(studentId, filter, activityType).catch(() => []),
       getStudentSessions(studentId, activityType).catch(() => []),
@@ -650,12 +708,14 @@ export const exportStudentAnalyticsReportPdf = async (
 
   const emotionAnalytics = calculateStudentEmotionRegulationAnalytics(checkIns, evaluations, studentDetails.name);
 
-  // 2. Check if student needs intervention (< 3.0 / 4.0 average rubric score)
+  // 2. Determine rubric benchmark tier (Mastered >= 3.2, Developing 2.6 - 3.19, Needs Support < 2.6)
   const validScores = evaluations
     .map((e) => calculateRubricScore(e.rubric_evaluation))
     .filter((s): s is number => s !== null);
   const avgRubricScore = validScores.length > 0 ? validScores.reduce((a, b) => a + b, 0) / validScores.length : null;
-  const needsIntervention = avgRubricScore !== null && avgRubricScore < 3.0;
+  const rubricTier = avgRubricScore !== null ? getRubricTier(avgRubricScore) : null;
+  const mistakesTier = getMistakesTier(stats.averageMistakes);
+  const hintsTier = getHintsTier(stats.averageHints);
 
   // 3. Format Duration Helper
   const formatDuration = (avgSec: number) => {
@@ -671,17 +731,18 @@ export const exportStudentAnalyticsReportPdf = async (
 
   const recommendations = generateStudentRecommendations(evaluations, domainExposure, studentDetails.name);
   const recommendationsHtml = recommendations.length > 0 ? recommendations.map((rec) => {
-    let accentColor = '#62A9E6';
-    if (rec.type === 'strength') accentColor = '#179D33';
-    else if (rec.type === 'focus') accentColor = '#FFAE02';
-
     return `
-      <div style="background:#F9FAFB; border:1px solid #F3F4F6; border-radius:14px; padding:14px 16px; margin-bottom:10px; page-break-inside:avoid;">
-        <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
-          <div style="width:12px; height:12px; border-radius:50%; background:${accentColor}; flex-shrink:0;"></div>
-          <span style="font-weight:800; font-size:15px; color:#374151;">${escapeHtml(rec.title)}</span>
+      <div style="background:${rec.bgColor}; border:2px solid ${rec.borderColor}; border-radius:14px; padding:14px 16px; margin-bottom:10px; page-break-inside:avoid;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <div style="width:10px; height:10px; border-radius:50%; background:${rec.accentColor}; flex-shrink:0;"></div>
+            <span style="font-weight:800; font-size:14px; color:#1E293B;">${escapeHtml(rec.title)}</span>
+          </div>
+          <span style="font-weight:800; font-size:10px; color:${rec.textColor}; background:${rec.bgColor}; border:1px solid ${rec.borderColor}; border-radius:999px; padding:3px 10px; text-transform:uppercase;">
+            ${escapeHtml(rec.badgeLabel)}
+          </span>
         </div>
-        <div style="font-size:12px; color:#4B5563; font-weight:600; line-height:1.5; padding-left:22px;">
+        <div style="font-size:12px; color:#475569; font-weight:600; line-height:1.4;">
           ${escapeHtml(rec.description)}
         </div>
       </div>
@@ -772,6 +833,24 @@ export const exportStudentAnalyticsReportPdf = async (
       </div>`;
   }).join('') : '<div style="color:#64748B; font-size:13px;">No validated evaluations recorded for this timeframe.</div>';
 
+  // Benchmark overview banner
+  let benchmarkBannerHtml = '';
+  if (rubricTier) {
+    benchmarkBannerHtml = `
+      <div style="background:${rubricTier.bgColor}; border:2px solid ${rubricTier.borderColor}; border-radius:14px; padding:14px 16px; margin-bottom:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+          <span style="font-weight:800; font-size:15px; color:${rubricTier.accentColor};">${rubricTier.label}</span>
+          <span style="font-weight:800; font-size:11px; text-transform:uppercase; padding:3px 10px; border-radius:999px; background:#FFFFFF; border:1px solid ${rubricTier.borderColor}; color:${rubricTier.accentColor};">
+            Rubric Avg: ${avgRubricScore!.toFixed(2)} / 4.0
+          </span>
+        </div>
+        <div style="font-size:12px; color:#374151; font-weight:600; line-height:1.4;">
+          ${escapeHtml(rubricTier.teacherDescription)}
+        </div>
+      </div>
+    `;
+  }
+
   const html = `
   <html>
     <head>
@@ -782,10 +861,10 @@ export const exportStudentAnalyticsReportPdf = async (
         h1 { color: #0284C7; font-size: 24px; font-weight: 800; margin-bottom: 4px; }
         h2 { font-size: 16px; font-weight: 700; color: #1E293B; margin-top: 24px; margin-bottom: 12px; }
         .meta { font-size: 13px; color: #475569; font-weight: 500; margin-bottom: 18px; }
-        .stat-row { display: flex; gap: 12px; margin-bottom: 20px; }
-        .stat-box { flex: 1; background: #FFFFFF; border: 2px solid #E2E8F0; border-radius: 14px; padding: 14px; text-align: center; }
-        .stat-value { font-size: 22px; font-weight: 800; color: #0284C7; }
-        .stat-label { font-size: 12px; font-weight: 600; color: #475569; margin-top: 2px; }
+        .stat-row { display: flex; gap: 10px; margin-bottom: 20px; }
+        .stat-box { flex: 1; background: #FFFFFF; border: 2px solid #E2E8F0; border-radius: 14px; padding: 12px; text-align: center; }
+        .stat-value { font-size: 20px; font-weight: 800; }
+        .stat-label { font-size: 11px; font-weight: 700; color: #475569; margin-top: 2px; }
       </style>
     </head>
     <body>
@@ -801,30 +880,36 @@ export const exportStudentAnalyticsReportPdf = async (
         </div>
       </div>
 
-      ${needsIntervention ? `
-        <div style="background:#FFF7ED; border:2px solid #FFDBD4; border-radius:14px; padding:14px 16px; margin-bottom:20px;">
-          <div style="font-weight:800; font-size:15px; color:#C2410C; margin-bottom:4px;">Attention Required</div>
-          <div style="font-size:12px; color:#7C2D12; font-weight:600; line-height:1.4;">
-            Learner is currently performing below target mastery (3.0 / 4.0). Review recommendations below and provide guided prompts during practice.
-          </div>
-        </div>
-      ` : ''}
+      ${benchmarkBannerHtml}
 
       <div class="stat-row">
         <div class="stat-box" style="border-color:#BBE8FB;">
           <div class="stat-value" style="color:#62A9E6;">${formatDuration(stats.averageDuration)}</div>
-          <div class="stat-label">AVERAGE SESSION</div>
-          <div style="font-size:11px; color:#9CA3AF; margin-top:2px;">Time spent per session</div>
+          <div class="stat-label">AVG SESSION</div>
+          <div style="font-size:10px; color:#9CA3AF; margin-top:2px;">Duration</div>
         </div>
-        <div class="stat-box" style="border-color:#FECDD3;">
-          <div class="stat-value" style="color:#F43F5E;">${stats.averageMistakes.toFixed(1)}</div>
-          <div class="stat-label">AVERAGE MISTAKES</div>
-          <div style="font-size:11px; color:#9CA3AF; margin-top:2px;">Mistakes per session</div>
+        <div class="stat-box" style="border-color:${mistakesTier.borderColor};">
+          <div class="stat-value" style="color:${mistakesTier.accentColor};">${stats.averageMistakes.toFixed(1)}</div>
+          <div class="stat-label">AVG MISTAKES</div>
+          <div style="margin-top:3px;">
+            <span style="font-weight:800; font-size:9px; text-transform:uppercase; padding:2px 6px; border-radius:999px; border:1px solid ${mistakesTier.borderColor}; background:${mistakesTier.bgColor}; color:${mistakesTier.accentColor};">
+              ${mistakesTier.shortLabel}
+            </span>
+          </div>
+        </div>
+        <div class="stat-box" style="border-color:${hintsTier.borderColor};">
+          <div class="stat-value" style="color:${hintsTier.accentColor};">${stats.averageHints.toFixed(1)}</div>
+          <div class="stat-label">AVG HINTS</div>
+          <div style="margin-top:3px;">
+            <span style="font-weight:800; font-size:9px; text-transform:uppercase; padding:2px 6px; border-radius:999px; border:1px solid ${hintsTier.borderColor}; background:${hintsTier.bgColor}; color:${hintsTier.accentColor};">
+              ${hintsTier.shortLabel}
+            </span>
+          </div>
         </div>
         <div class="stat-box" style="border-color:#CBFAC4;">
           <div class="stat-value" style="color:#15803D;">${stats.totalSessions}</div>
-          <div class="stat-label">COMPLETED SESSIONS</div>
-          <div style="font-size:11px; color:#9CA3AF; margin-top:2px;">Total sessions recorded</div>
+          <div class="stat-label">SESSIONS</div>
+          <div style="font-size:10px; color:#9CA3AF; margin-top:2px;">Completed</div>
         </div>
       </div>
 
@@ -932,10 +1017,11 @@ export const exportClassAnalyticsReportExcel = async (
     ['Class Title', classTitle],
     ['Grade', classGrade || 'SPED'],
     ['Timeframe Range', timeframeLabel],
+    ['Universal Mastery Benchmark Target', '≥ 3.2 / 4.0 (80% Mastery Goal)'],
     [''],
     ['Metric', 'Value'],
     ['Total Enrolled Students', students.length],
-    ['Students Needing Attention', needsAttentionCount],
+    ['Students Needing Attention (< 3.2)', needsAttentionCount],
     ['Average Session Duration', stats ? `${Math.floor(stats.averageDuration / 60)}m ${Math.round(stats.averageDuration % 60)}s` : 'N/A'],
     ['Average Mistakes per Session', stats ? stats.averageMistakes.toFixed(1) : 'N/A'],
     ['Total Validated Sessions', stats ? stats.totalSessions : 'N/A'],
@@ -947,23 +1033,29 @@ export const exportClassAnalyticsReportExcel = async (
 
   // Sheet 2: Enrolled Students
   const studentsRows = [
-    ['Student Name', 'Learner Code', 'Average Rubric Score (0-4)', 'Attention Needed Status'],
-    ...students.map((st) => [
-      st.name,
-      st.learnerCode || st.learner_code || 'N/A',
-      st.averageScore !== undefined ? st.averageScore.toFixed(2) : 'No evaluations',
-      st.needsIntervention ? 'ATTENTION REQUIRED' : 'ON TRACK',
-    ]),
+    ['Student Name', 'Learner Code', 'Average Rubric Score (0-4)', 'Benchmark Tier', 'Attention Needed Status'],
+    ...students.map((st) => {
+      const avg = st.averageScore !== undefined ? st.averageScore : null;
+      const tier = avg !== null ? getRubricTier(avg).shortLabel : 'No evaluations';
+      return [
+        st.name,
+        st.learnerCode || st.learner_code || 'N/A',
+        avg !== null ? avg.toFixed(2) : 'N/A',
+        tier,
+        st.needsIntervention ? 'ATTENTION REQUIRED' : 'ON TRACK',
+      ];
+    }),
   ];
   const wsStudents = XLSX.utils.aoa_to_sheet(studentsRows);
   XLSX.utils.book_append_sheet(wb, wsStudents, 'Enrolled Students');
 
   // Sheet 3: Validated Evaluations
   const evalsRows = [
-    ['Session ID', 'Student ID', 'Evaluation Date', 'Looking at Objects', 'Concentrating', 'Performing Task', 'Following Instructions', 'Completed Work', 'Average Score', 'Teacher Remarks'],
+    ['Session ID', 'Student ID', 'Evaluation Date', 'Looking at Objects', 'Concentrating', 'Performing Task', 'Following Instructions', 'Completed Work', 'Average Score', 'Benchmark Tier', 'Teacher Remarks'],
     ...evaluations.map((e) => {
       const r = e.rubric_evaluation || {};
       const score = calculateRubricScore(r);
+      const tier = score !== null ? getRubricTier(score).shortLabel : 'N/A';
       return [
         e.id,
         e.student_id || 'N/A',
@@ -974,6 +1066,7 @@ export const exportClassAnalyticsReportExcel = async (
         r.following_instructions ?? 'N/A',
         r.completed_work ?? 'N/A',
         score !== null ? score.toFixed(2) : 'N/A',
+        tier,
         (e as any).teacher_remarks || (e as any).feedback || '',
       ];
     }),
@@ -983,13 +1076,16 @@ export const exportClassAnalyticsReportExcel = async (
 
   // Sheet 4: Developmental Domain Exposure
   const domainRows = [
-    ['Domain Title', 'Total Practices', 'Status'],
+    ['Domain Title', 'Total Practices', 'Average Rubric Score (0-4)', 'Benchmark Status'],
     ...domainExposure.map((d) => {
       const totalCount = d.skills ? d.skills.reduce((a, b) => a + b.count, 0) : 0;
+      const score = d.averageScore;
+      const tier = score !== null && score !== undefined ? getRubricTier(score).shortLabel : 'No evaluations';
       return [
         d.masterDomain,
         totalCount,
-        totalCount < 5 ? 'FOCUS NEEDED' : 'ADEQUATE',
+        score !== null && score !== undefined ? score.toFixed(2) : 'N/A',
+        tier,
       ];
     }),
   ];
@@ -1053,7 +1149,7 @@ export const exportStudentAnalyticsReportExcel = async (
 ) => {
   const generatedOn = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
-  let stats = { averageDuration: 0, averageMistakes: 0, totalSessions: 0 };
+  let stats = { averageDuration: 0, averageMistakes: 0, averageHints: 0, totalSessions: 0 };
   let evaluations: SessionEvaluation[] = [];
   let domainExposure: MasterDomainExposure[] = [];
   let rawSessions: any[] = [];
@@ -1062,7 +1158,7 @@ export const exportStudentAnalyticsReportExcel = async (
 
   try {
     const [statsRes, evalsRes, domRes, sessRes, milestonesRes, checkInsRes] = await Promise.all([
-      getStudentSessionStats(studentId, filter, activityType).catch(() => ({ averageDuration: 0, averageMistakes: 0, totalSessions: 0 })),
+      getStudentSessionStats(studentId, filter, activityType).catch(() => ({ averageDuration: 0, averageMistakes: 0, averageHints: 0, totalSessions: 0 })),
       getStudentValidatedSessionsEvaluations(studentId, activityType).catch(() => []),
       getStudentDevelopmentalSkillsExposure(studentId, filter, activityType).catch(() => []),
       getStudentSessions(studentId, activityType).catch(() => []),
@@ -1083,7 +1179,9 @@ export const exportStudentAnalyticsReportExcel = async (
     .map((e) => calculateRubricScore(e.rubric_evaluation))
     .filter((s): s is number => s !== null);
   const avgRubricScore = validScores.length > 0 ? validScores.reduce((a, b) => a + b, 0) / validScores.length : null;
-  const needsIntervention = avgRubricScore !== null && avgRubricScore < 3.0;
+  const rubricTier = avgRubricScore !== null ? getRubricTier(avgRubricScore) : null;
+  const mistakesTier = getMistakesTier(stats.averageMistakes);
+  const hintsTier = getHintsTier(stats.averageHints);
 
   const wb = XLSX.utils.book_new();
 
@@ -1105,15 +1203,17 @@ export const exportStudentAnalyticsReportExcel = async (
     ['Parent Account Linked', studentDetails.isLinked ? 'YES' : 'NO'],
     ['Timeframe Range', timeframeLabel],
     ['Activity Source Filter', activityType === 'all' ? 'All Activities' : activityType === 'classroom' ? 'Classroom Only' : 'App Only'],
-    ['Overall Rubric Score Average', avgRubricScore !== null ? avgRubricScore.toFixed(2) : 'No evaluations'],
-    ['Status', needsIntervention ? 'ATTENTION REQUIRED (< 3.0)' : 'ON TRACK'],
+    ['Overall Rubric Score Average', avgRubricScore !== null ? `${avgRubricScore.toFixed(2)} / 4.0` : 'No evaluations'],
+    ['Benchmark Mastery Status', rubricTier ? `${rubricTier.label} (${rubricTier.shortLabel})` : 'No evaluations'],
+    ['Universal Target Mastery Benchmark', '≥ 3.2 / 4.0 (80% Mastery Goal)'],
     [''],
-    ['Metric', 'Value'],
-    ['Average Session Duration', formatDuration(stats.averageDuration)],
-    ['Average Mistakes per Session', stats.averageMistakes.toFixed(1)],
-    ['Total Recorded Sessions', stats.totalSessions],
-    ['2-Week Forecast Projected Score', forecastResult.projected14DayScore !== null ? `~${forecastResult.projected14DayScore} / 4.0 Predicted` : 'N/A'],
-    ['2-Week Forecast Outlook', forecastResult.estimatedDaysToMastery ? `~${forecastResult.estimatedDaysToMastery} days to ${forecastResult.targetBenchmark} benchmark` : 'Based on current trajectory'],
+    ['Metric', 'Value', 'Benchmark Tier Status'],
+    ['Average Session Duration', formatDuration(stats.averageDuration), 'Standard'],
+    ['Average Mistakes per Session', stats.averageMistakes.toFixed(1), mistakesTier.shortLabel],
+    ['Average Hints per Session', stats.averageHints.toFixed(1), hintsTier.shortLabel],
+    ['Total Recorded Sessions', stats.totalSessions, 'Active Logs'],
+    ['2-Week Forecast Projected Score', forecastResult.projected14DayScore !== null ? `~${forecastResult.projected14DayScore} / 4.0 Predicted` : 'N/A', 'Predicted Trajectory'],
+    ['2-Week Forecast Outlook', forecastResult.estimatedDaysToMastery ? `~${forecastResult.estimatedDaysToMastery} days to ${forecastResult.targetBenchmark} benchmark` : 'Based on current trajectory', 'Outlook'],
   ];
   const wsOverview = XLSX.utils.aoa_to_sheet(overviewData);
   XLSX.utils.book_append_sheet(wb, wsOverview, 'Overview');
@@ -1193,10 +1293,11 @@ export const exportStudentAnalyticsReportExcel = async (
 
   const validatedSessionsList = rawSessions.filter((s: any) => s.status === 'validated' && s.rubric_evaluation);
   const valRows = [
-    ['Session Date', 'Activity Source', 'Category', 'Activity Title', 'Looking at Objects', 'Concentrating', 'Performing Task', 'Following Instructions', 'Completed Work', 'Average Rubric Score', 'Teacher Remarks'],
+    ['Session Date', 'Activity Source', 'Category', 'Activity Title', 'Looking at Objects', 'Concentrating', 'Performing Task', 'Following Instructions', 'Completed Work', 'Average Rubric Score', 'Benchmark Tier', 'Teacher Remarks'],
     ...validatedSessionsList.map((s: any) => {
       const r = s.rubric_evaluation || {};
       const score = calculateRubricScore(r);
+      const tier = score !== null ? getRubricTier(score).shortLabel : 'N/A';
       return [
         new Date(s.created_at).toLocaleDateString('en-US'),
         s.activity_type === 'classroom' ? 'Classroom' : 'App',
@@ -1208,6 +1309,7 @@ export const exportStudentAnalyticsReportExcel = async (
         r.following_instructions ?? 'N/A',
         r.completed_work ?? 'N/A',
         score !== null ? score.toFixed(2) : 'N/A',
+        tier,
         s.teacher_remarks || s.feedback || s.teacher_feedback || '',
       ];
     }),
@@ -1216,13 +1318,16 @@ export const exportStudentAnalyticsReportExcel = async (
   XLSX.utils.book_append_sheet(wb, wsVal, 'Validated Evaluations');
 
   const domRows = [
-    ['Domain Title', 'Total Practices', 'Status'],
+    ['Domain Title', 'Total Practices', 'Average Rubric Score (0-4)', 'Benchmark Status'],
     ...domainExposure.map((d) => {
       const totalCount = d.skills ? d.skills.reduce((a, b) => a + b.count, 0) : 0;
+      const score = d.averageScore;
+      const tier = score !== null && score !== undefined ? getRubricTier(score).shortLabel : 'No evaluations';
       return [
         d.masterDomain,
         totalCount,
-        totalCount < 5 ? 'FOCUS NEEDED' : 'ADEQUATE',
+        score !== null && score !== undefined ? score.toFixed(2) : 'N/A',
+        tier,
       ];
     }),
   ];
@@ -1425,13 +1530,48 @@ export const exportAllFeedbacksPdf = async (
 // Generates a PDF report for overall Teacher Analytics
 export const exportTeacherAnalyticsReportPdf = async (
   teacherName: string,
-  kpi: { pendingEvaluations: number; totalStudents: number; totalClasses: number; completedSessions: number },
+  kpi: {
+    pendingEvaluations: number;
+    totalStudents: number;
+    totalClasses: number;
+    completedSessions: number;
+    totalSessions?: number;
+    evaluatedSessions?: number;
+    evaluatedPercentage?: number;
+  },
   classes: { title: string; grade: string; studentsCount: number; completedSessions: number; pendingEvaluations: number; evaluatedPercentage: number }[],
   recentActivity: { studentName: string; category: string; status: string; createdAt: string; activityType?: string; activityTitle?: string }[],
   timeframeLabel?: string,
   activityType: ActivityTypeFilter = 'all'
 ) => {
   const generatedOn = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+  const totalSessionsCount = kpi.totalSessions ?? (kpi.completedSessions + kpi.pendingEvaluations);
+  const evalPct = kpi.evaluatedPercentage !== undefined
+    ? kpi.evaluatedPercentage
+    : (totalSessionsCount > 0 ? Math.round((kpi.completedSessions / totalSessionsCount) * 100) : 100);
+
+  let complianceBadge = {
+    label: 'Target Met (100% Goal)',
+    bg: '#F0FDF4',
+    border: '#86EFAC',
+    text: '#15803D',
+  };
+  if (evalPct < 70) {
+    complianceBadge = {
+      label: 'Action Needed (< 70%)',
+      bg: '#FFF7ED',
+      border: '#FFDBD4',
+      text: '#C2410C',
+    };
+  } else if (evalPct < 90) {
+    complianceBadge = {
+      label: 'In Progress (70–89%)',
+      bg: '#FFFBEB',
+      border: '#FFF3C4',
+      text: '#D97706',
+    };
+  }
 
   const classesRowsHtml = classes.length > 0 ? classes.map((c) => `
     <div style="background:#FFFFFF; border:2px solid #E2E8F0; border-radius:12px; padding:12px 16px; margin-bottom:10px;">
@@ -1493,22 +1633,34 @@ export const exportTeacherAnalyticsReportPdf = async (
       </div>
 
       <div class="stat-row">
-        <div class="stat-box">
-          <div class="stat-value">${kpi.pendingEvaluations}</div>
+        <div class="stat-box" style="border-color:#FDBA74;">
+          <div class="stat-value" style="color:#C2410C;">${kpi.pendingEvaluations}</div>
           <div class="stat-label">Pending Evaluations</div>
         </div>
-        <div class="stat-box">
-          <div class="stat-value">${kpi.totalStudents}</div>
+        <div class="stat-box" style="border-color:#BBE8FB;">
+          <div class="stat-value" style="color:#0284C7;">${kpi.totalStudents}</div>
           <div class="stat-label">Total Students</div>
         </div>
-        <div class="stat-box">
-          <div class="stat-value">${kpi.totalClasses}</div>
+        <div class="stat-box" style="border-color:#DDD6FE;">
+          <div class="stat-value" style="color:#7C3AED;">${kpi.totalClasses}</div>
           <div class="stat-label">Active Classes</div>
         </div>
-        <div class="stat-box">
-          <div class="stat-value">${kpi.completedSessions}</div>
-          <div class="stat-label">Completed Sessions</div>
+        <div class="stat-box" style="border-color:#86EFAC;">
+          <div class="stat-value" style="color:#15803D;">${kpi.completedSessions}</div>
+          <div class="stat-label">Total Sessions</div>
         </div>
+      </div>
+
+      <div style="background:${complianceBadge.bg}; border:2px solid ${complianceBadge.border}; border-radius:14px; padding:12px 16px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <span style="font-weight:800; font-size:14px; color:${complianceBadge.text};">Evaluation Compliance Rate</span>
+          <div style="font-size:12px; color:#475569; font-weight:600; margin-top:2px;">
+            ${kpi.completedSessions} of ${totalSessionsCount} sessions fully evaluated & validated.
+          </div>
+        </div>
+        <span style="font-weight:800; font-size:11px; text-transform:uppercase; padding:4px 12px; border-radius:999px; background:#FFFFFF; border:1px solid ${complianceBadge.border}; color:${complianceBadge.text};">
+          ${evalPct}% • ${complianceBadge.label}
+        </span>
       </div>
 
       <h2>Class Performance Breakdown</h2>
@@ -1621,7 +1773,6 @@ const generateClassEvaluationTrendChartSvg = (
 
   const chartW = svgWidth - paddingLeft - paddingRight;
   const chartH = svgHeight - paddingTop - paddingBottom;
-  const step = chartData.length > 1 ? chartW / (chartData.length - 1) : chartW;
 
   const forecastResult = calculateClassProgressForecast(evaluations, filter);
   const hasForecast = forecastResult.points.length > chartData.length;
@@ -1696,6 +1847,12 @@ const generateClassEvaluationTrendChartSvg = (
     `;
   }).join('');
 
+  const targetMasteryY = paddingTop + chartH - (3.2 / 4) * chartH;
+  const targetMasteryLine = `
+    <line x1="${paddingLeft}" y1="${targetMasteryY}" x2="${svgWidth - paddingRight}" y2="${targetMasteryY}" stroke="#8B5CF6" stroke-dasharray="4,4" stroke-width="1.5" />
+    <text x="${svgWidth - paddingRight}" y="${targetMasteryY - 5}" font-size="10" font-weight="700" fill="#7C3AED" text-anchor="end">Mastery Target (3.2)</text>
+  `;
+
   const xAxisLabels = (() => {
     const allPts = [...points, ...forecastPts];
     const total = allPts.length;
@@ -1737,6 +1894,23 @@ const generateClassEvaluationTrendChartSvg = (
         ${forecastOutlookHtml}
       </div>
 
+      <div style="display:flex; align-items:center; gap:16px; margin-bottom:12px;">
+        <div style="display:flex; align-items:center; gap:6px;">
+          <div style="width:10px; height:10px; border-radius:50%; background:#62A9E6;"></div>
+          <span style="font-size:11px; font-weight:700; color:#64748B;">Evaluation Score</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <div style="width:12px; height:2px; background:#8B5CF6; border-radius:1px;"></div>
+          <span style="font-size:11px; font-weight:700; color:#7C3AED;">Mastery Target (3.2 • 80%)</span>
+        </div>
+        ${hasForecast ? `
+          <div style="display:flex; align-items:center; gap:6px;">
+            <div style="width:12px; height:2px; background:#34D399; border-radius:1px;"></div>
+            <span style="font-size:11px; font-weight:700; color:#059669;">Forecast</span>
+          </div>
+        ` : ''}
+      </div>
+
       <svg viewBox="0 0 ${svgWidth} ${svgHeight}" style="width:100%; height:auto; overflow:visible;">
         <defs>
           <linearGradient id="classTrendGrad" x1="0" y1="0" x2="0" y2="${svgHeight}" gradientUnits="userSpaceOnUse">
@@ -1746,6 +1920,7 @@ const generateClassEvaluationTrendChartSvg = (
           </linearGradient>
         </defs>
         ${gridLines}
+        ${targetMasteryLine}
         <path d="${areaPathD}" fill="url(#classTrendGrad)" />
         <path d="${linePathD}" fill="none" stroke="#62A9E6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
         ${forecastLinePathD ? `<path d="${forecastLinePathD}" fill="none" stroke="#34D399" stroke-width="2.5" stroke-dasharray="5,5" stroke-linecap="round" stroke-linejoin="round" />` : ''}
@@ -1895,6 +2070,12 @@ const generateStudentEvaluationTrendChartSvg = (
     `;
   }).join('');
 
+  const targetMasteryY = paddingTop + chartH - (3.2 / 4) * chartH;
+  const targetMasteryLine = `
+    <line x1="${paddingLeft}" y1="${targetMasteryY}" x2="${svgWidth - paddingRight}" y2="${targetMasteryY}" stroke="#8B5CF6" stroke-dasharray="4,4" stroke-width="1.5" />
+    <text x="${svgWidth - paddingRight}" y="${targetMasteryY - 5}" font-size="10" font-weight="700" fill="#7C3AED" text-anchor="end">Mastery Target (3.2)</text>
+  `;
+
   const xAxisLabels = (() => {
     const allPts = [...points, ...forecastPts];
     const total = allPts.length;
@@ -1936,6 +2117,23 @@ const generateStudentEvaluationTrendChartSvg = (
         ${forecastOutlookHtml}
       </div>
 
+      <div style="display:flex; align-items:center; gap:16px; margin-bottom:12px;">
+        <div style="display:flex; align-items:center; gap:6px;">
+          <div style="width:10px; height:10px; border-radius:50%; background:#62A9E6;"></div>
+          <span style="font-size:11px; font-weight:700; color:#64748B;">Evaluation Score</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <div style="width:12px; height:2px; background:#8B5CF6; border-radius:1px;"></div>
+          <span style="font-size:11px; font-weight:700; color:#7C3AED;">Mastery Target (3.2 • 80%)</span>
+        </div>
+        ${hasForecast ? `
+          <div style="display:flex; align-items:center; gap:6px;">
+            <div style="width:12px; height:2px; background:#34D399; border-radius:1px;"></div>
+            <span style="font-size:11px; font-weight:700; color:#059669;">Forecast</span>
+          </div>
+        ` : ''}
+      </div>
+
       <svg viewBox="0 0 ${svgWidth} ${svgHeight}" style="width:100%; height:auto; overflow:visible;">
         <defs>
           <linearGradient id="studentTrendGrad" x1="0" y1="0" x2="0" y2="${svgHeight}" gradientUnits="userSpaceOnUse">
@@ -1945,6 +2143,7 @@ const generateStudentEvaluationTrendChartSvg = (
           </linearGradient>
         </defs>
         ${gridLines}
+        ${targetMasteryLine}
         <path d="${areaPathD}" fill="url(#studentTrendGrad)" />
         <path d="${linePathD}" fill="none" stroke="#62A9E6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
         ${forecastLinePathD ? `<path d="${forecastLinePathD}" fill="none" stroke="#34D399" stroke-width="2.5" stroke-dasharray="5,5" stroke-linecap="round" stroke-linejoin="round" />` : ''}
@@ -2013,6 +2212,9 @@ const generateClassDevelopmentalDomainPracticeSvg = (
   const domainCardsHtml = domainExposure.map((domain, domainIdx) => {
     const theme = DOMAIN_THEMES_REPORT[domainIdx % DOMAIN_THEMES_REPORT.length];
     const totalDomainExposures = domain.skills.reduce((sum, s) => sum + s.count, 0);
+    const score = domain.averageScore;
+    const hasScore = score !== null && score !== undefined;
+    const tier = hasScore ? getRubricTier(score) : null;
 
     const skillRowsHtml = domain.skills.map((skill, skillIdx) => {
       const barWidthPercent = (skill.count / maxScale) * 100;
@@ -2057,7 +2259,13 @@ const generateClassDevelopmentalDomainPracticeSvg = (
 
     const focusBadgeHtml = domain.masterDomain === lowestExposureDomainName ? `
       <span style="background:#FFF3C4; border:1px solid #FFAE02; color:#D97706; border-radius:999px; padding:2px 8px; font-weight:800; font-size:10px; text-transform:uppercase; margin-right:6px;">
-        FOCUS NEEDED
+        LOWEST EXPOSURE
+      </span>
+    ` : '';
+
+    const scoreBadgeHtml = hasScore && tier ? `
+      <span style="background:${tier.bgColor}; border:1px solid ${tier.borderColor}; color:${tier.accentColor}; border-radius:999px; padding:3px 10px; font-weight:800; font-size:10px; text-transform:uppercase; margin-right:6px;">
+        ${score.toFixed(1)} / 4.0 • ${tier.shortLabel}
       </span>
     ` : '';
 
@@ -2070,8 +2278,9 @@ const generateClassDevelopmentalDomainPracticeSvg = (
           </div>
           <div style="display:flex; align-items:center;">
             ${focusBadgeHtml}
+            ${scoreBadgeHtml}
             <span style="background:${theme.pillBg}; border:1px solid ${theme.pillBorder}; color:${theme.accentText}; border-radius:999px; padding:3px 10px; font-weight:800; font-size:11px; text-transform:uppercase;">
-              ${totalDomainExposures} PRACTICES
+              ${totalDomainExposures} ${totalDomainExposures === 1 ? 'PRACTICE' : 'PRACTICES'}
             </span>
           </div>
         </div>
@@ -2119,14 +2328,11 @@ export const exportClassAnalyticsReportPdf = async (
     // Standard signature with classId: (classId, classTitle, grade, students, stats, timeframeLabel, filter)
     realClassId = classIdOrTitle;
     realClassTitle = classTitleOrGrade || '';
-    realGrade = gradeOrStudents ? '' : ''; // Handled below
+    realGrade = typeof gradeOrStudents === 'string' ? gradeOrStudents : '';
     realStudents = gradeOrStudents;
     realStats = studentsOrStats;
     realTimeframeLabel = statsOrTimeframeLabel;
-    realFilter = timeframeLabelOrFilter as any || filterArg;
-    if (typeof gradeOrStudents === 'string') {
-      realGrade = gradeOrStudents;
-    }
+    realFilter = (timeframeLabelOrFilter as any) || filterArg;
   } else {
     // Signature: (classId, classTitle, grade, students, stats, timeframeLabel, filter)
     realClassId = classIdOrTitle;
@@ -2186,6 +2392,8 @@ export const exportClassAnalyticsReportPdf = async (
     </div>
   `).join('') : '<div style="color:#64748B; font-size:13px;">No recommendations available for this timeframe.</div>';
 
+  const mistakeTier = realStats ? getMistakesTier(realStats.averageMistakes) : null;
+
   const html = `
   <html>
     <head>
@@ -2210,17 +2418,24 @@ export const exportClassAnalyticsReportPdf = async (
       </div>
 
       <div class="stat-row">
-        <div class="stat-box">
-          <div class="stat-value">${realStats ? realStats.totalSessions : 0}</div>
+        <div class="stat-box" style="border-color:#CBFAC4;">
+          <div class="stat-value" style="color:#15803D;">${realStats ? realStats.totalSessions : 0}</div>
           <div class="stat-label">Total Sessions</div>
         </div>
-        <div class="stat-box">
-          <div class="stat-value">${realStats ? formatDuration(realStats.averageDuration) : '0s'}</div>
+        <div class="stat-box" style="border-color:#BBE8FB;">
+          <div class="stat-value" style="color:#0284C7;">${realStats ? formatDuration(realStats.averageDuration) : '0s'}</div>
           <div class="stat-label">Avg Session Duration</div>
         </div>
-        <div class="stat-box">
-          <div class="stat-value">${realStats ? realStats.averageMistakes.toFixed(1) : '0.0'}</div>
+        <div class="stat-box" style="border-color:${mistakeTier ? mistakeTier.borderColor : '#FECDD3'};">
+          <div class="stat-value" style="color:${mistakeTier ? mistakeTier.accentColor : '#F43F5E'};">${realStats ? realStats.averageMistakes.toFixed(1) : '0.0'}</div>
           <div class="stat-label">Avg Mistakes / Session</div>
+          ${mistakeTier ? `
+            <div style="margin-top:3px;">
+              <span style="font-weight:800; font-size:9px; text-transform:uppercase; padding:2px 6px; border-radius:999px; border:1px solid ${mistakeTier.borderColor}; background:${mistakeTier.bgColor}; color:${mistakeTier.accentColor};">
+                ${mistakeTier.shortLabel}
+              </span>
+            </div>
+          ` : ''}
         </div>
       </div>
 
@@ -2245,4 +2460,3 @@ export const exportClassAnalyticsReportPdf = async (
   }
   return uri;
 };
-

@@ -8,6 +8,8 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Haptics from 'expo-haptics';
 
 import { ActivitiesSection } from '@/components/student/activities-section';
 import { RecentActivityCard } from '@/components/student/recent-activity-card';
@@ -66,6 +68,29 @@ export default function StudentHome() {
   );
 
   const [avatar, setAvatar] = useState('');
+  const [language, setLanguage] = useState<'en' | 'tl'>('en');
+
+  // Load language preference from AsyncStorage
+  useEffect(() => {
+    AsyncStorage.getItem('@activity_instruction_lang').then((saved) => {
+      if (saved === 'tl' || saved === 'en') {
+        setLanguage(saved);
+      }
+    });
+  }, []);
+
+  const toggleLanguage = async () => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch {}
+    const nextLang = language === 'en' ? 'tl' : 'en';
+    setLanguage(nextLang);
+    try {
+      await AsyncStorage.setItem('@activity_instruction_lang', nextLang);
+    } catch (err) {
+      console.error('Error saving activity language:', err);
+    }
+  };
 
   // Daily Emotion Check-In
   const [showCheckInModal, setShowCheckInModal] = useState(false);
@@ -377,6 +402,7 @@ export default function StudentHome() {
           assignedPaths={assignedPaths}
           isLoading={isLoading}
           isTablet={isTablet}
+          language={language}
           onNavigateToLesson={navigateToLesson}
         />
       </ScrollView>

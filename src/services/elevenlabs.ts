@@ -60,8 +60,7 @@ export const speakElevenLabs = async (
     onDone?: () => void,
     onError?: (err: any) => void
 ): Promise<boolean> => {
-    // TEMPORARILY DISABLED FOR TESTING (to conserve ElevenLabs API credits)
-    // Change return to proceed or remove this block to re-enable ElevenLabs:
+    // Disabled for testing (uses native device voice)
     const ENABLE_ELEVEN_LABS = false;
     if (!ENABLE_ELEVEN_LABS) {
         return false;

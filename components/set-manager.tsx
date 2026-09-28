@@ -120,13 +120,22 @@ import ActivityRenderer from '@/components/activity-renderer';
 import FeedbackModal from '@/components/feedback-modal';
 import InstructionSpeakerButton from '@/components/ui/instruction-speaker-button';
 import HintButton from '@/components/ui/hint-button';
+import { HeaderButton } from '@/components/header-button';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '@/src/lib/supabase';
 import { processActivityCompletion } from '@/src/services/achivements';
 import { createNotification } from '@/src/services/notifications';
 import { getStudentHistoricalBaseline } from '@/src/services/sessions';
 import { formatActivityTitle } from '@/src/utils/format';
 import { playCorrectSound, setGlobalSfxEnabled, startBackgroundMusic, stopBackgroundMusic } from '@/src/utils/sound';
-import { stopSpeech, TIME_ALMOST_UP_MESSAGES, TIME_UP_MESSAGES } from '@/src/utils/speech';
+import { stopSpeech } from '@/src/utils/speech';
+import {
+    ActivityLanguage,
+    getRandomPraiseMessage,
+    getRandomTimeAlmostUpMessage,
+    getRandomTimeUpMessage,
+    translateInstruction,
+} from '@/src/utils/activityInstructions';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -235,6 +244,7 @@ export default function SetManager({
 
     const [isSetComplete, setIsSetComplete] = useState(false);
     const [bearMessage, setBearMessage] = useState('');
+    const [language, setLanguage] = useState<ActivityLanguage>('en');
     const [errorMode, setErrorMode] = useState(false);
     const [successMode, setSuccessMode] = useState(false);
     const [isActivityDone, setIsActivityDone] = useState(false);
@@ -245,6 +255,32 @@ export default function SetManager({
     const [showAchievementScreen, setShowAchievementScreen] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const isSavingRef = useRef(false);
+
+    // Load saved instruction language preference from AsyncStorage
+    useEffect(() => {
+        AsyncStorage.getItem('@activity_instruction_lang').then((saved) => {
+            if (saved === 'tl' || saved === 'en') {
+                setLanguage(saved);
+            }
+        });
+    }, []);
+
+    const toggleLanguage = async () => {
+        try {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        } catch {}
+        const nextLang = language === 'en' ? 'tl' : 'en';
+        setLanguage(nextLang);
+        try {
+            await AsyncStorage.setItem('@activity_instruction_lang', nextLang);
+        } catch (err) {
+            console.error('Error saving instruction language:', err);
+        }
+    };
+
+    const displayBearMessage = useMemo(() => {
+        return translateInstruction(bearMessage, language);
+    }, [bearMessage, language]);
 
     // Accumulator State Trackers
     const [totalMistakesAccumulator, setTotalMistakesAccumulator] = useState(0);
@@ -470,7 +506,7 @@ export default function SetManager({
         }
 
         // Choose a random praise message and update confirmation button UI state
-        setBearMessage(SUCCESS_MESSAGES[Math.floor(Math.random() * SUCCESS_MESSAGES.length)]);
+        setBearMessage(getRandomPraiseMessage(language));
         setIsActivityDone(true);
         setSuccessMode(true);
     };
@@ -746,14 +782,18 @@ export default function SetManager({
 
         if (isTimeout) {
             setIsSetComplete(true);
-            const randomMsg = TIME_UP_MESSAGES[Math.floor(Math.random() * TIME_UP_MESSAGES.length)];
+            const randomMsg = getRandomTimeUpMessage(language);
             setBearMessage(randomMsg);
             setIsSaving(false);
         } else {
             // Increment to 3, freeze global timer, and display visual confetti praise card
             setCompletedCount(3);
             setIsSetComplete(true);
-            setBearMessage("Incredible job! You finished all 3 activities! 🎉");
+            setBearMessage(
+                language === 'tl'
+                    ? "Napakagaling! Natapos mo ang lahat ng 3 gawain! 🎉"
+                    : "Incredible job! You finished all 3 activities! 🎉"
+            );
             setIsSaving(false);
         }
     };
@@ -865,7 +905,7 @@ export default function SetManager({
         // Warn when 60 seconds (1 minute) remains
         if (globalTimer <= 60 && globalTimer > 0 && !hasWarnedAlmostUpRef.current) {
             hasWarnedAlmostUpRef.current = true;
-            const randomMsg = TIME_ALMOST_UP_MESSAGES[Math.floor(Math.random() * TIME_ALMOST_UP_MESSAGES.length)];
+            const randomMsg = getRandomTimeAlmostUpMessage(language);
             setBearMessage(randomMsg);
             try {
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
@@ -949,13 +989,27 @@ export default function SetManager({
         <View className="flex-1 bg-[#FBFBFB]">
             <SafeAreaView style={{ flex: 1, backgroundColor: '#FBFBFB' }} edges={['top', 'bottom']}>
 
-                {/* Header: X and Title */}
-                <View className="flex-row items-center px-6 pt-4 pb-4">
-                    <HoldToExitButton onExit={handleExitSession} />
-                    <Text className="text-2xl font-fredoka-one text-[#535B74]">{displayActivityTitle}</Text>
+                {/* Header: X, Title, and Language Toggle */}
+                <View className="flex-row items-center justify-between px-6 pt-4 pb-4">
+                    <View className="flex-row items-center flex-1 mr-3">
+                        <HoldToExitButton onExit={handleExitSession} />
+                        <Text className="text-2xl font-fredoka-one text-[#535B74] flex-shrink" numberOfLines={1}>
+                            {displayActivityTitle}
+                        </Text>
+                    </View>
+
+                    {/* Translate Toggle Button (EN <-> TL) matching Parent Header styling */}
+                    <HeaderButton
+                        onPress={toggleLanguage}
+                        icon={
+                            <Text className={`font-fredoka-one ${isTablet ? 'text-base' : 'text-sm'} text-[#62A9E6]`}>
+                                {language === 'en' ? 'TL' : 'EN'}
+                            </Text>
+                        }
+                    />
                 </View>
 
-                {/* Progress Bar, Speaker Button & Timer */}
+                {/* Progress Bar, Hint, Speaker Button & Timer */}
                 <View className="flex-row items-center px-6 pb-6">
                     <View className="flex-1 h-[18px] bg-[#C4E0F9] rounded-full overflow-hidden">
                         <Animated.View className="h-full bg-[#69AEE3] rounded-full" style={animatedProgressStyle} />
@@ -967,7 +1021,8 @@ export default function SetManager({
                             iconSize={isTablet ? 22 : 18}
                         />
                         <InstructionSpeakerButton
-                            text={bearMessage}
+                            text={displayBearMessage}
+                            language={language}
                             autoPlay={true}
                             size={isTablet ? 44 : 36}
                             iconSize={isTablet ? 22 : 18}
@@ -997,7 +1052,7 @@ export default function SetManager({
                                     : 'bg-[#FCF5F5] border-[#EAD5D5]'
                             }`}>
                             <Text className={`text-[#6D7179] font-quicksand-medium ${isTablet ? 'text-2xl leading-9' : 'text-lg leading-7'}`}>
-                                {bearMessage}
+                                {displayBearMessage}
                             </Text>
                         </View>
                     </View>
@@ -1028,7 +1083,7 @@ export default function SetManager({
                                 <ActivityIndicator color="white" size="small" />
                             ) : (
                                 <Text className="text-white font-fredoka-regular text-2xl">
-                                    {successMode ? 'Next Activity' : 'CHECK'}
+                                    {successMode ? (language === 'tl' ? 'Susunod na Gawain' : 'Next Activity') : 'CHECK'}
                                 </Text>
                             )}
                         </Pressable>

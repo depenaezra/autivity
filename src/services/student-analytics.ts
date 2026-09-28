@@ -481,6 +481,7 @@ export interface Milestone {
   id: string;
   studentId: string;
   title: string;
+  description?: string;
   status: 'Achieved' | 'In Progress' | 'Target Set';
   targetDate: string;
   startDate: string;
@@ -523,13 +524,19 @@ export const getStudentMilestones = async (studentId: string): Promise<Milestone
     id: m.id,
     studentId: m.student_id,
     title: m.title,
+    description: m.description || '',
     status: m.status as any,
     targetDate: m.target_date ? formatDate(m.target_date) : '',
     startDate: m.created_at ? formatDate(m.created_at) : ''
   }));
 };
 
-export const createStudentMilestone = async (studentId: string, title: string, targetDate: string): Promise<Milestone> => {
+export const createStudentMilestone = async (
+  studentId: string,
+  title: string,
+  description: string,
+  targetDate: string
+): Promise<Milestone> => {
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) throw new Error('User not logged in');
 
@@ -539,6 +546,7 @@ export const createStudentMilestone = async (studentId: string, title: string, t
       student_id: studentId,
       teacher_id: user.id,
       title,
+      description: description || null,
       target_date: toISODate(targetDate),
       status: 'Target Set'
     }])
@@ -574,6 +582,7 @@ export const createStudentMilestone = async (studentId: string, title: string, t
     id: data.id,
     studentId: data.student_id,
     title: data.title,
+    description: data.description || '',
     status: data.status,
     targetDate: data.target_date ? formatDate(data.target_date) : '',
     startDate: data.created_at ? formatDate(data.created_at) : ''
@@ -629,6 +638,7 @@ export const updateStudentMilestoneStatus = async (milestoneId: string, newStatu
     id: data.id,
     studentId: data.student_id,
     title: data.title,
+    description: data.description || '',
     status: data.status,
     targetDate: data.target_date ? formatDate(data.target_date) : '',
     startDate: data.created_at ? formatDate(data.created_at) : ''
@@ -644,10 +654,19 @@ export const deleteStudentMilestone = async (milestoneId: string): Promise<void>
   if (error) throw new Error(error.message);
 };
 
-export const updateStudentMilestone = async (milestoneId: string, title: string, targetDate: string): Promise<Milestone> => {
+export const updateStudentMilestone = async (
+  milestoneId: string,
+  title: string,
+  description: string,
+  targetDate: string
+): Promise<Milestone> => {
   const { data, error } = await supabase
     .from('student_milestones')
-    .update({ title, target_date: toISODate(targetDate) })
+    .update({
+      title,
+      description: description || null,
+      target_date: toISODate(targetDate)
+    })
     .eq('id', milestoneId)
     .select()
     .single();
@@ -658,6 +677,7 @@ export const updateStudentMilestone = async (milestoneId: string, title: string,
     id: data.id,
     studentId: data.student_id,
     title: data.title,
+    description: data.description || '',
     status: data.status,
     targetDate: data.target_date ? formatDate(data.target_date) : '',
     startDate: data.created_at ? formatDate(data.created_at) : ''

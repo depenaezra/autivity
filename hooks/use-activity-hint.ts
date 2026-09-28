@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { speakInstruction } from '@/src/utils/speech';
+import { translateInstruction } from '@/src/utils/activityInstructions';
 
 export type HintState = {
     isHintActive: boolean;
@@ -62,8 +64,14 @@ export function useActivityHint({
             };
         });
 
-        // Speak TTS voice clue aloud on every manual tap
-        speakInstruction(currentClue);
+        // Speak TTS voice clue aloud on every manual tap in the active language
+        AsyncStorage.getItem('@activity_instruction_lang').then((savedLang) => {
+            const lang = savedLang === 'tl' ? 'tl' : 'en';
+            const translatedClue = translateInstruction(currentClue, lang);
+            speakInstruction(translatedClue, { langMode: lang });
+        }).catch(() => {
+            speakInstruction(currentClue);
+        });
 
         if (onFeedbackRef.current) {
             onFeedbackRef.current(`💡 ${currentClue}`);

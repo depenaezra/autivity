@@ -18,6 +18,8 @@ interface AddMilestoneModalProps {
   isSaving: boolean;
   title: string;
   setTitle: (val: string) => void;
+  description: string;
+  setDescription: (val: string) => void;
   targetDate: string;
   setTargetDate: (val: string) => void;
   onSubmit: () => void;
@@ -45,6 +47,8 @@ export function AddMilestoneModal({
   isSaving,
   title,
   setTitle,
+  description,
+  setDescription,
   targetDate,
   setTargetDate,
   onSubmit,
@@ -73,17 +77,32 @@ export function AddMilestoneModal({
       submitDisabled={isSubmitDisabled}
       isSubmitting={isSaving}
       cancelLabel="CANCEL"
-      heightClassName={isTablet ? 'h-[50%]' : 'h-[55%]'}
+      heightClassName={isTablet ? 'h-[62%]' : 'h-[68%]'}
     >
       {/* MILESTONE TITLE */}
-      <View className="mb-4">
+      <View className="mb-3.5">
         <Text className="font-fredoka-one text-[#9EA0A0] text-sm mb-2">MILESTONE TITLE</Text>
         <TextInput
           value={title}
           onChangeText={setTitle}
-          placeholder="Milestone Title"
+          placeholder="e.g. Letter Tracing Independence"
           placeholderTextColor="#9CA3AF"
           className="bg-[#F1F1F1] rounded-xl px-4 py-3 font-quicksand-medium text-[#4B5563]"
+        />
+      </View>
+
+      {/* MILESTONE DESCRIPTION */}
+      <View className="mb-3.5">
+        <Text className="font-fredoka-one text-[#9EA0A0] text-sm mb-2">DESCRIPTION / NOTES</Text>
+        <TextInput
+          value={description}
+          onChangeText={setDescription}
+          placeholder="Detailed milestone goal, instructions, or criteria..."
+          placeholderTextColor="#9CA3AF"
+          multiline={true}
+          numberOfLines={3}
+          textAlignVertical="top"
+          className="bg-[#F1F1F1] rounded-xl px-4 py-3 font-quicksand-medium text-[#4B5563] min-h-[70px]"
         />
       </View>
 

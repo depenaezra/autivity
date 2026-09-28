@@ -12,6 +12,7 @@ interface ParentStatsSectionProps {
     totalSessions: number;
   };
   isTablet: boolean;
+  language?: 'en' | 'tl';
 }
 
 function formatSessionDuration(stats: ParentStatsSectionProps['stats']): string {
@@ -36,44 +37,45 @@ interface CardConfig {
   iconName: keyof typeof Feather.glyphMap;
 }
 
-const cardConfigs: CardConfig[] = [
-  {
-    key: 'performance',
-    label: 'Performance',
-    subtext: 'accuracy',
-    value: (stats) => `${stats.overallPerformance}%`,
-    borderColor: '#BBE8FB',
-    labelColor: '#62A9E6',
-    iconName: 'award',
-  },
-  {
-    key: 'avgSession',
-    label: 'Avg Session',
-    subtext: 'per session',
-    value: (stats) => formatSessionDuration(stats),
-    borderColor: '#CBFAC4',
-    labelColor: '#179D33',
-    iconName: 'clock',
-  },
-  {
-    key: 'totalSessions',
-    label: 'Sessions',
-    subtext: 'completed',
-    value: (stats) => `${stats.totalSessions}`,
-    borderColor: '#FFF3C4',
-    labelColor: '#FFAE02',
-    iconName: 'activity',
-  },
-];
-
-export function ParentStatsSection({ stats, isTablet }: ParentStatsSectionProps) {
+export function ParentStatsSection({ stats, isTablet, language = 'en' }: ParentStatsSectionProps) {
   const [selectedCardForModal, setSelectedCardForModal] = useState<ParentMetricKey | null>(null);
   const hasNoSessions = stats.totalSessions === 0;
+  const isTl = language === 'tl';
+
+  const cardConfigs: CardConfig[] = [
+    {
+      key: 'performance',
+      label: isTl ? 'Pagganap' : 'Performance',
+      subtext: isTl ? 'kawastuhan' : 'accuracy',
+      value: (stats) => `${stats.overallPerformance}%`,
+      borderColor: '#BBE8FB',
+      labelColor: '#62A9E6',
+      iconName: 'award',
+    },
+    {
+      key: 'avgSession',
+      label: isTl ? 'Karaniwang Sesyon' : 'Avg Session',
+      subtext: isTl ? 'bawat sesyon' : 'per session',
+      value: (stats) => formatSessionDuration(stats),
+      borderColor: '#CBFAC4',
+      labelColor: '#179D33',
+      iconName: 'clock',
+    },
+    {
+      key: 'totalSessions',
+      label: isTl ? 'Mga Sesyon' : 'Sessions',
+      subtext: isTl ? 'natapos' : 'completed',
+      value: (stats) => `${stats.totalSessions}`,
+      borderColor: '#FFF3C4',
+      labelColor: '#FFAE02',
+      iconName: 'activity',
+    },
+  ];
 
   const getCardStatusBadge = (key: ParentMetricKey) => {
     if (hasNoSessions) {
       return {
-        title: 'No Data',
+        title: isTl ? 'Walang Datos' : 'No Data',
         color: '#9CA3AF',
         bgColor: '#F3F4F6',
         borderColor: '#E5E7EB',
@@ -105,21 +107,21 @@ export function ParentStatsSection({ stats, isTablet }: ParentStatsSectionProps)
 
       if (mins >= 10 && mins <= 20) {
         return {
-          title: 'Optimal Focus',
+          title: isTl ? 'Tamang Pokus' : 'Optimal Focus',
           color: '#0284C7',
           bgColor: '#E0F2FE',
           borderColor: '#BBE8FB',
         };
       } else if (mins > 0 && mins < 10) {
         return {
-          title: 'Short Session',
+          title: isTl ? 'Maikling Sesyon' : 'Short Session',
           color: '#FFAE02',
           bgColor: '#FFFBEB',
           borderColor: '#FFF3C4',
         };
       } else {
         return {
-          title: 'Extended',
+          title: isTl ? 'Mahabang Sesyon' : 'Extended',
           color: '#FF8870',
           bgColor: '#FFF7ED',
           borderColor: '#FFDBD4',
@@ -129,7 +131,7 @@ export function ParentStatsSection({ stats, isTablet }: ParentStatsSectionProps)
 
     if (key === 'totalSessions') {
       return {
-        title: 'Active Logs',
+        title: isTl ? 'Aktibong Tala' : 'Active Logs',
         color: '#15803D',
         bgColor: '#F0FDF4',
         borderColor: '#CBFAC4',
@@ -193,7 +195,7 @@ export function ParentStatsSection({ stats, isTablet }: ParentStatsSectionProps)
                   }}
                   numberOfLines={1}
                 >
-                  {hasNoSessions ? 'No sessions' : value(stats)}
+                  {hasNoSessions ? (isTl ? 'Walang sesyon' : 'No sessions') : value(stats)}
                 </Text>
                 {!hasNoSessions && (
                   <Text
@@ -237,6 +239,7 @@ export function ParentStatsSection({ stats, isTablet }: ParentStatsSectionProps)
         initialMetric={selectedCardForModal}
         stats={stats}
         isTablet={isTablet}
+        language={language}
       />
     </>
   );

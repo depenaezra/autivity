@@ -27,16 +27,51 @@ export const TIME_UP_MESSAGES = [
     "Time's up! Wonderful job trying your best! 🌟",
 ];
 
-let cachedBestVoice: string | undefined = undefined;
+let cachedBestVoiceEn: string | undefined = undefined;
+let cachedBestVoiceTl: string | undefined = undefined;
 
 /**
- * Searches system voices to pick the highest quality, most natural voice available.
+ * Searches system voices to pick the highest quality, most natural voice available for the language.
  */
-const getBestVoice = async (): Promise<string | undefined> => {
-    if (cachedBestVoice !== undefined) return cachedBestVoice;
+const getBestVoice = async (lang: 'en' | 'tl' = 'en'): Promise<string | undefined> => {
+    if (lang === 'en' && cachedBestVoiceEn !== undefined) return cachedBestVoiceEn;
+    if (lang === 'tl' && cachedBestVoiceTl !== undefined) return cachedBestVoiceTl;
+
     try {
         const voices = await Speech.getAvailableVoicesAsync();
         if (!voices || voices.length === 0) return undefined;
+
+        if (lang === 'tl') {
+            // Filter Tagalog / Filipino voices by language code, name, or identifier
+            const tlVoices = voices.filter(v => {
+                const l = (v.language || '').toLowerCase();
+                const n = (v.name || '').toLowerCase();
+                const id = (v.identifier || '').toLowerCase();
+                return (
+                    l.startsWith('fil') ||
+                    l.startsWith('tl') ||
+                    l.includes('ph') ||
+                    n.includes('filipino') ||
+                    n.includes('tagalog') ||
+                    n.includes('maja') ||
+                    id.includes('fil-ph') ||
+                    id.includes('tl-ph') ||
+                    id.includes('fil_ph') ||
+                    id.includes('tl_ph')
+                );
+            });
+
+            if (tlVoices.length > 0) {
+                // Look for enhanced / premium Filipino voice
+                const premium = tlVoices.find(v => {
+                    const q = String(v.quality || '').toLowerCase();
+                    return q.includes('enhanced') || q.includes('premium') || q.includes('natural');
+                });
+                cachedBestVoiceTl = premium ? premium.identifier : tlVoices[0].identifier;
+                return cachedBestVoiceTl;
+            }
+            return undefined;
+        }
 
         // Filter English voices
         const enVoices = voices.filter(v => v.language && v.language.toLowerCase().startsWith('en'));
@@ -48,8 +83,8 @@ const getBestVoice = async (): Promise<string | undefined> => {
             return (q.includes('enhanced') || q.includes('premium')) && !v.identifier.toLowerCase().includes('compact');
         });
         if (premiumVoice) {
-            cachedBestVoice = premiumVoice.identifier;
-            return cachedBestVoice;
+            cachedBestVoiceEn = premiumVoice.identifier;
+            return cachedBestVoiceEn;
         }
 
         // 2. Look for known high quality voices (Siri, Samantha, Google Neural)
@@ -66,19 +101,20 @@ const getBestVoice = async (): Promise<string | undefined> => {
         });
 
         if (preferredVoice) {
-            cachedBestVoice = preferredVoice.identifier;
-            return cachedBestVoice;
+            cachedBestVoiceEn = preferredVoice.identifier;
+            return cachedBestVoiceEn;
         }
 
-        cachedBestVoice = pool[0]?.identifier;
-        return cachedBestVoice;
+        cachedBestVoiceEn = pool[0]?.identifier;
+        return cachedBestVoiceEn;
     } catch {
         return undefined;
     }
 };
 
 // Eagerly pre-warm voice lookup so speech begins instantly without async bridge latency
-getBestVoice().catch(() => {});
+getBestVoice('en').catch(() => {});
+getBestVoice('tl').catch(() => {});
 
 /**
  * Speaks an instruction text using ElevenLabs API (with local caching),
@@ -86,7 +122,12 @@ getBestVoice().catch(() => {});
  */
 export const speakInstruction = async (
     text: string,
-    options?: Speech.SpeechOptions & { onDone?: () => void; onError?: (error: any) => void }
+    options?: Speech.SpeechOptions & { 
+        language?: string;
+        langMode?: 'en' | 'tl';
+        onDone?: () => void; 
+        onError?: (error: any) => void;
+    }
 ): Promise<void> => {
     try {
         const cleaned = cleanTextForSpeech(text);
@@ -104,21 +145,32 @@ export const speakInstruction = async (
 
         if (handledByElevenLabs) return;
 
-        // 2. Fallback to native Expo system voice
-        const bestVoice = await getBestVoice();
+        // 2. Native Expo system voice
+        const isTagalog = options?.langMode === 'tl' || options?.language === 'fil-PH' || options?.language === 'tl-PH' || options?.language === 'fil' || options?.language === 'tl';
+        const bestVoice = await getBestVoice(isTagalog ? 'tl' : 'en');
 
         const speechOptions: Speech.SpeechOptions = {
-            language: 'en-US',
-            rate: 0.90,  // Natural pacing
-            pitch: 1.15, // Slightly higher pitch for a warm, animated character tone
+            rate: isTagalog ? 0.90 : 0.90,  // Natural pacing
+            pitch: 1.05, // Child-friendly natural tone
+            ...options,
+            language: isTagalog ? 'fil-PH' : 'en-US',
             onDone: options?.onDone,
             onError: options?.onError,
             onStopped: options?.onDone,
-            ...options,
         };
 
-        if (bestVoice) {
-            speechOptions.voice = bestVoice;
+        if (isTagalog) {
+            if (bestVoice) {
+                speechOptions.voice = bestVoice;
+            } else {
+                delete speechOptions.voice;
+            }
+            speechOptions.language = 'fil-PH';
+        } else {
+            if (bestVoice) {
+                speechOptions.voice = bestVoice;
+            }
+            speechOptions.language = 'en-US';
         }
 
         Speech.speak(cleaned, speechOptions);

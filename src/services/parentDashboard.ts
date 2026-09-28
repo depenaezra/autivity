@@ -27,6 +27,7 @@ export interface ParentSessionRecord {
 export interface ParentMilestone {
     id: string;
     title: string;
+    description?: string;
     status: string;
     targetDate: string | null;
 }
@@ -178,6 +179,7 @@ export const getParentDashboardData = async (selectedStudentId?: string): Promis
     const milestones: ParentMilestone[] = (milestonesRes.data || []).map((m: any) => ({
         id: m.id,
         title: m.title,
+        description: m.description || '',
         status: m.status || 'Target Set',
         targetDate: m.target_date || null,
     }));

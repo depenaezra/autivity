@@ -94,6 +94,7 @@ export default function Milestones({ studentId }: MilestonesProps) {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingMilestoneId, setEditingMilestoneId] = useState<string | null>(null);
   const [newTitle, setNewTitle] = useState('');
+  const [newDescription, setNewDescription] = useState('');
   const [newDate, setNewDate] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
@@ -137,6 +138,7 @@ export default function Milestones({ studentId }: MilestonesProps) {
   const handleEditPress = (milestone: Milestone) => {
     setEditingMilestoneId(milestone.id);
     setNewTitle(milestone.title);
+    setNewDescription(milestone.description || '');
     setNewDate(milestone.targetDate);
     setIsModalVisible(true);
   };
@@ -172,17 +174,28 @@ export default function Milestones({ studentId }: MilestonesProps) {
     setIsSaving(true);
     try {
       if (editingMilestoneId) {
-        const updated = await updateStudentMilestone(editingMilestoneId, newTitle.trim(), newDate.trim());
+        const updated = await updateStudentMilestone(
+          editingMilestoneId,
+          newTitle.trim(),
+          newDescription.trim(),
+          newDate.trim()
+        );
         setMilestones((prev) =>
           prev.map((m) => (m.id === editingMilestoneId ? updated : m))
         );
       } else {
-        const added = await createStudentMilestone(studentId, newTitle.trim(), newDate.trim());
+        const added = await createStudentMilestone(
+          studentId,
+          newTitle.trim(),
+          newDescription.trim(),
+          newDate.trim()
+        );
         setMilestones((prev) => [added, ...prev]);
       }
       setIsModalVisible(false);
       setEditingMilestoneId(null);
       setNewTitle('');
+      setNewDescription('');
       setNewDate('');
     } catch (err: any) {
       Alert.alert('Error', err.message || 'Failed to save milestone.');
@@ -415,6 +428,16 @@ export default function Milestones({ studentId }: MilestonesProps) {
                     >
                       {milestone.title}
                     </Text>
+                    {milestone.description ? (
+                      <Text
+                        className={`font-quicksand-medium text-[#64748B] mt-0.5 ${
+                          isTablet ? 'text-sm' : 'text-xs'
+                        }`}
+                        numberOfLines={2}
+                      >
+                        {milestone.description}
+                      </Text>
+                    ) : null}
                     {/* Optically-aligned Start & Target Date Row */}
                     <View className="flex-row items-center gap-2 mt-1 flex-wrap">
                       {milestone.startDate ? (
@@ -481,12 +504,15 @@ export default function Milestones({ studentId }: MilestonesProps) {
           setIsModalVisible(false);
           setEditingMilestoneId(null);
           setNewTitle('');
+          setNewDescription('');
           setNewDate('');
         }}
         isTablet={isTablet}
         isSaving={isSaving}
         title={newTitle}
         setTitle={setNewTitle}
+        description={newDescription}
+        setDescription={setNewDescription}
         targetDate={newDate}
         setTargetDate={setNewDate}
         onSubmit={handleSaveMilestone}

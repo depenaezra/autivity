@@ -2,14 +2,17 @@ import { Feather } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import Animated, { FadeInUp, FadeOutUp } from 'react-native-reanimated';
-import { SPED_DOMAIN_EXPLAINERS } from '../../src/services/parentAnalyticsEngine';
+import { getSpedDomainExplainers } from '../../src/services/parentAnalyticsEngine';
 
 interface ParentDomainExplainersProps {
   isTablet: boolean;
+  language?: 'en' | 'tl';
 }
 
-export function ParentDomainExplainers({ isTablet }: ParentDomainExplainersProps) {
+export function ParentDomainExplainers({ isTablet, language = 'en' }: ParentDomainExplainersProps) {
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
+  const isTl = language === 'tl';
+  const domainExplainers = getSpedDomainExplainers(language);
 
   const toggleExpand = (key: string) => {
     setExpandedKey((prev) => (prev === key ? null : key));
@@ -20,10 +23,12 @@ export function ParentDomainExplainers({ isTablet }: ParentDomainExplainersProps
       {/* Title Header matching ParentNarrativeSummary */}
       <View className="mb-4 flex-col">
         <Text className={`font-fredoka-one text-[#484A4B] ${isTablet ? 'text-[32px]' : 'text-[22px]'}`}>
-          Understanding Skill Domains
+          {isTl ? 'Pang-unawa sa mga Kasanayan' : 'Understanding Skill Domains'}
         </Text>
         <Text className={`font-quicksand-bold text-[#9CA3AF] mt-0.5 ${isTablet ? 'text-xs' : 'text-[11px]'}`}>
-          Plain-English guides explaining how educators evaluate each development area.
+          {isTl
+            ? 'Simpleng gabay kung paano sinusuri ng mga guro ang bawat bahagi ng pag-unlad ng bata.'
+            : 'Plain-English guides explaining how educators evaluate each development area.'}
         </Text>
       </View>
 
@@ -43,7 +48,7 @@ export function ParentDomainExplainers({ isTablet }: ParentDomainExplainersProps
         }}
       >
         <View className="flex-col gap-4">
-          {SPED_DOMAIN_EXPLAINERS.map((d) => {
+          {domainExplainers.map((d) => {
             const isExpanded = expandedKey === d.domainKey;
 
             return (
@@ -94,7 +99,7 @@ export function ParentDomainExplainers({ isTablet }: ParentDomainExplainersProps
                   >
                     <View className="flex-col">
                       <Text className="font-fredoka-one text-[10px] text-[#9CA3AF] uppercase tracking-wide">
-                        WHAT THIS EVALUATES
+                        {isTl ? 'ANO ANG SINUSURI DITO' : 'WHAT THIS EVALUATES'}
                       </Text>
                       <Text
                         className={`font-quicksand-medium text-[#64748B] mt-1 leading-relaxed ${
@@ -107,7 +112,7 @@ export function ParentDomainExplainers({ isTablet }: ParentDomainExplainersProps
 
                     <View className="bg-[#F0F9FF] border border-[#BBE8FB] rounded-xl p-3 flex-col">
                       <Text className="font-fredoka-one text-[10px] text-[#0284C7] uppercase tracking-wide">
-                        WHAT TO OBSERVE AT HOME
+                        {isTl ? 'ANO ANG DAPAT OBSERBAHAN SA BAHAY' : 'WHAT TO OBSERVE AT HOME'}
                       </Text>
                       <Text
                         className={`font-quicksand-medium text-[#0369A1] mt-1 leading-relaxed ${

@@ -1,11 +1,11 @@
 import { Feather, Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Dimensions,
-  Modal,
   Pressable,
   Animated as RNAnimated,
+  ScrollView,
   Text,
   useWindowDimensions,
   View,
@@ -20,8 +20,6 @@ import Animated, {
   withTiming,
   type SharedValue,
 } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { HeaderButton } from '../header-button';
 import { ParentMilestone } from '../../src/services/parentDashboard';
 import ParentMilestoneDetailModal from './parent-milestone-detail-modal';
 
@@ -68,72 +66,6 @@ export const getMilestoneStatusConfig = (status: string) => {
   };
 };
 
-function FullScreenConfetti() {
-  const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
-  const particles = React.useRef(
-    Array.from({ length: 35 }).map(() => ({
-      yAnim: new RNAnimated.Value(-40),
-      left: Math.random() * screenWidth,
-      rotateAnim: new RNAnimated.Value(0),
-      scaleAnim: new RNAnimated.Value(Math.random() * 0.6 + 0.5),
-      color: ['#FCA5A5', '#FCD34D', '#86EFAC', '#93C5FD', '#C084FC', '#F472B6', '#62A9E6'][
-        Math.floor(Math.random() * 7)
-      ],
-      delay: Math.random() * 700,
-      shape: Math.random() > 0.5 ? 'circle' : 'square',
-    }))
-  ).current;
-
-  useEffect(() => {
-    particles.forEach((p) => {
-      RNAnimated.loop(
-        RNAnimated.sequence([
-          RNAnimated.delay(p.delay),
-          RNAnimated.parallel([
-            RNAnimated.timing(p.yAnim, {
-              toValue: screenHeight + 60,
-              duration: Math.random() * 2500 + 2500,
-              useNativeDriver: true,
-            }),
-            RNAnimated.timing(p.rotateAnim, {
-              toValue: 360,
-              duration: Math.random() * 2500 + 2500,
-              useNativeDriver: true,
-            }),
-          ]),
-        ])
-      ).start();
-    });
-  }, [particles, screenHeight]);
-
-  return (
-    <View className="absolute inset-0 pointer-events-none z-[9999]">
-      {particles.map((p, idx) => (
-        <RNAnimated.View
-          key={idx}
-          className="absolute w-3.5 h-3.5"
-          style={{
-            top: 0,
-            left: p.left,
-            borderRadius: p.shape === 'circle' ? 7 : 3,
-            backgroundColor: p.color,
-            transform: [
-              { translateY: p.yAnim },
-              {
-                rotate: p.rotateAnim.interpolate({
-                  inputRange: [0, 360],
-                  outputRange: ['0deg', '360deg'],
-                }),
-              },
-              { scale: p.scaleAnim },
-            ],
-          }}
-        />
-      ))}
-    </View>
-  );
-}
-
 function MilestoneGridItem({
   milestone,
   isTablet,
@@ -174,7 +106,7 @@ function MilestoneGridItem({
     <Pressable
       onPress={() => onPress(milestone)}
       style={{ width: isTablet ? 110 : 88 }}
-      className="items-center mb-4 active:scale-95 transition-transform"
+      className="items-center active:scale-95 transition-transform"
     >
       {/* 3D Circular Badge Icon */}
       <View
@@ -216,6 +148,7 @@ function MilestoneGridItem({
           isTablet ? 'text-sm' : 'text-xs'
         }`}
         numberOfLines={2}
+        ellipsizeMode="tail"
       >
         {milestone.title}
       </Text>
@@ -239,6 +172,11 @@ function MilestoneGridItem({
 export function ParentMilestonesSection({ milestones, isTablet }: ParentMilestonesSectionProps) {
   const globalShineProgress = useSharedValue(0);
   const [selectedMilestone, setSelectedMilestone] = useState<ParentMilestone | null>(null);
+
+  const scrollViewRef = useRef<ScrollView>(null);
+  const [scrollX, setScrollX] = useState(0);
+  const [contentWidth, setContentWidth] = useState(0);
+  const [containerWidth, setContainerWidth] = useState(0);
 
   useEffect(() => {
     globalShineProgress.value = withRepeat(
@@ -271,26 +209,80 @@ export function ParentMilestonesSection({ milestones, isTablet }: ParentMileston
     (m) => m.status?.toLowerCase() === 'achieved' || m.status?.toLowerCase() === 'completed'
   ).length;
 
+  const hasMoreThanThree = sortedMilestones.length > 3;
+
+  const canScrollLeft = scrollX > 5;
+  const canScrollRight = contentWidth > 0 && containerWidth > 0 
+    ? scrollX < contentWidth - containerWidth - 5 
+    : hasMoreThanThree;
+
+  const handleScrollLeft = () => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch {}
+    const step = isTablet ? 260 : 180;
+    const targetX = Math.max(0, scrollX - step);
+    scrollViewRef.current?.scrollTo({ x: targetX, animated: true });
+  };
+
+  const handleScrollRight = () => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch {}
+    const step = isTablet ? 260 : 180;
+    const maxScroll = Math.max(0, contentWidth - containerWidth);
+    const targetX = Math.min(maxScroll, scrollX + step);
+    scrollViewRef.current?.scrollTo({ x: targetX, animated: true });
+  };
+
   return (
     <View className="flex-col mt-4 mb-4">
-      {/* Section Header */}
-      <View className="mb-4 flex-row items-center justify-between flex-wrap gap-2">
+      {/* Section Header with Title, Navigation Arrows, and Completed Pill */}
+      <View className="mb-3 flex-row items-center justify-between flex-wrap gap-2">
         <View className="flex-row items-center gap-2">
           <Text className={`font-fredoka-one text-[#484A4B] ${isTablet ? 'text-[28px]' : 'text-[20px]'}`}>
             Learner Milestones
           </Text>
         </View>
 
-        {milestones.length > 0 && (
-          <View className="bg-white border-[2px] border-[#BBE8FB] px-3 py-1 rounded-xl">
-            <Text className="font-fredoka-one text-[#62A9E6] text-xs uppercase">
-              {completedCount} / {milestones.length} COMPLETED
-            </Text>
-          </View>
-        )}
+        <View className="flex-row items-center gap-2">
+          {/* Header Navigation Arrows for Carousel */}
+          {hasMoreThanThree && (
+            <View className="flex-row items-center gap-1.5 mr-1">
+              <Pressable
+                onPress={handleScrollLeft}
+                disabled={!canScrollLeft}
+                hitSlop={8}
+                className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-[#BBE8FB] bg-white items-center justify-center active:scale-95 ${
+                  !canScrollLeft ? 'opacity-30' : 'opacity-100 active:bg-[#EBF5FF]'
+                }`}
+              >
+                <Ionicons name="chevron-back" size={isTablet ? 18 : 15} color="#62A9E6" />
+              </Pressable>
+              <Pressable
+                onPress={handleScrollRight}
+                disabled={!canScrollRight}
+                hitSlop={8}
+                className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-[#BBE8FB] bg-white items-center justify-center active:scale-95 ${
+                  !canScrollRight ? 'opacity-30' : 'opacity-100 active:bg-[#EBF5FF]'
+                }`}
+              >
+                <Ionicons name="chevron-forward" size={isTablet ? 18 : 15} color="#62A9E6" />
+              </Pressable>
+            </View>
+          )}
+
+          {milestones.length > 0 && (
+            <View className="bg-white border-[2px] border-[#BBE8FB] px-3 py-1 rounded-xl">
+              <Text className="font-fredoka-one text-[#62A9E6] text-xs uppercase">
+                {completedCount} / {milestones.length} COMPLETED
+              </Text>
+            </View>
+          )}
+        </View>
       </View>
 
-      {/* Grid or Empty State */}
+      {/* Grid or Carousel or Empty State */}
       {sortedMilestones.length === 0 ? (
         <View className="bg-white border-2 border-dashed border-[#E5E7EB] rounded-2xl p-8 items-center justify-center">
           <Ionicons name="flag-outline" size={isTablet ? 40 : 30} color="#9CA3AF" />
@@ -301,9 +293,41 @@ export function ParentMilestonesSection({ milestones, isTablet }: ParentMileston
             Milestones set by the teacher will appear here.
           </Text>
         </View>
+      ) : hasMoreThanThree ? (
+        <View className="bg-white border-[2px] border-[#F1F1F1] rounded-[24px] p-4 sm:p-5 shadow-sm">
+          {/* Unobstructed Horizontal Milestone Carousel */}
+          <ScrollView
+            ref={scrollViewRef}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            onScroll={(e) => {
+              setScrollX(e.nativeEvent.contentOffset.x);
+            }}
+            onContentSizeChange={(w) => setContentWidth(w)}
+            onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
+            scrollEventThrottle={16}
+            contentContainerStyle={{
+              paddingHorizontal: 2,
+              alignItems: 'flex-start',
+              gap: isTablet ? 16 : 10,
+            }}
+            className="w-full"
+          >
+            {sortedMilestones.map((m, idx) => (
+              <MilestoneGridItem
+                key={m.id || idx}
+                milestone={m}
+                isTablet={isTablet}
+                globalShineProgress={globalShineProgress}
+                index={idx}
+                onPress={(item) => setSelectedMilestone(item)}
+              />
+            ))}
+          </ScrollView>
+        </View>
       ) : (
         <View className="bg-white border-[2px] border-[#F1F1F1] rounded-[24px] p-4 sm:p-6 shadow-sm items-center justify-center">
-          <View className="flex-row flex-wrap justify-center items-start gap-3 sm:gap-6 w-full pt-1">
+          <View className="flex-row justify-center items-start gap-4 sm:gap-6 w-full pt-1">
             {sortedMilestones.map((m, idx) => (
               <MilestoneGridItem
                 key={m.id || idx}
@@ -328,3 +352,4 @@ export function ParentMilestonesSection({ milestones, isTablet }: ParentMileston
     </View>
   );
 }
+

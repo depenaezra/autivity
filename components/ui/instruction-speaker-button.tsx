@@ -17,6 +17,7 @@ interface InstructionSpeakerButtonProps {
     iconSize?: number;
     color?: string;
     autoPlay?: boolean;
+    language?: 'en' | 'tl';
     className?: string;
 }
 
@@ -26,6 +27,7 @@ export default function InstructionSpeakerButton({
     iconSize,
     color = '#62A9E6',
     autoPlay = true,
+    language = 'en',
     className = '',
 }: InstructionSpeakerButtonProps) {
     const { width } = useWindowDimensions();
@@ -67,6 +69,7 @@ export default function InstructionSpeakerButton({
         startPulseAnimation();
 
         await speakInstruction(textToSpeak, {
+            langMode: language,
             onDone: () => {
                 setIsPlaying(false);
                 stopPulseAnimation();
