@@ -1,5 +1,4 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as Crypto from "expo-crypto";
 import { Platform } from "react-native";
 import { supabase } from "../lib/supabase";
 
@@ -11,7 +10,7 @@ export const getDeviceId = async (): Promise<string> => {
   let deviceId = await AsyncStorage.getItem(DEVICE_ID_KEY);
 
   if (!deviceId) {
-    deviceId = Crypto.randomUUID();
+    deviceId = "dev_" + Math.random().toString(36).substring(2, 11) + "_" + Date.now().toString(36);
     await AsyncStorage.setItem(DEVICE_ID_KEY, deviceId);
   }
 

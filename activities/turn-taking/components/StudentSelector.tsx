@@ -12,6 +12,9 @@ import { TurnTakingPlayer } from '../types';
 interface StudentSelectorProps {
   assignedStudent: TurnTakingPlayer;
   students: TurnTakingPlayer[];
+  categoryTitle?: string;
+  categoryIcon?: string;
+  onChangeCategory?: () => void;
   isLoading?: boolean;
   onStart: (
     player1: TurnTakingPlayer,
@@ -22,6 +25,9 @@ interface StudentSelectorProps {
 export default function StudentSelector({
   assignedStudent,
   students,
+  categoryTitle = 'Lines',
+  categoryIcon = 'git-commit-outline',
+  onChangeCategory,
   isLoading = false,
   onStart,
 }: StudentSelectorProps) {
@@ -76,6 +82,19 @@ export default function StudentSelector({
         <Text style={styles.subtitle}>
           Choose a classmate to play against
         </Text>
+
+        {/* CATEGORY BADGE / SELECTOR BUTTON */}
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={onChangeCategory}
+          style={styles.categoryBadge}
+        >
+          <Ionicons name={categoryIcon as any} size={18} color="#2563EB" />
+          <Text style={styles.categoryBadgeText}>
+            Activity: {categoryTitle}
+          </Text>
+          <Ionicons name="swap-horizontal" size={16} color="#2563EB" />
+        </TouchableOpacity>
       </View>
 
       {/* PLAYER 1 */}
@@ -289,6 +308,25 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
     marginBottom: 18,
+  },
+
+  categoryBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1.5,
+    borderColor: '#93C5FD',
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    marginTop: 10,
+    gap: 6,
+  },
+
+  categoryBadgeText: {
+    fontFamily: 'Fredoka-One',
+    fontSize: 13,
+    color: '#2563EB',
   },
 
   iconCircle: {

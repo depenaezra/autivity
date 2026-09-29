@@ -16,17 +16,22 @@ import { HeaderButton } from '@/components/header-button';
 import SpinWheel from './components/SpinWheel';
 import StudentSelector from './components/StudentSelector';
 import CurvedPath from './components/CurvedPath';
-import ResultScreen from './components/ResultScreen';
+import ResultScreen, { generateStudentReport } from './components/ResultScreen';
+import CategorySelectorModal from './components/CategorySelectorModal';
 
 import { TURN_TAKING_LEVELS } from './data/levels';
+import { CATEGORY_METADATA, getRandomizedCategoryLevels } from './data/categories';
 
 import {
   TurnTakingPlayer,
   TurnTakingResult,
   TurnTakingGameState,
+  TurnTakingCategory,
+  TurnTakingLevel,
 } from './types';
 
 import { getClassStudents } from '@/src/services/students';
+import { saveStudentSession } from '@/src/services/sessions';
 
 interface TurnTakingActivityProps {
   assignedStudentId?: string;
@@ -67,24 +72,23 @@ export default function TurnTakingActivity({
 
   /*
    * =========================================================
-   * GAME STATE
+   * GAME STATE & CATEGORY SELECTION
    * =========================================================
-   *
-   * Flow:
-   *
-   * selecting
-   *    ↓
-   * teacher selects Player 2
-   *    ↓
-   * spinning
-   *    ↓
-   * playing
-   *    ↓
-   * result
    */
 
   const [gameState, setGameState] =
-    useState<TurnTakingGameState>('selecting');
+    useState<TurnTakingGameState>('category_select');
+
+  const [selectedCategory, setSelectedCategory] =
+    useState<TurnTakingCategory>('lines');
+
+  const [showCategoryModal, setShowCategoryModal] =
+    useState<boolean>(true);
+
+  const [activeLevels, setActiveLevels] =
+    useState<TurnTakingLevel[]>(() =>
+      getRandomizedCategoryLevels('lines', 3)
+    );
 
   const [player1, setPlayer1] =
     useState<TurnTakingPlayer | null>(null);
@@ -279,6 +283,86 @@ export default function TurnTakingActivity({
 
   /*
    * =========================================================
+   * CATEGORY CONFIRM & DUAL SESSION SAVING
+   * =========================================================
+   */
+
+  const handleCategoryConfirm = () => {
+    const randomized = getRandomizedCategoryLevels(selectedCategory, 3);
+    setActiveLevels(randomized);
+    setShowCategoryModal(false);
+    if (gameState === 'category_select') {
+      setGameState('selecting');
+    }
+  };
+
+  const persistDualStudentSessions = async (
+    p1: TurnTakingPlayer,
+    p2: TurnTakingPlayer,
+    allResults: TurnTakingResult[],
+    categoryKey: TurnTakingCategory
+  ) => {
+    try {
+      const categoryMeta = CATEGORY_METADATA.find((c) => c.id === categoryKey);
+      const catTitle = categoryMeta ? categoryMeta.title : 'Lines';
+
+      const report1 = generateStudentReport(p1, allResults, 3, catTitle);
+      const report2 = generateStudentReport(p2, allResults, 3, catTitle);
+
+      const r1Score = Math.round(
+        ((report1.rubricEvaluation.looking_at_objects +
+          report1.rubricEvaluation.concentrating +
+          report1.rubricEvaluation.performing_task +
+          report1.rubricEvaluation.following_instructions +
+          report1.rubricEvaluation.completed_work) /
+          20) *
+          100
+      );
+
+      const r2Score = Math.round(
+        ((report2.rubricEvaluation.looking_at_objects +
+          report2.rubricEvaluation.concentrating +
+          report2.rubricEvaluation.performing_task +
+          report2.rubricEvaluation.following_instructions +
+          report2.rubricEvaluation.completed_work) /
+          20) *
+          100
+      );
+
+      if (p1.id && actualClassId) {
+        await saveStudentSession({
+          student_id: String(p1.id),
+          class_id: String(actualClassId),
+          teacher_id: String(params.teacherId || ''),
+          activity_path: [`turn-taking/${categoryKey}`],
+          category: 'Turn-Taking',
+          skill_domain: ['Social Skills', 'Turn Taking', 'Fine Motor'],
+          stars: r1Score,
+          duration_seconds: report1.totalTimeSeconds || 60,
+          mistakes: report1.totalMistakes,
+        });
+      }
+
+      if (p2.id && actualClassId) {
+        await saveStudentSession({
+          student_id: String(p2.id),
+          class_id: String(actualClassId),
+          teacher_id: String(params.teacherId || ''),
+          activity_path: [`turn-taking/${categoryKey}`],
+          category: 'Turn-Taking',
+          skill_domain: ['Social Skills', 'Turn Taking', 'Fine Motor'],
+          stars: r2Score,
+          duration_seconds: report2.totalTimeSeconds || 60,
+          mistakes: report2.totalMistakes,
+        });
+      }
+    } catch (err) {
+      console.error('[Turn-Taking] Error saving dual student sessions:', err);
+    }
+  };
+
+  /*
+   * =========================================================
    * STUDENTS SELECTED
    * =========================================================
    *
@@ -404,8 +488,10 @@ export default function TurnTakingActivity({
         currentPlayer.name,
       level:
         currentLevel,
+      levelName:
+        activeLevels[currentLevel - 1]?.name,
       completed: true,
-      timeSeconds: 0,
+      timeSeconds: 15,
       mistakes:
         turnMistakes,
       obstacleCount: 0,
@@ -454,6 +540,10 @@ export default function TurnTakingActivity({
       setGameState(
         'result'
       );
+
+      if (player1 && player2) {
+        persistDualStudentSessions(player1, player2, updatedResults, selectedCategory);
+      }
 
       return;
     }
@@ -592,6 +682,9 @@ export default function TurnTakingActivity({
       return;
     }
 
+    const randomized = getRandomizedCategoryLevels(selectedCategory, 3);
+    setActiveLevels(randomized);
+
     setCurrentLevel(1);
     setCompletedLevels(0);
     setResults([]);
@@ -676,9 +769,11 @@ export default function TurnTakingActivity({
    */
 
   if (
-    gameState === 'selecting' &&
+    (gameState === 'selecting' || gameState === 'category_select') &&
     player1
   ) {
+    const currentMeta = CATEGORY_METADATA.find(c => c.id === selectedCategory) || CATEGORY_METADATA[0];
+
     return (
       <SafeAreaView
         style={styles.safeArea}
@@ -721,12 +816,26 @@ export default function TurnTakingActivity({
           students={
             classStudents
           }
+          categoryTitle={currentMeta.title}
+          categoryIcon={currentMeta.icon}
+          onChangeCategory={() => setShowCategoryModal(true)}
           isLoading={
             isLoadingStudents
           }
           onStart={
             handleStudentsSelected
           }
+        />
+
+        <CategorySelectorModal
+          visible={showCategoryModal || gameState === 'category_select'}
+          selectedCategory={selectedCategory}
+          onSelectCategory={(cat) => setSelectedCategory(cat)}
+          onConfirm={handleCategoryConfirm}
+          onClose={() => {
+            setShowCategoryModal(false);
+            if (gameState === 'category_select') setGameState('selecting');
+          }}
         />
       </SafeAreaView>
     );
@@ -790,6 +899,17 @@ export default function TurnTakingActivity({
             {bearMessage}
           </Text>
         </View>
+
+        <CategorySelectorModal
+          visible={showCategoryModal || gameState === 'category_select'}
+          selectedCategory={selectedCategory}
+          onSelectCategory={(cat) => setSelectedCategory(cat)}
+          onConfirm={handleCategoryConfirm}
+          onClose={() => {
+            setShowCategoryModal(false);
+            if (gameState === 'category_select') setGameState('selecting');
+          }}
+        />
       </SafeAreaView>
     );
   }
@@ -862,6 +982,8 @@ export default function TurnTakingActivity({
     player1 &&
     player2
   ) {
+    const currentMeta = CATEGORY_METADATA.find(c => c.id === selectedCategory) || CATEGORY_METADATA[0];
+
     return (
       <SafeAreaView
         style={styles.safeArea}
@@ -904,6 +1026,7 @@ export default function TurnTakingActivity({
           completedLevels={
             completedLevels
           }
+          categoryTitle={currentMeta.title}
           onPlayAgain={
             handlePlayAgain
           }
@@ -929,9 +1052,8 @@ export default function TurnTakingActivity({
     currentPlayer
   ) {
     const level =
-      TURN_TAKING_LEVELS[
-        currentLevel - 1
-      ];
+      activeLevels[currentLevel - 1] || activeLevels[0];
+    const currentMeta = CATEGORY_METADATA.find(c => c.id === selectedCategory) || CATEGORY_METADATA[0];
 
     return (
       <SafeAreaView
@@ -965,7 +1087,7 @@ export default function TurnTakingActivity({
                 styles.gameTitle
               }
             >
-              Curve Tracing
+              {currentMeta.title} Tracing
             </Text>
 
             <Text
@@ -973,8 +1095,7 @@ export default function TurnTakingActivity({
                 styles.gameSubtitle
               }
             >
-              Level {currentLevel} of{' '}
-              {TURN_TAKING_LEVELS.length}
+              Level {currentLevel} of {activeLevels.length}
             </Text>
           </View>
 

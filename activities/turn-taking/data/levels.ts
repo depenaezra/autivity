@@ -5,6 +5,7 @@ export const TURN_TAKING_LEVELS: TurnTakingLevel[] = [
     id: 1,
     name: 'Straight Line',
     difficulty: 1,
+    category: 'lines',
     pathPoints: [
       { x: 165, y: 65 },
       { x: 165, y: 105 },
@@ -23,6 +24,7 @@ export const TURN_TAKING_LEVELS: TurnTakingLevel[] = [
     id: 2,
     name: 'Smooth Curve',
     difficulty: 2,
+    category: 'lines',
     pathPoints: [
       { x: 165, y: 65 },
       { x: 125, y: 90 },
@@ -42,6 +44,7 @@ export const TURN_TAKING_LEVELS: TurnTakingLevel[] = [
     id: 3,
     name: 'Zigzag',
     difficulty: 3,
+    category: 'lines',
     pathPoints: [
       { x: 165, y: 65 },
       { x: 105, y: 125 },
