@@ -88,14 +88,22 @@ if (isTurnTaking) {
                 } else if (activityType === 'matching') {
                     const hasColorSub = subcategories.some(s => s.toLowerCase().includes('color'));
                     const hasFruitSub = subcategories.some(s => s.toLowerCase().includes('fruit'));
+                    const hasAnimalSub = subcategories.some(s => s.toLowerCase().includes('animal'));
+                    const hasCategorySub = subcategories.some(s => s.toLowerCase().includes('categor'));
 
                     pool = pool.filter(a => {
                         const path = (a.path || '').toLowerCase();
                         const cat = (a.category || '').toLowerCase();
                         const sub = (a.sub_category || '').toLowerCase();
-                        const isDragDrop = path.includes('drag-drop') || cat.includes('drag');
+                        const isDragDrop = path.includes('drag-drop') || cat.includes('drag') || cat.includes('match') || sub.includes('match');
                         if (!isDragDrop) return false;
 
+                        if (hasAnimalSub) {
+                            return sub.includes('animal') || path.includes('animal');
+                        }
+                        if (hasCategorySub) {
+                            return sub.includes('categor') || path.includes('categor');
+                        }
                         if (hasColorSub && !hasFruitSub) {
                             return sub.includes('color') || path.includes('color');
                         }

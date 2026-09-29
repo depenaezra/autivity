@@ -13,6 +13,8 @@ export const ALL_TRACING_CATEGORIES = [
 export const ALL_MATCHING_CATEGORIES = [
   { id: 'Matching Fruits', title: 'Fruits Matching', icon: 'nutrition-outline' },
   { id: 'Matching Colors', title: 'Color Matching', icon: 'color-palette-outline' },
+  { id: 'Matching Animals', title: 'Animals Matching', icon: 'paw-outline' },
+  { id: 'Matching Categories', title: 'Category Matching', icon: 'grid-outline' },
 ];
 
 export const ALL_BUBBLE_POP_CATEGORIES = [

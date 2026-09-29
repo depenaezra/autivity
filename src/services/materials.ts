@@ -51,6 +51,14 @@ export const getActivitiesBySubcategories = async (subcategories: string[]) => {
             expandedSubcategories.add('Matching Fruits');
             return;
         }
+        if (lower === 'matching animals' || lower === 'animals matching' || (lower.includes('animal') && lower.includes('match'))) {
+            expandedSubcategories.add('Matching Animals');
+            return;
+        }
+        if (lower === 'matching categories' || lower === 'category matching' || (lower.includes('categor') && lower.includes('match'))) {
+            expandedSubcategories.add('Matching Categories');
+            return;
+        }
         if (lower.includes('color pop') || (lower.includes('color') && lower.includes('pop'))) {
             expandedSubcategories.add('Color Pop');
             return;

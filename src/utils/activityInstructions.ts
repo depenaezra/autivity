@@ -125,6 +125,12 @@ export function translateInstruction(
     if (lower.includes("matching colors") || lower.includes("matching color") || lower.includes("to the correct color")) {
         return "I-drag ang mga gamit sa kanilang katugmang kulay!";
     }
+    if (lower.includes("drag the animals") || lower.includes("matching animal") || lower.includes("matching animals")) {
+        return "I-drag ang mga hayop sa kanilang katugmang hugis!";
+    }
+    if (lower.includes("matching category") || lower.includes("matching categories") || lower.includes("category container") || lower.includes("category containers") || lower.includes("correct category")) {
+        return "I-drag ang mga gamit sa kanilang tamang kategorya!";
+    }
     if (lower.includes("matching shapes") || lower.includes("drag the fruits")) {
         return "I-drag ang mga prutas sa kanilang katugmang hugis!";
     }

@@ -981,8 +981,8 @@ export default function SetManager({
         : (currentActivity.title || formatActivityTitle(currentActivity.path || ''));
 
     const isFrameless =
-        currentTask?.type === 'drag-and-drop' ||
-        currentTask?.type === 'dragdrop' ||
+        currentTask?.type?.toLowerCase().includes('drag') ||
+        currentTask?.type?.toLowerCase().includes('match') ||
         isPickActivity;
 
     return (

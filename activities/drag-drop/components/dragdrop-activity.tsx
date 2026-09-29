@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Image, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { DraxProvider, DraxView } from 'react-native-drax';
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
+import { Ionicons } from '@expo/vector-icons';
 import { dragDropAssets } from '../utils/assetDictionary';
 import { generateDynamicActivityData } from '../utils/shuffler';
 import { COLOR_MATCHING_POOL } from '../data/matching-colors';
@@ -58,6 +59,14 @@ const COLOR_THEME_MAP: Record<string, { bg: string; border: string; font: string
         font: '#A855F7',
         circle: '#A855F7',
     },
+};
+
+const CATEGORY_ICON_MAP: Record<string, { icon: keyof typeof Ionicons.glyphMap; label: string }> = {
+    Animal: { icon: 'paw', label: 'Animal' },
+    Vehicle: { icon: 'car', label: 'Vehicle' },
+    Fruit: { icon: 'nutrition', label: 'Fruit' },
+    'School Supply': { icon: 'book', label: 'School Supply' },
+    Clothing: { icon: 'shirt', label: 'Clothing' },
 };
 
 export default function DragDropActivity({ contentData, onComplete, onFeedback, onIncorrectAttempt, hintSignal }: DynamicActivityProps) {
@@ -232,16 +241,18 @@ export default function DragDropActivity({ contentData, onComplete, onFeedback, 
                 {/* RECEPTIVE CUTOUT TARGETS */}
                 <View style={[styles.row, { gap: cardSizes.gap }]}>
                     {activityLayout.targets.map((target: any) => {
-                        const theme = COLOR_THEME_MAP[target.type] || {
-                            bg: '#F5F7FA',
-                            border: '#E2E8F0',
-                            font: '#64748B',
-                            circle: '#CBD5E1',
+                        const isColorTarget = COLOR_THEME_MAP[target.type] !== undefined;
+                        const theme = isColorTarget ? COLOR_THEME_MAP[target.type] : {
+                            bg: '#F8FAFC',
+                            border: '#CBD5E1',
+                            font: '#475569',
+                            circle: '#E2E8F0',
                         };
 
                         const placedItem = targetMap[target.id];
                         const isPlaced = !!placedItem;
                         const isHintTarget = isHintActive && hintLevel === 2 && firstUnplaced && !isPlaced && target.type === firstUnplaced.type;
+                        const categoryInfo = CATEGORY_ICON_MAP[target.type];
 
                         return (
                             <DraxView
@@ -252,9 +263,21 @@ export default function DragDropActivity({ contentData, onComplete, onFeedback, 
                                         width: cardSizes.cardSize,
                                         height: cardSizes.cardSize,
                                         borderRadius: cardSizes.borderRadius,
-                                        backgroundColor: isHintTarget ? '#FFF3C4' : (isPlaced ? theme.bg : '#FFFFFF'),
-                                        borderColor: isHintTarget ? '#FFAE02' : theme.border,
-                                        borderBottomColor: isHintTarget ? '#FF9800' : theme.border,
+                                        backgroundColor: isHintTarget
+                                            ? '#FFF3C4'
+                                            : isPlaced
+                                                ? (isColorTarget ? theme.bg : '#F8FAFC')
+                                                : '#FFFFFF',
+                                        borderColor: isHintTarget
+                                            ? '#FFAE02'
+                                            : isPlaced
+                                                ? (isColorTarget ? theme.border : '#94A3B8')
+                                                : (isColorTarget ? theme.border : '#CBD5E1'),
+                                        borderBottomColor: isHintTarget
+                                            ? '#FF9800'
+                                            : isPlaced
+                                                ? (isColorTarget ? theme.border : '#94A3B8')
+                                                : (isColorTarget ? theme.border : '#CBD5E1'),
                                         borderBottomWidth: isPlaced ? 2 : cardSizes.borderBottomWidth,
                                         borderStyle: isHintTarget ? 'solid' : (isPlaced ? 'solid' : 'dashed'),
                                         borderWidth: isHintTarget ? 3 : 2,
@@ -291,7 +314,7 @@ export default function DragDropActivity({ contentData, onComplete, onFeedback, 
                                             ]}
                                         />
                                     )
-                                ) : (
+                                ) : isColorTarget ? (
                                     <View style={{ alignItems: 'center', justifyContent: 'center' }}>
                                         {isPlaced && placedItem?.imageSource ? (
                                             <View style={{ alignItems: 'center', justifyContent: 'center' }}>
@@ -333,7 +356,7 @@ export default function DragDropActivity({ contentData, onComplete, onFeedback, 
                                                 </View>
                                                 <Text
                                                     style={{
-                                                        fontFamily: 'FredokaOne_400Regular',
+                                                        fontFamily: 'FredokaOne-Regular',
                                                         color: theme.font,
                                                         fontSize: cardSizes.labelFontSize,
                                                         marginTop: 4,
@@ -341,6 +364,69 @@ export default function DragDropActivity({ contentData, onComplete, onFeedback, 
                                                         textTransform: 'uppercase',
                                                         letterSpacing: 0.5,
                                                     }}
+                                                >
+                                                    {target.type}
+                                                </Text>
+                                            </>
+                                        )}
+                                    </View>
+                                ) : (
+                                    <View style={{ alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 }}>
+                                        {isPlaced && placedItem?.imageSource ? (
+                                            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+                                                <Image
+                                                    source={placedItem.imageSource}
+                                                    style={{
+                                                        width: cardSizes.imageSize * 0.8,
+                                                        height: cardSizes.imageSize * 0.8,
+                                                        resizeMode: 'contain',
+                                                    }}
+                                                />
+                                                <View style={{
+                                                    position: 'absolute',
+                                                    top: -4,
+                                                    right: -4,
+                                                    width: 22,
+                                                    height: 22,
+                                                    borderRadius: 11,
+                                                    backgroundColor: '#10B981',
+                                                    justifyContent: 'center',
+                                                    alignItems: 'center',
+                                                }}>
+                                                    <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: 'bold' }}>✓</Text>
+                                                </View>
+                                            </View>
+                                        ) : (
+                                            <>
+                                                <View style={{
+                                                    width: cardSizes.circleSize,
+                                                    height: cardSizes.circleSize,
+                                                    borderRadius: 12,
+                                                    backgroundColor: '#F1F5F9',
+                                                    borderWidth: 1.5,
+                                                    borderColor: '#E2E8F0',
+                                                    justifyContent: 'center',
+                                                    alignItems: 'center',
+                                                }}>
+                                                    <Ionicons
+                                                        name={categoryInfo ? categoryInfo.icon : 'grid-outline'}
+                                                        size={cardSizes.circleSize * 0.55}
+                                                        color="#64748B"
+                                                    />
+                                                </View>
+                                                <Text
+                                                    style={{
+                                                        fontFamily: 'FredokaOne-Regular',
+                                                        color: '#475569',
+                                                        fontSize: cardSizes.labelFontSize,
+                                                        marginTop: 4,
+                                                        fontWeight: 'bold',
+                                                        textTransform: 'uppercase',
+                                                        letterSpacing: 0.5,
+                                                        textAlign: 'center',
+                                                    }}
+                                                    numberOfLines={1}
+                                                    adjustsFontSizeToFit
                                                 >
                                                     {target.type}
                                                 </Text>

@@ -7,6 +7,23 @@ export const dragDropAssets: Record<string, any> = {
     grape_icon: require('../../../assets/images/activities/drag-drop/grape.png'),
     grapes_icon: require('../../../assets/images/activities/drag-drop/grape.png'),
 
+    // Animals
+    dog_icon: require('../../../assets/images/activities/pick-n-choose/animals/dog.png'),
+    cat_icon: require('../../../assets/images/activities/pick-n-choose/animals/cat.png'),
+    bird_icon: require('../../../assets/images/activities/pick-n-choose/animals/bird.png'),
+    fish_icon: require('../../../assets/images/activities/pick-n-choose/animals/fish.png'),
+    cow_icon: require('../../../assets/images/activities/pick-n-choose/animals/cow.png'),
+    duck_icon: require('../../../assets/images/activities/pick-n-choose/animals/duck.png'),
+    elephant_icon: require('../../../assets/images/activities/pick-n-choose/animals/elephant.png'),
+    lion_icon: require('../../../assets/images/activities/pick-n-choose/animals/lion.png'),
+
+    // Vehicles
+    car_icon: require('../../../assets/images/activities/pick-n-choose/vehicles/car.png'),
+    bus_icon: require('../../../assets/images/activities/pick-n-choose/vehicles/bus.png'),
+    bicycle_icon: require('../../../assets/images/activities/pick-n-choose/vehicles/bicycle.png'),
+    plane_icon: require('../../../assets/images/activities/pick-n-choose/vehicles/plane.png'),
+    train_icon: require('../../../assets/images/activities/pick-n-choose/vehicles/train.png'),
+
     // Color Matching - RED
     red_bowling: require('../../../assets/images/activities/drag-drop/colors/toys/bowling.png'),
     red_toy: require('../../../assets/images/activities/drag-drop/colors/toys/toy.png'),

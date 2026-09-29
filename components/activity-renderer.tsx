@@ -82,7 +82,9 @@ export default function ActivityRenderer({ activity, onComplete, onFeedback, onI
             );
 
         case 'drag-and-drop':
+        case 'drag-drop':
         case 'dragdrop':
+        case 'matching':
             return (
                 <DragDropActivity
                     contentData={activity.content_data}
