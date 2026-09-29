@@ -7,6 +7,7 @@ import { playCorrectSound } from '@/src/utils/sound';
 import { speakInstruction } from '@/src/utils/speech';
 import { SequencingActivityProps, SequencingRoutine, SequencingStep } from '../types';
 import { getSequencingAsset } from '../utils/assetDictionary';
+import { SEQUENCING_ROUTINES } from '../data/routines';
 
 interface PlacedStep {
   slotIndex: number;
@@ -39,14 +40,20 @@ export default function SequencingActivity({
   }));
 
   const initializeGame = () => {
-    const routines = contentData?.routines || [];
+    let routines = contentData?.routines || [];
+    if (routines.length === 0) {
+      const stepCountFilter = contentData?.step_count;
+      routines = stepCountFilter
+        ? SEQUENCING_ROUTINES.filter((r) => r.steps.length === stepCountFilter)
+        : SEQUENCING_ROUTINES;
+    }
     if (routines.length === 0) return;
 
     // Pick a random routine from the activity's routine pool
     const selectedRoutine = routines[Math.floor(Math.random() * routines.length)];
     setCurrentRoutine(selectedRoutine);
 
-    const stepCount = contentData?.step_count || selectedRoutine.steps.length;
+    const stepCount = selectedRoutine.steps.length;
     
     // Initialize empty target slots (1..N)
     setPlacedSlots(new Array(stepCount).fill(null));

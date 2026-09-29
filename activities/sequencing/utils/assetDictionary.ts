@@ -23,6 +23,26 @@ export const sequencingAssets: Record<string, ImageSourcePropType> = {
   wash_laundry_step2: require('@/assets/images/activities/sequencing/wash laundry/2. turn on the washing machine.png'),
   wash_laundry_step3: require('@/assets/images/activities/sequencing/wash laundry/3. hang the clothes to dry.png'),
 
+  // Getting Dressed Routine
+  getting_dressed_step1: require('@/assets/images/activities/sequencing/getting dressed/1. put on shirt.png'),
+  getting_dressed_step2: require('@/assets/images/activities/sequencing/getting dressed/2. put on pants.png'),
+  getting_dressed_step3: require('@/assets/images/activities/sequencing/getting dressed/3. put on jacket.png'),
+
+  // Putting on Shoes Routine
+  putting_on_shoes_step1: require('@/assets/images/activities/sequencing/putting on shoes/1. put on socks.png'),
+  putting_on_shoes_step2: require('@/assets/images/activities/sequencing/putting on shoes/2. put on shoes.png'),
+  putting_on_shoes_step3: require('@/assets/images/activities/sequencing/putting on shoes/3. tie shoes.png'),
+
+  // Eating Lunch Routine
+  eating_lunch_step1: require('@/assets/images/activities/sequencing/eating lunch/1. open lunchbox.png'),
+  eating_lunch_step2: require('@/assets/images/activities/sequencing/eating lunch/2. eat food.png'),
+  eating_lunch_step3: require('@/assets/images/activities/sequencing/eating lunch/3. drink water.png'),
+
+  // Making the Bed Routine
+  making_bed_step1: require('@/assets/images/activities/sequencing/making bed/1. straighten sheet.png'),
+  making_bed_step2: require('@/assets/images/activities/sequencing/making bed/2. pull up blanket.png'),
+  making_bed_step3: require('@/assets/images/activities/sequencing/making bed/3. place pillow.png'),
+
   // Header image
   sequencing_header: require('@/assets/images/activities/sequencing-header.png'),
 };
