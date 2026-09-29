@@ -10,6 +10,7 @@ import { supabase } from '@/src/lib/supabase';
 import { getActivitiesBySubcategories, getDefaultActivities } from '@/src/services/materials';
 import { getStudentById } from '@/src/services/students';
 import TurnTakingActivity from '@/activities/turn-taking';
+import { getDefaultCountingPool } from '@/activities/counting/data/counting-levels';
 
 export default function LessonScreen() {
     const params = useLocalSearchParams();
@@ -56,6 +57,14 @@ if (isTurnTaking) {
                     pool = await getActivitiesBySubcategories(subcategories);
                 }
                 if (!pool || pool.length === 0) {
+                    if (activityType === 'counting' || activityType === 'count') {
+                        const { data } = await supabase
+                            .from('activities')
+                            .select('*')
+                            .or('category.ilike.%count%,sub_category.ilike.%count%')
+                            .eq('is_hidden', false);
+                        pool = (data && data.length > 0) ? data : getDefaultCountingPool();
+                    }
                     if (activityType === 'bubble' || activityType === 'bubble-pop') {
                         const { data } = await supabase
                             .from('activities')
@@ -142,6 +151,15 @@ if (isTurnTaking) {
                         const type = (a.type || a.content_data?.type || '').toLowerCase();
                         return path.includes('sequenc') || cat.includes('sequenc') || sub.includes('sequenc') || type.includes('sequenc');
                     });
+                } else if (activityType === 'counting' || activityType === 'count') {
+                    const filtered = pool.filter(a => {
+                        const path = (a.path || '').toLowerCase();
+                        const cat = (a.category || '').toLowerCase();
+                        const sub = (a.sub_category || '').toLowerCase();
+                        const type = (a.type || a.content_data?.type || '').toLowerCase();
+                        return path.includes('count') || cat.includes('count') || sub.includes('count') || type.includes('count') || path.includes('basket');
+                    });
+                    pool = filtered.length > 0 ? filtered : getDefaultCountingPool();
                 }
 
                 setActivityPool(pool);
@@ -162,7 +180,9 @@ if (isTurnTaking) {
                 console.error('Failed to load activities:', e);
                 try {
                     let fallback = await getDefaultActivities(20);
-                    if (activityType === 'tracing') {
+                    if (activityType === 'counting' || activityType === 'count') {
+                        fallback = getDefaultCountingPool();
+                    } else if (activityType === 'tracing') {
                         fallback = fallback.filter(a => {
                             const path = a.path || '';
                             const isDragDrop = path.includes('drag-drop') || a.category?.toLowerCase().includes('drag');

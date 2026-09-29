@@ -45,6 +45,14 @@ export const ALL_TURN_TAKING_CATEGORIES = [
   },
 ];
 
+export const ALL_COUNTING_CATEGORIES = [
+  {
+    id: 'Counting',
+    title: 'Fruit & Veggie Counting',
+    icon: 'basket-outline',
+  },
+];
+
 export interface AssignActivitiesModalProps {
   visible: boolean;
   onClose: () => void;
@@ -98,6 +106,7 @@ export function AssignActivitiesModal({
     'pick-n-choose',
     'sequencing',
     'turn-taking',
+    'counting',
   ];
 
   const getActivityLabel = (type: string) => {
@@ -119,6 +128,9 @@ export function AssignActivitiesModal({
 
       case 'turn-taking':
         return 'Turn Taking';
+
+      case 'counting':
+        return 'Counting';
 
       default:
         return type;
@@ -144,6 +156,9 @@ export function AssignActivitiesModal({
 
       case 'turn-taking':
         return ALL_TURN_TAKING_CATEGORIES;
+
+      case 'counting':
+        return ALL_COUNTING_CATEGORIES;
 
       default:
         return [];

@@ -26,7 +26,8 @@ export interface ActivityCardItem {
     | 'bubble'
     | 'pick-n-choose'
     | 'sequencing'
-    | 'turn-taking';
+    | 'turn-taking'
+    | 'counting';
   title: string;
   imageSource: any;
   headerBgColor: string;
@@ -179,6 +180,7 @@ interface ActivitiesSectionProps {
       | 'pick-n-choose'
       | 'sequencing'
       | 'turn-taking'
+      | 'counting'
   ) => void;
 }
 
@@ -271,6 +273,12 @@ export function ActivitiesSection({
     return normalizedPath === 'turntaking';
   };
 
+  // NEW: Counting detector
+  const isCountingPath = (path: string) => {
+    const lower = path.toLowerCase();
+    return lower.includes('count') || lower.includes('basket');
+  };
+
   /* =========================
      ALL ACTIVITY CARDS
   ========================= */
@@ -336,6 +344,17 @@ export function ActivitiesSection({
       themeFontColor: '#3B82F6',
       themeFillColor: '#EFF6FF',
     },
+
+    // NEW: COUNTING
+    {
+      id: 'counting',
+      title: 'Counting',
+      imageSource: require('@/assets/images/activities/counting-header.png'),
+      headerBgColor: '#FEF3C7',
+      themeColor: '#D97706',
+      themeFontColor: '#B45309',
+      themeFillColor: '#FFFBEB',
+    },
   ];
 
   /* =========================
@@ -366,6 +385,11 @@ export function ActivitiesSection({
     // NEW: Turn-Taking
     if (item.id === 'turn-taking') {
       return assignedPaths.some(isTurnTakingPath);
+    }
+
+    // NEW: Counting
+    if (item.id === 'counting') {
+      return assignedPaths.some(isCountingPath);
     }
 
     return false;
