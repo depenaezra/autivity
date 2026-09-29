@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -12,8 +12,9 @@ import { getRecentActivity, RecentActivityData, ActivityTypeFilter } from '../..
 import EvaluationReviewModal from './evaluation-review-modal';
 import FeedbackModal from '../../feedback-modal';
 import RecentIcon from '../../../assets/images/teacher/analytics/icon-recent.svg';
+import { FilterPeriod } from '../../../src/utils/dashboardFilters';
 
-type FilterType = 'today' | 'week' | 'month';
+type FilterType = FilterPeriod;
 
 function RecentActivitySkeletonItem({ isTablet }: { isTablet: boolean }) {
   const opacity = useSharedValue(0.4);
@@ -151,7 +152,7 @@ export function RecentActivitySection({ onEvaluationValidated, activityType = 'a
   return (
     <View className={`w-full ${isTablet ? 'mt-10' : 'mt-6'}`}>
       {/* Header section with Title & Filter Buttons */}
-      <View className={`flex-row flex-wrap items-center justify-between gap-3 ${isTablet ? 'px-12 mb-6' : 'px-6 mb-4'}`}>
+      <View className={`${isTablet ? 'flex-row items-center justify-between px-12 mb-6' : 'flex-col items-start px-6 mb-4'} gap-3`}>
         <View className="flex-row items-center gap-2">
           <RecentIcon
             width={isTablet ? 32 : 22}
@@ -163,11 +164,18 @@ export function RecentActivitySection({ onEvaluationValidated, activityType = 'a
         </View>
 
         {/* Filters styled like StudentsScreenLayout */}
-        <View className="flex-row items-center gap-2">
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          className="w-full"
+          contentContainerStyle={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 2 }}
+        >
           {renderFilterButton('today', 'TODAY')}
           {renderFilterButton('week', 'THIS WEEK')}
+          {renderFilterButton('last_week', 'LAST WEEK')}
           {renderFilterButton('month', 'THIS MONTH')}
-        </View>
+          {renderFilterButton('last_month', 'LAST MONTH')}
+        </ScrollView>
       </View>
 
       {/* Activity Timeline List */}

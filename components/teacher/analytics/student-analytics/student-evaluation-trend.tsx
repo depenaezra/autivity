@@ -1,11 +1,12 @@
 import { Feather } from '@expo/vector-icons';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, Text, useWindowDimensions, View } from 'react-native';
+import { Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp, FadeOutDown, FadeOutUp } from 'react-native-reanimated';
 import Svg, { Circle, Defs, Line, LinearGradient, Path, Stop, Text as SvgText } from 'react-native-svg';
 import { ActivityTypeFilter } from '../../../../src/services/analytics';
 import { getStudentValidatedSessionsEvaluations, SessionEvaluation } from '../../../../src/services/student-analytics';
 import { calculateStudentProgressForecast } from '../../../../src/services/studentAnalyticsEngine';
+import { FilterPeriod, getDateRangeForFilter } from '../../../../src/utils/dashboardFilters';
 
 interface StudentEvaluationTrendProps {
   studentId: string;
@@ -14,7 +15,7 @@ interface StudentEvaluationTrendProps {
   activityType?: ActivityTypeFilter;
 }
 
-type FilterType = 'today' | 'week' | 'month' | 'overall';
+type FilterType = FilterPeriod;
 
 export default function StudentEvaluationTrend({ studentId, filter: externalFilter, refreshTrigger, activityType }: StudentEvaluationTrendProps) {
   const { width } = useWindowDimensions();
@@ -77,24 +78,13 @@ export default function StudentEvaluationTrend({ studentId, filter: externalFilt
   // Filter & process data
   const chartData = useMemo(() => {
     const now = new Date();
-    let threshold = new Date(0); // Overall default
-
-    if (filter === 'today') {
-      threshold = new Date();
-      threshold.setHours(0, 0, 0, 0);
-    } else if (filter === 'week') {
-      threshold = new Date();
-      threshold.setDate(now.getDate() - 7);
-      threshold.setHours(0, 0, 0, 0);
-    } else if (filter === 'month') {
-      threshold = new Date();
-      threshold.setDate(now.getDate() - 30);
-      threshold.setHours(0, 0, 0, 0);
-    }
+    const { startDate, endDate } = getDateRangeForFilter(filter);
 
     const filtered = sessions.filter((s) => {
       const sessionDate = new Date(s.created_at);
-      return sessionDate >= threshold;
+      if (startDate && sessionDate < startDate) return false;
+      if (endDate && sessionDate > endDate) return false;
+      return true;
     });
 
     // Group by date YYYY-MM-DD
@@ -163,7 +153,9 @@ export default function StudentEvaluationTrend({ studentId, filter: externalFilt
   const filters: { label: string; value: FilterType }[] = [
     { label: 'Today', value: 'today' },
     { label: 'This Week', value: 'week' },
+    { label: 'Last Week', value: 'last_week' },
     { label: 'This Month', value: 'month' },
+    { label: 'Last Month', value: 'last_month' },
     { label: 'Overall', value: 'overall' },
   ];
 
@@ -286,7 +278,7 @@ export default function StudentEvaluationTrend({ studentId, filter: externalFilt
     <View className="flex-col mt-6">
       {/* Header and Filter Selector */}
       <View className="mb-4">
-        <View className="flex-row flex-wrap items-center justify-between gap-4">
+        <View className={`${isTablet ? 'flex-row items-center justify-between' : 'flex-col items-start'} gap-3`}>
           <View className="flex-row items-center gap-2">
             <Text className={`font-fredoka-one text-[#484A4B] ${isTablet ? 'text-[32px]' : 'text-[22px]'}`}>
               Evaluation Trend
@@ -299,7 +291,12 @@ export default function StudentEvaluationTrend({ studentId, filter: externalFilt
             </Pressable>
           </View>
 
-          <View className="flex-row items-center gap-1.5 flex-wrap">
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            className="w-full"
+            contentContainerStyle={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 2 }}
+          >
             <Pressable
               onPress={() => setShowForecast(!showForecast)}
               style={{
@@ -355,7 +352,7 @@ export default function StudentEvaluationTrend({ studentId, filter: externalFilt
                 </Pressable>
               );
             })}
-          </View>
+          </ScrollView>
         </View>
 
         {/* Full-width Info Banner Row below Title & Filters */}

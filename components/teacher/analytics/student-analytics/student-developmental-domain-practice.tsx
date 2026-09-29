@@ -1,11 +1,12 @@
 import { Feather } from '@expo/vector-icons';
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native';
 import Animated, { FadeInUp, FadeOutUp } from 'react-native-reanimated';
 import Svg, { Defs, Line, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { ActivityTypeFilter } from '../../../../src/services/analytics';
 import { getStudentDevelopmentalSkillsExposure, MasterDomainExposure } from '../../../../src/services/student-analytics';
 import { getRubricTier } from '../../../../src/constants/benchmarkLegend';
+import { FilterPeriod } from '../../../../src/utils/dashboardFilters';
 
 interface StudentDevelopmentalDomainPracticeProps {
   studentId: string;
@@ -14,7 +15,7 @@ interface StudentDevelopmentalDomainPracticeProps {
   activityType?: ActivityTypeFilter;
 }
 
-type FilterType = 'today' | 'week' | 'month' | 'overall';
+type FilterType = FilterPeriod;
 
 // Curated domain color themes matching Autivity's pastel design system (lighter left -> darker pastel right end)
 const DOMAIN_THEMES = [
@@ -154,7 +155,9 @@ export default function StudentDevelopmentalDomainPractice({ studentId, filter: 
   const filters: { label: string; value: FilterType }[] = [
     { label: 'Today', value: 'today' },
     { label: 'This Week', value: 'week' },
+    { label: 'Last Week', value: 'last_week' },
     { label: 'This Month', value: 'month' },
+    { label: 'Last Month', value: 'last_month' },
     { label: 'Overall', value: 'overall' },
   ];
 
@@ -162,7 +165,7 @@ export default function StudentDevelopmentalDomainPractice({ studentId, filter: 
     <View className="flex-col mt-6">
       {/* Header and Filter Selector */}
       <View className="mb-4">
-        <View className="flex-row flex-wrap items-center justify-between gap-4">
+        <View className={`${isTablet ? 'flex-row items-center justify-between' : 'flex-col items-start'} gap-3`}>
           <View className="flex-row items-center gap-2">
             <Text className={`font-fredoka-one text-[#484A4B] ${isTablet ? 'text-[32px]' : 'text-[22px]'}`}>
               Developmental Domain Practice
@@ -175,7 +178,12 @@ export default function StudentDevelopmentalDomainPractice({ studentId, filter: 
             </Pressable>
           </View>
 
-          <View className="flex-row items-center gap-1.5 flex-wrap">
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            className="w-full"
+            contentContainerStyle={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 2 }}
+          >
             {filters.map((f) => {
               const isActive = filter === f.value;
               return (
@@ -204,7 +212,7 @@ export default function StudentDevelopmentalDomainPractice({ studentId, filter: 
                 </Pressable>
               );
             })}
-          </View>
+          </ScrollView>
         </View>
 
         {/* Full-width Info Banner Row below Title & Filters */}

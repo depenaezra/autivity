@@ -1,6 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
-import { Pressable, Text, View, useWindowDimensions } from 'react-native';
+import { Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import Animated, {
   FadeInUp,
   FadeOutUp,
@@ -17,6 +17,7 @@ import {
   getMistakesTier,
   getHintsTier,
 } from '../../../../src/constants/benchmarkLegend';
+import { FilterPeriod } from '../../../../src/utils/dashboardFilters';
 
 interface StudentPerformanceCardsProps {
   studentId: string;
@@ -25,7 +26,7 @@ interface StudentPerformanceCardsProps {
   activityType?: ActivityTypeFilter;
 }
 
-type FilterType = 'today' | 'week' | 'month' | 'overall';
+type FilterType = FilterPeriod;
 
 function StudentPerformanceCardsSkeleton({ isTablet }: { isTablet: boolean }) {
   const opacity = useSharedValue(0.4);
@@ -162,7 +163,9 @@ export default function StudentPerformanceCards({
   const filterButtons: { label: string; value: FilterType }[] = [
     { label: 'Today', value: 'today' },
     { label: 'This Week', value: 'week' },
+    { label: 'Last Week', value: 'last_week' },
     { label: 'This Month', value: 'month' },
+    { label: 'Last Month', value: 'last_month' },
     { label: 'Overall', value: 'overall' },
   ];
 
@@ -263,12 +266,17 @@ export default function StudentPerformanceCards({
     <View className="flex-col mt-4">
       {/* Header and Filter Controls */}
       <View className="mb-4">
-        <View className="flex-row flex-wrap justify-between items-center gap-3">
+        <View className={`${isTablet ? 'flex-row items-center justify-between' : 'flex-col items-start'} gap-3`}>
           <Text className={`font-fredoka-one text-[#484A4B] ${isTablet ? 'text-[32px]' : 'text-[22px]'}`}>
             Student Performance
           </Text>
 
-          <View className="flex-row items-center gap-1.5 flex-wrap">
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            className="w-full"
+            contentContainerStyle={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 2 }}
+          >
             {filterButtons.map((btn) => {
               const isActive = filter === btn.value;
               return (
@@ -298,7 +306,7 @@ export default function StudentPerformanceCards({
                 </Pressable>
               );
             })}
-          </View>
+          </ScrollView>
         </View>
       </View>
 

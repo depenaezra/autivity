@@ -3,6 +3,7 @@ import { createNotification } from './notifications';
 import { formatActivityTitle } from '../utils/format';
 import { calculateRubricScore } from './classAnalyticsEngine';
 import { ActivityTypeFilter } from './analytics';
+import { FilterPeriod, getDateRangeForFilter } from '../utils/dashboardFilters';
 
 export interface ParentInfo {
   name: string;
@@ -114,26 +115,13 @@ export interface StudentSessionStats {
 
 export const getStudentSessionStats = async (
   studentId: string,
-  filter: 'today' | 'week' | 'month' | 'overall' = 'overall',
+  filter: FilterPeriod = 'overall',
   activityType: ActivityTypeFilter = 'all'
 ): Promise<StudentSessionStats> => {
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) throw new Error('User not logged in');
 
-  let thresholdDate: Date | null = null;
-  const now = new Date();
-  if (filter === 'today') {
-    thresholdDate = new Date();
-    thresholdDate.setHours(0, 0, 0, 0);
-  } else if (filter === 'week') {
-    thresholdDate = new Date();
-    thresholdDate.setDate(now.getDate() - 7);
-    thresholdDate.setHours(0, 0, 0, 0);
-  } else if (filter === 'month') {
-    thresholdDate = new Date();
-    thresholdDate.setDate(now.getDate() - 30);
-    thresholdDate.setHours(0, 0, 0, 0);
-  }
+  const { startDate, endDate } = getDateRangeForFilter(filter);
 
   let query = supabase
     .from('student_sessions')
@@ -145,8 +133,11 @@ export const getStudentSessionStats = async (
     query = query.eq('activity_type', activityType);
   }
 
-  if (thresholdDate) {
-    query = query.gte('created_at', thresholdDate.toISOString());
+  if (startDate) {
+    query = query.gte('created_at', startDate.toISOString());
+  }
+  if (endDate) {
+    query = query.lte('created_at', endDate.toISOString());
   }
 
   const { data, error } = await query;
@@ -199,27 +190,13 @@ export interface MasterDomainExposure {
 
 export const getStudentDevelopmentalSkillsExposure = async (
   studentId: string,
-  filter: 'today' | 'week' | 'month' | 'overall' = 'overall',
+  filter: FilterPeriod = 'overall',
   activityType: ActivityTypeFilter = 'all'
 ): Promise<MasterDomainExposure[]> => {
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) throw new Error('User not logged in');
 
-  // 1. Determine date threshold based on filter
-  let thresholdDate: Date | null = null;
-  const now = new Date();
-  if (filter === 'today') {
-    thresholdDate = new Date();
-    thresholdDate.setHours(0, 0, 0, 0);
-  } else if (filter === 'week') {
-    thresholdDate = new Date();
-    thresholdDate.setDate(now.getDate() - 7);
-    thresholdDate.setHours(0, 0, 0, 0);
-  } else if (filter === 'month') {
-    thresholdDate = new Date();
-    thresholdDate.setDate(now.getDate() - 30);
-    thresholdDate.setHours(0, 0, 0, 0);
-  }
+  const { startDate, endDate } = getDateRangeForFilter(filter);
 
   // 2. Retrieve student sessions for the student and teacher
   let sessionsQuery = supabase
@@ -232,8 +209,11 @@ export const getStudentDevelopmentalSkillsExposure = async (
     sessionsQuery = sessionsQuery.eq('activity_type', activityType);
   }
 
-  if (thresholdDate) {
-    sessionsQuery = sessionsQuery.gte('created_at', thresholdDate.toISOString());
+  if (startDate) {
+    sessionsQuery = sessionsQuery.gte('created_at', startDate.toISOString());
+  }
+  if (endDate) {
+    sessionsQuery = sessionsQuery.lte('created_at', endDate.toISOString());
   }
 
   const [sessionsRes, domainsRes] = await Promise.all([

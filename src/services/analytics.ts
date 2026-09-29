@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { formatActivityTitle } from '../utils/format';
+import { FilterPeriod, getDateRangeForFilter } from '../utils/dashboardFilters';
 
 export type ActivityTypeFilter = 'all' | 'app' | 'classroom';
 
@@ -169,34 +170,29 @@ export interface RecentActivityData {
 }
 
 export const getRecentActivity = async (
-  filter: 'today' | 'week' | 'month',
+  filter: FilterPeriod = 'today',
   activityType: ActivityTypeFilter = 'all'
 ): Promise<RecentActivityData[]> => {
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) throw new Error('User not logged in');
 
-  const now = new Date();
-  let thresholdDate = new Date();
-
-  if (filter === 'today') {
-    thresholdDate.setHours(0, 0, 0, 0);
-  } else if (filter === 'week') {
-    thresholdDate.setDate(now.getDate() - 7);
-  } else if (filter === 'month') {
-    thresholdDate.setDate(now.getDate() - 30);
-  }
-
-  const thresholdISO = thresholdDate.toISOString();
+  const { startDate, endDate } = getDateRangeForFilter(filter);
 
   let sessionsQuery = supabase
     .from('student_sessions')
     .select('*')
     .eq('teacher_id', user.id)
-    .gte('created_at', thresholdISO)
     .order('created_at', { ascending: false });
 
   if (activityType !== 'all') {
     sessionsQuery = sessionsQuery.eq('activity_type', activityType);
+  }
+
+  if (startDate) {
+    sessionsQuery = sessionsQuery.gte('created_at', startDate.toISOString());
+  }
+  if (endDate) {
+    sessionsQuery = sessionsQuery.lte('created_at', endDate.toISOString());
   }
 
   const [sessionsRes, studentsRes] = await Promise.all([

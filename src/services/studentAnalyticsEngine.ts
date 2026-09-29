@@ -1,5 +1,6 @@
 import { MasterDomainExposure, SessionEvaluation } from './class-analytics';
 import { calculateLinearRegression, calculateRubricScore, TARGET_MASTERY_SCORE } from './classAnalyticsEngine';
+import { FilterPeriod, getDateRangeForFilter } from '../utils/dashboardFilters';
 
 export interface StudentForecastPoint {
   date: string;
@@ -36,25 +37,17 @@ export interface StudentRecommendation {
  */
 export function calculateStudentProgressForecast(
   evaluations: SessionEvaluation[],
-  filter: 'today' | 'week' | 'month' | 'overall' = 'overall',
+  filter: FilterPeriod = 'overall',
   targetBenchmark = TARGET_MASTERY_SCORE
 ): StudentForecastResult {
-  const now = new Date();
-  let threshold = new Date(0);
-  if (filter === 'today') {
-    threshold = new Date();
-    threshold.setHours(0, 0, 0, 0);
-  } else if (filter === 'week') {
-    threshold = new Date();
-    threshold.setDate(now.getDate() - 7);
-    threshold.setHours(0, 0, 0, 0);
-  } else if (filter === 'month') {
-    threshold = new Date();
-    threshold.setDate(now.getDate() - 30);
-    threshold.setHours(0, 0, 0, 0);
-  }
+  const { startDate, endDate } = getDateRangeForFilter(filter);
 
-  const filtered = evaluations.filter((s) => new Date(s.created_at) >= threshold);
+  const filtered = evaluations.filter((s) => {
+    const sessionDate = new Date(s.created_at);
+    if (startDate && sessionDate < startDate) return false;
+    if (endDate && sessionDate > endDate) return false;
+    return true;
+  });
 
   // Group by date YYYY-MM-DD
   const groups: Record<string, number[]> = {};
@@ -78,10 +71,10 @@ export function calculateStudentProgressForecast(
     };
   }
 
-  const startDate = new Date(dateKeys[0] + 'T00:00:00');
+  const seriesStartDate = new Date(dateKeys[0] + 'T00:00:00');
   const regPoints = dateKeys.map((key) => {
     const d = new Date(key + 'T00:00:00');
-    const dayOffset = Math.round((d.getTime() - startDate.getTime()) / (1000 * 3600 * 24));
+    const dayOffset = Math.round((d.getTime() - seriesStartDate.getTime()) / (1000 * 3600 * 24));
     const scores = groups[key];
     const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
     return { x: dayOffset, y: avg, dateKey: key, avgScore: Number(avg.toFixed(2)) };

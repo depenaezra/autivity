@@ -37,7 +37,7 @@ export default function AnalyticsDraftScreen() {
         getUserProfile().catch(() => null),
         getKpiData('all').catch(() => ({ pendingEvaluations: 0, totalStudents: 0, totalClasses: 0, completedSessions: 0 })),
         getClassPerformance(true, 'all').catch(() => []),
-        getRecentActivity(globalFilter === 'today' ? 'today' : globalFilter === 'week' ? 'week' : 'month', 'all').catch(() => []),
+        getRecentActivity(globalFilter, 'all').catch(() => []),
       ]);
 
       const teacherName = profile?.first_name ? `${profile.first_name} ${profile.last_name || ''}`.trim() : 'Teacher';
@@ -68,7 +68,7 @@ export default function AnalyticsDraftScreen() {
           entering={FadeInRight.delay(50).duration(300)}
           className={`w-full ${isTablet ? 'px-12 pt-4' : 'px-6 pt-2'}`}
         >
-          <View className="flex-row flex-wrap items-center justify-between gap-3 mb-4">
+          <View className={`${isTablet ? 'flex-row items-center justify-between' : 'flex-col items-start'} gap-3 mb-4`}>
             <Text className={`font-fredoka-one text-[#484A4B] ${isTablet ? 'text-[44px]' : 'text-[28px]'}`}>
               Analytics
             </Text>

@@ -15,7 +15,9 @@ interface ParentFilterModalProps {
 const quickFilters: { label: string; value: FilterPeriod; icon: keyof typeof Feather.glyphMap }[] = [
   { label: 'Today', value: 'today', icon: 'sun' },
   { label: 'This Week', value: 'week', icon: 'calendar' },
+  { label: 'Last Week', value: 'last_week', icon: 'rotate-ccw' },
   { label: 'This Month', value: 'month', icon: 'clock' },
+  { label: 'Last Month', value: 'last_month', icon: 'archive' },
   { label: 'All Time', value: 'overall', icon: 'layers' },
 ];
 

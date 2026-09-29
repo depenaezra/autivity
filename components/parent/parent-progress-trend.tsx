@@ -1,6 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, Text, useWindowDimensions, View } from 'react-native';
+import { Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp, FadeOutDown, FadeOutUp } from 'react-native-reanimated';
 import Svg, { Circle, Defs, Line, LinearGradient, Path, Stop, Text as SvgText } from 'react-native-svg';
 import { ActivityTypeFilter } from '../../src/services/analytics';
@@ -50,7 +50,9 @@ export function ParentProgressTrend({ sessions, globalFilter, activityType = 'al
   const getTimeframePeriodName = (p: FilterPeriod): string => {
     if (p === 'today') return 'today';
     if (p === 'week') return 'this week';
+    if (p === 'last_week') return 'last week';
     if (p === 'month') return 'this month';
+    if (p === 'last_month') return 'last month';
     if (p === 'overall') return 'overall period';
     return getFilterLabel(p);
   };
@@ -109,7 +111,9 @@ export function ParentProgressTrend({ sessions, globalFilter, activityType = 'al
   const filters: { label: string; value: FilterPeriod }[] = [
     { label: 'Today', value: 'today' },
     { label: 'This Week', value: 'week' },
+    { label: 'Last Week', value: 'last_week' },
     { label: 'This Month', value: 'month' },
+    { label: 'Last Month', value: 'last_month' },
     { label: 'Overall', value: 'overall' },
   ];
 
@@ -171,7 +175,7 @@ export function ParentProgressTrend({ sessions, globalFilter, activityType = 'al
     <View className="flex-col mt-6">
       {/* Header and Filter Selector */}
       <View className="mb-4">
-        <View className="flex-row flex-wrap items-center justify-between gap-4">
+        <View className={`${isTablet ? 'flex-row items-center justify-between' : 'flex-col items-start'} gap-3`}>
           <View className="flex-row items-center gap-2">
             <Text className={`font-fredoka-one text-[#484A4B] ${isTablet ? 'text-[28px]' : 'text-[20px]'}`}>
               {isTl ? 'Takbo ng Pag-unlad' : 'Progress Over Time'}
@@ -186,7 +190,12 @@ export function ParentProgressTrend({ sessions, globalFilter, activityType = 'al
           </View>
 
           {/* Filter Buttons */}
-          <View className="flex-row items-center gap-1.5 flex-wrap">
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            className="w-full"
+            contentContainerStyle={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 2 }}
+          >
             {filters.map((f) => {
               const isActive = filter === f.value;
               return (
@@ -215,7 +224,7 @@ export function ParentProgressTrend({ sessions, globalFilter, activityType = 'al
                 </Pressable>
               );
             })}
-          </View>
+          </ScrollView>
         </View>
 
         {/* Full-width Info Banner Row below Title & Filters */}

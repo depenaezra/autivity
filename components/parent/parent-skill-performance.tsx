@@ -1,6 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, Text, useWindowDimensions, View } from 'react-native';
+import { Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native';
 import Animated, { FadeInUp, FadeOutUp } from 'react-native-reanimated';
 import Svg, { Circle, Defs, Line, LinearGradient, Polygon, Stop, Text as SvgText } from 'react-native-svg';
 import { ActivityTypeFilter } from '../../src/services/analytics';
@@ -12,7 +12,9 @@ import { getAccuracyTier } from '../../src/constants/benchmarkLegend';
 const filters: { label: string; value: FilterPeriod }[] = [
   { label: 'Today', value: 'today' },
   { label: 'This Week', value: 'week' },
+  { label: 'Last Week', value: 'last_week' },
   { label: 'This Month', value: 'month' },
+  { label: 'Last Month', value: 'last_month' },
   { label: 'Overall', value: 'overall' },
 ];
 
@@ -139,7 +141,7 @@ export function ParentSkillPerformance({
     <View className="flex-col mt-6 w-full">
       {/* Header and Filter Selector */}
       <View className="mb-4">
-        <View className="flex-row flex-wrap items-center justify-between gap-4">
+        <View className={`${isTablet ? 'flex-row items-center justify-between' : 'flex-col items-start'} gap-3`}>
           <View className="flex-row items-center gap-2">
             <Text className={`font-fredoka-one text-[#484A4B] ${isTablet ? 'text-[28px]' : 'text-[20px]'}`}>
               {isTl ? 'Pagganap sa mga Kasanayan' : 'Skill Performance'}
@@ -153,7 +155,12 @@ export function ParentSkillPerformance({
           </View>
 
           {/* Filter Buttons */}
-          <View className="flex-row items-center gap-1.5 flex-wrap">
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            className="w-full"
+            contentContainerStyle={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 2 }}
+          >
             {filters.map((f) => {
               const isActive = filter === f.value;
               return (
@@ -182,7 +189,7 @@ export function ParentSkillPerformance({
                 </Pressable>
               );
             })}
-          </View>
+          </ScrollView>
         </View>
 
         {/* Full-width Info Banner Row below Title & Filters */}

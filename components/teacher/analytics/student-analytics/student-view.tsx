@@ -211,7 +211,7 @@ export default function StudentView({ studentId, onBack }: StudentViewProps) {
         ) : (
           <View className="flex-col gap-4">
             {/* CONTROL ROW: RANGE FILTER, LOG CLASSROOM ACTIVITY & DOWNLOAD REPORT */}
-            <View className="flex-row items-center justify-end gap-2 flex-wrap sm:flex-nowrap mb-1">
+            <View className={`flex-row items-center gap-2 flex-wrap ${isTablet ? 'justify-end' : 'justify-start'} mb-1`}>
               {/* Range Filter Selector */}
               <Pressable
                 onPress={() => setFilterModalVisible(true)}

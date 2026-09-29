@@ -37,6 +37,7 @@ const TOTAL_PAST_WEEKS = 12; // Pre-cache up to 12 past weeks for instant scroll
 export default function StudentEmotionRegulationCard({
   studentId,
   studentName = 'Learner',
+  filter = 'overall',
   refreshTrigger = 0,
   activityType,
 }: StudentEmotionRegulationCardProps) {
@@ -137,17 +138,32 @@ export default function StudentEmotionRegulationCard({
     return calculateStudentEmotionRegulationAnalytics(rawCheckIns, evaluations, studentName, 0);
   }, [rawCheckIns, evaluations, studentName]);
 
-  // Scroll to current week initially once container width is determined
+  // Scroll to target week when filter changes or when container width is determined
+  useEffect(() => {
+    let targetIndex = TOTAL_PAST_WEEKS;
+    if (filter === 'last_week') {
+      targetIndex = TOTAL_PAST_WEEKS - 1;
+    }
+    setActiveWeekIndex(targetIndex);
+    if (containerWidth > 0) {
+      scrollViewRef.current?.scrollTo({
+        x: targetIndex * containerWidth,
+        animated: true,
+      });
+    }
+  }, [filter, containerWidth]);
+
   const hasInitiallyScrolled = useRef(false);
   const onContainerLayout = (e: LayoutChangeEvent) => {
     const w = e.nativeEvent.layout.width;
     if (w > 0 && w !== containerWidth) {
       setContainerWidth(w);
-      if (!hasInitiallyScrolled.current || activeWeekIndex === TOTAL_PAST_WEEKS) {
+      const targetIndex = filter === 'last_week' ? TOTAL_PAST_WEEKS - 1 : TOTAL_PAST_WEEKS;
+      if (!hasInitiallyScrolled.current) {
         hasInitiallyScrolled.current = true;
         setTimeout(() => {
           scrollViewRef.current?.scrollTo({
-            x: TOTAL_PAST_WEEKS * w,
+            x: targetIndex * w,
             animated: false,
           });
         }, 50);
@@ -204,26 +220,6 @@ export default function StudentEmotionRegulationCard({
               <Feather name="info" size={isTablet ? 20 : 16} color="#62A9E6" />
             </Pressable>
           </View>
-
-          {/* Quick "Back to This Week" action pill if browsing past weeks */}
-          {activeWeekIndex < TOTAL_PAST_WEEKS && (
-            <Pressable
-              onPress={scrollToCurrentWeek}
-              className="flex-row items-center gap-1.5 px-3 py-1.5 bg-white border-[2px] border-[#BBE8FB] rounded-xl active:scale-95"
-              style={{
-                shadowColor: '#BBE8FB',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 1,
-                shadowRadius: 0,
-                elevation: 2,
-              }}
-            >
-              <Feather name="rotate-ccw" size={12} color="#62A9E6" />
-              <Text className="font-fredoka-one text-[11px] text-[#62A9E6] uppercase">
-                This Week
-              </Text>
-            </Pressable>
-          )}
         </View>
 
         {/* Full-width Info Banner Row below Title */}

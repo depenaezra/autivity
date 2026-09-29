@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase';
 import { createNotification } from './notifications';
 import { getEmotionMeta } from '../utils/emotionZones';
+import { FilterPeriod, getDateRangeForFilter } from '../utils/dashboardFilters';
 
 export interface StudentCheckIn {
   id?: string;
@@ -218,7 +219,7 @@ export const getStudentCheckInsHistory = async (
  */
 export const getStudentCheckInsForFilter = async (
   studentId: string,
-  filter: string = 'overall'
+  filter: FilterPeriod = 'overall'
 ): Promise<StudentCheckIn[]> => {
   if (!studentId) return [];
 
@@ -226,67 +227,18 @@ export const getStudentCheckInsForFilter = async (
   if (!allRecords || allRecords.length === 0) return [];
   if (filter === 'overall') return allRecords;
 
-  const now = new Date();
-  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
   if (filter === 'today') {
     const todayStr = getTodayDateString();
     return allRecords.filter((r) => r.check_in_date === todayStr);
   }
 
-  if (filter === 'week') {
-    const weekAgo = new Date(startOfDay.getTime() - 7 * 24 * 60 * 60 * 1000);
-    return allRecords.filter((r) => {
-      const d = new Date(r.check_in_date);
-      return d >= weekAgo;
-    });
-  }
+  const { startDate, endDate } = getDateRangeForFilter(filter);
 
-  if (filter === 'month') {
-    const monthAgo = new Date(startOfDay.getTime() - 30 * 24 * 60 * 60 * 1000);
-    return allRecords.filter((r) => {
-      const d = new Date(r.check_in_date);
-      return d >= monthAgo;
-    });
-  }
-
-  // If filter is sy- or legacy quarters, parse dates
-  if (filter.startsWith('sy-')) {
-    const parts = filter.replace('sy-', '').split('-');
-    if (parts.length >= 2) {
-      const startYear = parseInt(parts[0], 10);
-      const endYear = parseInt(parts[1], 10);
-      const subScope = parts.length >= 3 ? parts[2] : 'full';
-
-      if (!isNaN(startYear) && !isNaN(endYear)) {
-        let startDate: Date;
-        let endDate: Date;
-
-        if (subScope === 'q1') {
-          startDate = new Date(startYear, 7, 1);
-          endDate = new Date(startYear, 9, 31, 23, 59, 59);
-        } else if (subScope === 'q2') {
-          startDate = new Date(startYear, 10, 1);
-          endDate = new Date(endYear, 0, 31, 23, 59, 59);
-        } else if (subScope === 'q3') {
-          startDate = new Date(endYear, 1, 1);
-          endDate = new Date(endYear, 3, 30, 23, 59, 59);
-        } else if (subScope === 'q4') {
-          startDate = new Date(endYear, 4, 1);
-          endDate = new Date(endYear, 6, 31, 23, 59, 59);
-        } else {
-          startDate = new Date(startYear, 7, 1);
-          endDate = new Date(endYear, 6, 31, 23, 59, 59);
-        }
-
-        return allRecords.filter((r) => {
-          const d = new Date(r.check_in_date);
-          return d >= startDate && d <= endDate;
-        });
-      }
-    }
-  }
-
-  return allRecords;
+  return allRecords.filter((r) => {
+    const d = new Date(r.check_in_date);
+    if (startDate && d < startDate) return false;
+    if (endDate && d > endDate) return false;
+    return true;
+  });
 };
 
