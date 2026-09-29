@@ -90,53 +90,48 @@ export function translateInstruction(
     if (trimmed === "Let's play!" || trimmed === "Let's play") {
         return "Maglaro tayo!";
     }
-    if (trimmed === "What item is this? Choose the correct word!" || lower.includes("choose the correct word") || lower.includes("choose the correct answer")) {
-        return "Ano ang bagay na ito? Piliin ang tamang salita!";
-    }
-    if (trimmed === "Drag the items to their matching targets!" || lower === "drag the items to their matching targets") {
-        return "I-drag ang mga gamit sa kanilang katugmang lalagyan!";
-    }
-    if (trimmed === "Drag the fruits to their matching shapes!" || lower.includes("drag the fruits")) {
-        return "I-drag ang mga prutas sa kanilang katugmang hugis!";
-    }
-    if (trimmed === "Choose a classmate to play with.") {
-        return "Pumili ng kaklase na makakalaro.";
-    }
-    if (trimmed === "Let us spin the wheel to see who goes first!") {
-        return "Paikutin natin ang roleta para malaman kung sino ang mauuna!";
-    }
-    if (trimmed === "Pop the bubbles!" || lower === "pop the bubbles" || lower === "pop all the bubbles!") {
-        return "Putukin ang mga bula!";
-    }
-    if (trimmed === "Here is a hint to help you!" || lower.includes("here is a hint")) {
-        return "Narito ang isang pahiwatig para tulungan ka!";
-    }
-    if (trimmed === "Stay on the line! Keep going smoothly!") {
-        return "Manatili sa linya! Magpatuloy nang dahan-dahan!";
-    }
-    if (trimmed === "Almost there! Follow the dotted path from start to end!") {
-        return "Malapit na! Sundan ang putol-putol na linya mula simula hanggang dulo!";
-    }
-    if (trimmed === "Nice try! Try tracing slowly without lifting your finger!") {
-        return "Magandang pagsubok! Subukang gumuhit nang dahan-dahan nang hindi inaangat ang daliri!";
-    }
-    if (trimmed === "Keep your finger on the line and follow the path!") {
-        return "Panatilihin ang iyong daliri sa linya at sundan ang daan!";
-    }
-    if (lower.includes("start at the green circle and trace along the dotted line")) {
-        return "Pahiwatig: Magsimula sa berdeng bilog at sundan ang putol-putol na linya hanggang sa pulang bilog!";
+
+    // 1. Pick 'n Choose Patterns
+    if (
+        lower.includes("pick the matching word") ||
+        lower.includes("look at the picture") ||
+        lower.includes("tap the word that matches") ||
+        lower.includes("matches the picture") ||
+        lower.includes("matching word") ||
+        lower.includes("choose the correct word") ||
+        lower.includes("choose the correct answer") ||
+        lower.includes("what item is this")
+    ) {
+        return "Tingnan ang larawan at piliin ang tamang salita!";
     }
 
-    // 2. Tracing Pattern Matches
+    // 2. Tracing Patterns
+    if (
+        lower.includes("dragging the pencil") ||
+        lower.includes("trace along the dotted line") ||
+        lower.includes("trace the dotted line")
+    ) {
+        return "Sundan ang linya gamit ang lapis!";
+    }
     if (lower.startsWith("trace")) {
         if (lower.includes("line")) return "Sundan ang linya mula simula hanggang dulo!";
         if (lower.includes("shape")) return "Sundan ang hugis mula simula hanggang dulo!";
         if (lower.includes("letter")) return "Sundan ang titik mula simula hanggang dulo!";
         if (lower.includes("number")) return "Sundan ang numero mula simula hanggang dulo!";
-        return "Sundan ang putol-putol na linya!";
+        return "Sundan ang linya!";
     }
 
-    // 3. Pattern: "What is the color of the {category}? Drag them to the correct color!"
+    // 3. Drag & Drop Matching Patterns
+    if (lower.includes("matching colors") || lower.includes("matching color") || lower.includes("to the correct color")) {
+        return "I-drag ang mga gamit sa kanilang katugmang kulay!";
+    }
+    if (lower.includes("matching shapes") || lower.includes("drag the fruits")) {
+        return "I-drag ang mga prutas sa kanilang katugmang hugis!";
+    }
+    if (lower.includes("matching targets") || lower.includes("drag the items")) {
+        return "I-drag ang mga gamit sa kanilang katugmang lalagyan!";
+    }
+
     const colorCategoryMatch = trimmed.match(/What is the color of the (.+?)\? Drag them to the correct color!/i);
     if (colorCategoryMatch) {
         const catKey = colorCategoryMatch[1].trim().toLowerCase().replace(/\s+/g, '_');
@@ -144,36 +139,116 @@ export function translateInstruction(
         return `Ano ang kulay ng mga ${catTl}? I-drag ang mga ito sa tamang kulay!`;
     }
 
-    // 4. Pattern: "Pop the {color} bubbles!"
+    // 4. Sequencing Patterns
+    const orderStepsMatch = trimmed.match(/order the steps \((?:1\s+(?:and|to)\s+(\d+))\)/i);
+    if (orderStepsMatch) {
+        return `I-drag ang mga larawan nang sunod-sunod mula 1 hanggang ${orderStepsMatch[1]}!`;
+    }
+    const sequenceMatch = trimmed.match(/from 1 to (\d+)/i);
+    if (sequenceMatch) {
+        return `I-drag ang mga larawan nang sunod-sunod mula 1 hanggang ${sequenceMatch[1]}!`;
+    }
+    if (lower.includes("order the steps") || lower.includes("into order") || lower.includes("in order")) {
+        return "I-drag ang mga larawan nang sunod-sunod!";
+    }
+
+    // 5. Bubble Pop Patterns
+    const popCountColorMatch = trimmed.match(/Pop\s+(\d+)\s+([a-zA-Z]+)\s+bubbles!/i);
+    if (popCountColorMatch) {
+        const count = popCountColorMatch[1];
+        const colorKey = popCountColorMatch[2].trim().toLowerCase();
+        const colorTl = COLOR_TRANSLATIONS[colorKey]?.tl || popCountColorMatch[2];
+        return `Putukin ang ${count} na ${colorTl} na bula!`;
+    }
+
+    const popCountMatch = trimmed.match(/Pop\s+(\d+)\s+bubbles!/i);
+    if (popCountMatch) {
+        return `Putukin ang ${popCountMatch[1]} na bula!`;
+    }
+
     const bubbleColorMatch = trimmed.match(/Pop the (.+?) bubbles!/i);
     if (bubbleColorMatch) {
         const colorKey = bubbleColorMatch[1].trim().toLowerCase();
         const colorTl = COLOR_TRANSLATIONS[colorKey]?.tl || bubbleColorMatch[1];
         return `Putukin ang mga ${colorTl} na bula!`;
     }
-
-    // 5. Pattern: "Drag the pictures/cards into order from 1 to {count}!"
-    const sequenceMatch = trimmed.match(/Drag the (?:pictures|cards) into order from 1 to (\d+)!/i);
-    if (sequenceMatch) {
-        return `I-drag ang mga larawan nang sunod-sunod mula 1 hanggang ${sequenceMatch[1]}!`;
-    }
-    if (lower.includes("into order") || lower.includes("in order")) {
-        return "I-drag ang mga larawan nang sunod-sunod!";
+    if (lower.includes("pop") && lower.includes("bubble")) {
+        return "Putukin ang mga bula!";
     }
 
-    // 6. Pattern: "Great! {name} goes first!"
+    // 6. Turn-Taking Patterns
+    if (
+        trimmed === "Choose a classmate to play with." ||
+        lower.includes("choose a classmate") ||
+        lower.includes("choose a partner") ||
+        lower.includes("select player 2") ||
+        lower.includes("start playing together")
+    ) {
+        return "Pumili ng kapareha para magkasamang maglaro!";
+    }
+    if (
+        trimmed === "Let us spin the wheel to see who goes first!" ||
+        lower.includes("spin the wheel") ||
+        lower.includes("takes the first turn") ||
+        lower.includes("who goes first")
+    ) {
+        return "Paikutin ang roleta para malaman kung sino ang unang magte-trace!";
+    }
+
     const firstPlayerMatch = trimmed.match(/Great!\s*(.+?)\s*goes first!/i);
     if (firstPlayerMatch) {
         return `Magaling! Si ${firstPlayerMatch[1]} ang mauuna!`;
     }
-
-    // 7. Pattern: "It's {name}'s turn! Please wait for your turn."
+    const turnChangeMatch = trimmed.match(/Great job,?\s*(.+?)!\s*Now it(?:'s|\s+is|’s)\s*(.+?)(?:'s|’s)\s*turn!/i);
+    if (turnChangeMatch) {
+        return `Magaling, ${turnChangeMatch[1]}! Ngayon ay turn na ni ${turnChangeMatch[2]}!`;
+    }
     const turnMatch = trimmed.match(/It's\s*(.+?)'s turn!\s*Please wait for your turn\./i);
     if (turnMatch) {
         return `Ikaw na, ${turnMatch[1]}! Hintayin muna ang susunod mong turn.`;
     }
+    if (lower.includes("amazing teamwork") || lower.includes("both students finished")) {
+        return "Napakagaling na pagtutulungan! Natapos ninyong dalawa ang lahat ng aktibidad! 🎉";
+    }
+    if (lower.includes("stay close to the dotted line") || lower.includes("stay close to the line")) {
+        return "Manatili sa linya at magpatuloy nang dahan-dahan!";
+    }
+    if (lower.includes("drag the pencil along the dotted line") || lower.includes("drag the pencil along the line")) {
+        return "I-drag ang lapis sa linya mula simula hanggang dulo!";
+    }
+    if (lower.includes("class id was not found")) {
+        return "Hindi nahanap ang Class ID.";
+    }
+    if (lower.includes("could not load classmates")) {
+        return "Hindi ma-load ang mga kaklase.";
+    }
+
+    // 7. Tracing & Motor Guidance Patterns
+    if (lower.includes("stay on the line")) {
+        return "Manatili sa linya! Magpatuloy nang dahan-dahan!";
+    }
+    if (lower.includes("follow the dotted path") || lower.includes("follow the dotted line") || lower.includes("follow the path")) {
+        return "Malapit na! Sundan ang linya mula simula hanggang dulo!";
+    }
+    if (lower.includes("without lifting your finger")) {
+        return "Magandang pagsubok! Subukang gumuhit nang dahan-dahan nang hindi inaangat ang daliri!";
+    }
+    if (lower.includes("keep your finger on the line")) {
+        return "Panatilihin ang iyong daliri sa linya at sundan ang daan!";
+    }
+    if (lower.includes("start at the green circle")) {
+        return "Pahiwatig: Magsimula sa berdeng bilog at sundan ang linya hanggang sa pulang bilog!";
+    }
+    if (lower.includes("look closely at the choices")) {
+        return "Pahiwatig: Tingnang mabuti ang mga pagpipilian!";
+    }
 
     // 8. Hint Patterns
+    const hintWordMatch = trimmed.match(/Clue:\s*The correct word starts with\s*([A-Z])\s*and ends with\s*([A-Z])!/i);
+    if (hintWordMatch) {
+        return `Pahiwatig: Ang tamang salita ay nagsisimula sa titik ${hintWordMatch[1]} at nagtatapos sa titik ${hintWordMatch[2]}!`;
+    }
+
     const hintStepMatch = trimmed.match(/Hint:\s*Step\s*(\d+)\s*is\s*"(.+?)"!/i);
     if (hintStepMatch) {
         return `Pahiwatig: Ang Hakbang ${hintStepMatch[1]} ay "${hintStepMatch[2]}"!`;
@@ -187,11 +262,20 @@ export function translateInstruction(
     }
 
     // 9. Feedback / Struggle patterns
-    if (lower.includes("not quite") || lower.includes("try again") || lower.includes("give it another")) {
+    if (lower.includes("not quite in order") || lower.includes("different position")) {
+        return "Hindi pa sunod-sunod! Subukang ilagay ang hakbang sa tamang posisyon. 💪";
+    }
+    if (lower.includes("not quite") || lower.includes("try again") || lower.includes("give it another") || lower.includes("which word matches")) {
         return "Hindi pa tama, subukan muli! 💪";
     }
     if (lower.includes("almost")) {
         return "Halos tumama na! Subukan muli! 🌟";
+    }
+
+    // 10. Step success matches
+    const stepCorrectMatch = trimmed.match(/Great job!\s*Step\s*(\d+)\s*is correct!/i);
+    if (stepCorrectMatch) {
+        return `Magaling! Tama ang Hakbang ${stepCorrectMatch[1]}! ⭐`;
     }
 
     // 10. Praise translation lookup

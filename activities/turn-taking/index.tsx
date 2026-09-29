@@ -1,17 +1,27 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   TouchableOpacity,
+  Pressable,
+  useWindowDimensions,
+  Animated,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   useLocalSearchParams,
   useRouter,
 } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, Feather } from '@expo/vector-icons';
 import { HeaderButton } from '@/components/header-button';
+import ActivityBear from '@/assets/images/activity-bear.svg';
+import { HoldToExitButton } from '@/components/set-manager';
+import InstructionSpeakerButton from '@/components/ui/instruction-speaker-button';
+import HintButton from '@/components/ui/hint-button';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Haptics from 'expo-haptics';
+import { ActivityLanguage, translateInstruction } from '@/src/utils/activityInstructions';
 
 import SpinWheel from './components/SpinWheel';
 import StudentSelector from './components/StudentSelector';
@@ -31,13 +41,23 @@ import { getClassStudents } from '@/src/services/students';
 interface TurnTakingActivityProps {
   assignedStudentId?: string;
   classId?: string;
+  initialTier?: number | string;
 }
+
+const TIER_TRACKS: Record<number, number[]> = {
+  1: [1, 2, 3], // Easy: Straight Line, Gentle Wave, Smooth Curve
+  2: [4, 5, 6], // Medium: S-Curve, Arch Bridge, Classic Zigzag
+  3: [7, 8, 9, 10], // Hard: Mountain Peaks, Double Zigzag, Loop-de-Loop, Spiral Path
+};
 
 export default function TurnTakingActivity({
   assignedStudentId,
   classId: propClassId,
+  initialTier,
 }: TurnTakingActivityProps = {}) {
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const isTablet = width >= 600;
 
   const params =
     useLocalSearchParams<{
@@ -45,13 +65,13 @@ export default function TurnTakingActivity({
       studentName?: string;
       classId?: string;
       teacherId?: string;
+      tier?: string;
+      level?: string;
     }>();
 
-  /*
-   * =========================================================
-   * ACTUAL ASSIGNED STUDENT + CLASS
-   * =========================================================
-   */
+  /* =========================================================
+     STUDENT & CLASS RESOLUTION
+  ========================================================= */
 
   const actualStudentId =
     assignedStudentId ||
@@ -65,23 +85,28 @@ export default function TurnTakingActivity({
       ? params.classId[0]
       : params.classId);
 
-  /*
-   * =========================================================
-   * GAME STATE
-   * =========================================================
-   *
-   * Flow:
-   *
-   * selecting
-   *    ↓
-   * teacher selects Player 2
-   *    ↓
-   * spinning
-   *    ↓
-   * playing
-   *    ↓
-   * result
-   */
+  /* =========================================================
+     DIFFICULTY TIER & ACTIVE TRACKS
+  ========================================================= */
+
+  const [tier, setTier] = useState<number>(() => {
+    const raw = initialTier || params.tier || params.level;
+    if (raw) {
+      const parsed = parseInt(String(raw).replace(/[^0-9]/g, ''), 10);
+      if ([1, 2, 3].includes(parsed)) return parsed;
+    }
+    return 1;
+  });
+
+  const activeTracks = useMemo(
+    () => TIER_TRACKS[tier] || TIER_TRACKS[1],
+    [tier]
+  );
+  const totalTurns = activeTracks.length * 2;
+
+  /* =========================================================
+     GAME STATE
+  ========================================================= */
 
   const [gameState, setGameState] =
     useState<TurnTakingGameState>('selecting');
@@ -110,11 +135,9 @@ export default function TurnTakingActivity({
   const [isTransitioning, setIsTransitioning] =
     useState(false);
 
-  /*
-   * =========================================================
-   * SAME-CLASS STUDENTS
-   * =========================================================
-   */
+  /* =========================================================
+     CLASS STUDENTS
+  ========================================================= */
 
   const [classStudents, setClassStudents] =
     useState<TurnTakingPlayer[]>([]);
@@ -122,20 +145,12 @@ export default function TurnTakingActivity({
   const [isLoadingStudents, setIsLoadingStudents] =
     useState(true);
 
-  /*
-   * =========================================================
-   * MISTAKES
-   * =========================================================
-   */
+  /* =========================================================
+     MISTAKES & HINTS
+  ========================================================= */
 
   const [mistakesByPlayer, setMistakesByPlayer] =
     useState<Record<string, number>>({});
-
-  /*
-   * =========================================================
-   * SOUND + GUIDE
-   * =========================================================
-   */
 
   const [soundEnabled, setSoundEnabled] =
     useState(true);
@@ -143,1263 +158,748 @@ export default function TurnTakingActivity({
   const [showGuide, setShowGuide] =
     useState(false);
 
-  /*
-   * =========================================================
-   * BEAR MESSAGE
-   * =========================================================
-   */
+  const [hintSignal, setHintSignal] =
+    useState(0);
 
   const [bearMessage, setBearMessage] =
-    useState(
-      'Choose a classmate to play with.'
-    );
+    useState('Select Player 2 to start playing together!');
 
-  /*
-   * =========================================================
-   * LOAD ASSIGNED STUDENT + SAME CLASS STUDENTS
-   * =========================================================
-   */
+  const [language, setLanguage] = useState<ActivityLanguage>('en');
 
   useEffect(() => {
-    const loadStudents = async () => {
-      if (!actualClassId || !actualStudentId) {
-        console.warn(
-          'Turn-Taking is missing studentId or classId.'
-        );
+    AsyncStorage.getItem('@activity_instruction_lang').then((saved) => {
+      if (saved === 'tl' || saved === 'en') {
+        setLanguage(saved);
+      }
+    });
+  }, []);
 
-        setIsLoadingStudents(false);
+  const toggleLanguage = async () => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch {}
+    const nextLang = language === 'en' ? 'tl' : 'en';
+    setLanguage(nextLang);
+    try {
+      await AsyncStorage.setItem('@activity_instruction_lang', nextLang);
+    } catch (err) {
+      console.error('Error saving instruction language:', err);
+    }
+  };
+
+  const displayBearMessage = useMemo(() => {
+    return translateInstruction(bearMessage, language);
+  }, [bearMessage, language]);
+
+  /* =========================================================
+     CURRENT TRACK RESOLUTION
+  ========================================================= */
+
+  const currentTrackIndex = Math.min(
+    Math.floor(completedLevels / 2),
+    activeTracks.length - 1
+  );
+  const currentLevelId = activeTracks[currentTrackIndex];
+  const level =
+    TURN_TAKING_LEVELS.find((l) => l.id === currentLevelId) ||
+    TURN_TAKING_LEVELS[0];
+
+  /* =========================================================
+     LOAD CLASS STUDENTS
+  ========================================================= */
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadStudents() {
+      if (!actualClassId) {
+        if (isMounted) {
+          setIsLoadingStudents(false);
+          setBearMessage('Class ID was not found.');
+        }
         return;
       }
 
       try {
-        const students =
-          await getClassStudents(actualClassId);
+        setIsLoadingStudents(true);
+        const data = await getClassStudents(actualClassId);
 
-        /*
-         * Convert database students to TurnTakingPlayer.
-         */
+        if (!isMounted) return;
 
-        const mappedStudents: TurnTakingPlayer[] =
-          students.map((student: any) => ({
-            id: student.id,
-            name: student.name,
-            avatar:
-              student.avatar ||
-              undefined,
-            difficulty: 1,
-          }));
+        const formattedStudents: TurnTakingPlayer[] = (data || []).map(
+          (student: any) => ({
+            id: String(student.id),
+            name: student.name || 'Student',
+            avatar: student.avatar || undefined,
+          })
+        );
 
-        /*
-         * =====================================================
-         * PLAYER 1
-         * =====================================================
-         *
-         * The student who was assigned the activity is
-         * automatically Player 1.
-         */
+        setClassStudents(formattedStudents);
 
-        const assignedStudent =
-          mappedStudents.find(
-            (student) =>
-              String(student.id) ===
-              String(actualStudentId)
+        if (actualStudentId) {
+          const foundAssigned = formattedStudents.find(
+            (s) => String(s.id) === String(actualStudentId)
           );
 
-        if (!assignedStudent) {
-          console.error(
-            'Assigned student was not found in the selected class.'
-          );
-
-          setIsLoadingStudents(false);
-          return;
+          if (foundAssigned) {
+            setPlayer1(foundAssigned);
+          } else {
+            const fallbackStudent: TurnTakingPlayer = {
+              id: String(actualStudentId),
+              name: (params.studentName as string) || 'Student 1',
+            };
+            setPlayer1(fallbackStudent);
+          }
         }
-
-        /*
-         * =====================================================
-         * SAVE SAME-CLASS STUDENTS
-         * =====================================================
-         *
-         * getClassStudents(actualClassId) already makes sure
-         * these students belong to the selected class.
-         */
-
-        setClassStudents(
-          mappedStudents
-        );
-
-        /*
-         * Player 1 is automatically the assigned student.
-         */
-
-        setPlayer1(
-          assignedStudent
-        );
-
-        /*
-         * IMPORTANT:
-         *
-         * DO NOT automatically select Player 2.
-         *
-         * The teacher must manually choose Player 2
-         * through StudentSelector.
-         */
-
-        setPlayer2(null);
-
-        /*
-         * Show the Player 2 selection screen.
-         */
-
-        setBearMessage(
-          'Choose a classmate to play with.'
-        );
-
-        setGameState(
-          'selecting'
-        );
       } catch (error) {
-        console.error(
-          'Unable to load same-class students for Turn-Taking:',
-          error
-        );
-
-        setBearMessage(
-          'Unable to load the students for this class.'
-        );
+        console.error('Error loading class students:', error);
+        if (isMounted) {
+          setBearMessage('Could not load classmates.');
+        }
       } finally {
-        setIsLoadingStudents(false);
+        if (isMounted) {
+          setIsLoadingStudents(false);
+        }
       }
-    };
+    }
 
     loadStudents();
-  }, [
-    actualClassId,
-    actualStudentId,
-  ]);
 
-  /*
-   * =========================================================
-   * STUDENTS SELECTED
-   * =========================================================
-   *
-   * Player 1 = assigned student
-   * Player 2 = manually selected classmate
-   *
-   * After selection, move to the Spin Wheel.
-   */
+    return () => {
+      isMounted = false;
+    };
+  }, [actualClassId, actualStudentId, params.studentName]);
+
+  /* =========================================================
+     NAVIGATION & ACTIONS
+  ========================================================= */
+
+  const handleBack = () => {
+    router.back();
+  };
+
+  const handleSoundToggle = () => {
+    setSoundEnabled((prev) => !prev);
+  };
+
+  const handleGuideToggle = () => {
+    setShowGuide(true);
+    setHintSignal((prev) => prev + 1);
+    setBearMessage('Follow the dotted path and yellow guidance arrows!');
+  };
 
   const handleStudentsSelected = (
     selectedPlayer1: TurnTakingPlayer,
-    selectedPlayer2: TurnTakingPlayer
+    selectedPlayer2: TurnTakingPlayer,
+    selectedTier: number = 1
   ) => {
-    setPlayer1(
-      selectedPlayer1
-    );
-
-    setPlayer2(
-      selectedPlayer2
-    );
-
+    setPlayer1(selectedPlayer1);
+    setPlayer2(selectedPlayer2);
+    setTier(selectedTier);
     setCurrentLevel(1);
     setCompletedLevels(0);
     setResults([]);
 
     setFirstPlayer(null);
     setCurrentPlayer(null);
-
     setMistakesByPlayer({});
-
     setShowGuide(false);
 
-    setBearMessage(
-      'Let us spin the wheel to see who goes first!'
-    );
-
-    setGameState(
-      'spinning'
-    );
+    setBearMessage('Spin the wheel to see who takes the first turn!');
+    setGameState('spinning');
   };
 
-  /*
-   * =========================================================
-   * SPIN WHEEL
-   * =========================================================
-   */
-
-  const handleSpinComplete = (
-    selectedFirstPlayer: TurnTakingPlayer
-  ) => {
-    setFirstPlayer(
-      selectedFirstPlayer
-    );
-
-    setCurrentPlayer(
-      selectedFirstPlayer
-    );
-
+  const handleSpinComplete = (selectedFirstPlayer: TurnTakingPlayer) => {
+    setFirstPlayer(selectedFirstPlayer);
+    setCurrentPlayer(selectedFirstPlayer);
     setCurrentLevel(1);
     setCompletedLevels(0);
     setShowGuide(false);
-
-    setBearMessage(
-      `Great! ${selectedFirstPlayer.name} goes first!`
-    );
-
-    setIsTransitioning(true);
+    setIsTransitioning(false);
+    setBearMessage('Drag the pencil along the dotted line from start to end!');
     setGameState('playing');
-
-    setTimeout(() => {
-      setIsTransitioning(false);
-
-      setBearMessage(
-        'Drag the pencil along the line!'
-      );
-    }, 1200);
   };
 
-  /*
-   * =========================================================
-   * GET OTHER PLAYER
-   * =========================================================
-   */
-
-  const getOtherPlayer = (
-    player: TurnTakingPlayer
-  ) => {
-    if (
-      player1 &&
-      player.id === player1.id
-    ) {
+  const getOtherPlayer = (player: TurnTakingPlayer) => {
+    if (player1 && player.id === player1.id) {
       return player2;
     }
-
     return player1;
   };
 
-  /*
-   * =========================================================
-   * TURN COMPLETED
-   * =========================================================
-   */
-
   const handleTurnComplete = () => {
-    if (
-      !currentPlayer ||
-      !player1 ||
-      !player2 ||
-      !firstPlayer
-    ) {
-      return;
-    }
+    if (!currentPlayer || !player1 || !player2 || !firstPlayer) return;
 
-    const turnMistakes =
-      mistakesByPlayer[
-        currentPlayer.id
-      ] || 0;
+    const turnMistakes = mistakesByPlayer[currentPlayer.id] || 0;
 
     const newResult: TurnTakingResult = {
-      playerId:
-        currentPlayer.id,
-      playerName:
-        currentPlayer.name,
-      level:
-        currentLevel,
+      playerId: currentPlayer.id,
+      playerName: currentPlayer.name,
+      level: currentLevel,
       completed: true,
       timeSeconds: 0,
-      mistakes:
-        turnMistakes,
+      mistakes: turnMistakes,
       obstacleCount: 0,
     };
 
-    const updatedResults = [
-      ...results,
-      newResult,
-    ];
+    const updatedResults = [...results, newResult];
+    setResults(updatedResults);
 
-    setResults(
-      updatedResults
-    );
+    const newCompletedLevels = completedLevels + 1;
+    setCompletedLevels(newCompletedLevels);
 
-    const newCompletedLevels =
-      completedLevels + 1;
-
-    setCompletedLevels(
-      newCompletedLevels
-    );
-
-    /*
-     * =======================================================
-     * FINISHED
-     * =======================================================
-     *
-     * 6 total turns:
-     *
-     * P1 L1
-     * P2 L1
-     * P1 L2
-     * P2 L2
-     * P1 L3
-     * P2 L3
-     */
-
-    if (
-      newCompletedLevels >= 6
-    ) {
+    // Completed all turns
+    if (newCompletedLevels >= totalTurns) {
       setShowGuide(false);
-
-      setBearMessage(
-        'Amazing! Both students finished all three levels!'
-      );
-
-      setGameState(
-        'result'
-      );
-
+      setBearMessage('Amazing teamwork! Both students finished all tracks!');
+      setGameState('result');
       return;
     }
 
-    /*
-     * =======================================================
-     * NEXT PLAYER
-     * =======================================================
-     */
+    const nextPlayer = getOtherPlayer(currentPlayer);
+    if (!nextPlayer) return;
 
-    const nextPlayer =
-      getOtherPlayer(
-        currentPlayer
-      );
-
-    if (!nextPlayer) {
-      return;
-    }
-
-    /*
-     * =======================================================
-     * NEXT LEVEL
-     * =======================================================
-     *
-     * 0 → L1
-     * 1 → L1
-     * 2 → L2
-     * 3 → L2
-     * 4 → L3
-     * 5 → L3
-     */
-
-    const nextLevel =
-      Math.floor(
-        newCompletedLevels / 2
-      ) + 1;
-
-    setCurrentPlayer(
-      nextPlayer
+    const nextTrackIndex = Math.min(
+      Math.floor(newCompletedLevels / 2),
+      activeTracks.length - 1
     );
+    const nextLevel = nextTrackIndex + 1;
 
-    setCurrentLevel(
-      nextLevel
-    );
-
+    setCurrentPlayer(nextPlayer);
+    setCurrentLevel(nextLevel);
     setShowGuide(false);
-
     setIsTransitioning(true);
 
     setBearMessage(
-      `Great job, ${currentPlayer.name}! Now it is ${nextPlayer.name}'s turn!`
+      `Great job, ${currentPlayer.name}! Now it's ${nextPlayer.name}'s turn!`
     );
 
     setTimeout(() => {
       setIsTransitioning(false);
-
-      setBearMessage(
-        'Drag the pencil along the line!'
-      );
-    }, 1000);
+      setBearMessage('Drag the pencil along the dotted line from start to end!');
+    }, 1100);
   };
-
-  /*
-   * =========================================================
-   * MISTAKE
-   * =========================================================
-   */
 
   const handleMistake = () => {
-    if (!currentPlayer) {
-      return;
-    }
+    if (!currentPlayer) return;
 
-    setMistakesByPlayer(
-      (current) => ({
-        ...current,
-        [currentPlayer.id]:
-          (current[
-            currentPlayer.id
-          ] || 0) + 1,
-      })
-    );
+    setMistakesByPlayer((current) => ({
+      ...current,
+      [currentPlayer.id]: (current[currentPlayer.id] || 0) + 1,
+    }));
 
-    setBearMessage(
-      'Oops! Follow the line and try again.'
-    );
-
-    setShowGuide(true);
+    setBearMessage('Stay close to the dotted line and keep going smoothly!');
   };
-
-  /*
-   * =========================================================
-   * GUIDE
-   * =========================================================
-   */
-
-  const handleGuideToggle = () => {
-    setShowGuide(
-      (current) => !current
-    );
-
-    if (!showGuide) {
-      setBearMessage(
-        'Follow the arrow! It shows where to go next.'
-      );
-    } else {
-      setBearMessage(
-        'You can follow the line by dragging the pencil.'
-      );
-    }
-  };
-
-  /*
-   * =========================================================
-   * SOUND
-   * =========================================================
-   */
-
-  const handleSoundToggle = () => {
-    setSoundEnabled(
-      (current) => !current
-    );
-  };
-
-  /*
-   * =========================================================
-   * PLAY AGAIN
-   * =========================================================
-   */
 
   const handlePlayAgain = () => {
-    if (
-      !player1 ||
-      !player2
-    ) {
-      return;
-    }
-
     setCurrentLevel(1);
     setCompletedLevels(0);
     setResults([]);
-
+    setMistakesByPlayer({});
+    setShowGuide(false);
     setFirstPlayer(null);
     setCurrentPlayer(null);
 
-    setMistakesByPlayer({});
-
-    setShowGuide(false);
-
-    setBearMessage(
-      'Let us spin the wheel again!'
-    );
-
-    setGameState(
-      'spinning'
-    );
+    setBearMessage('Spin the wheel to see who goes first!');
+    setGameState('spinning');
   };
-
-  /*
-   * =========================================================
-   * FINISH
-   * =========================================================
-   */
 
   const handleFinish = () => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace('/' as any);
-    }
+    router.back();
   };
 
-  /*
-   * =========================================================
-   * BACK
-   * =========================================================
-   */
+  /* =========================================================
+     LOADING VIEW
+  ========================================================= */
 
-  const handleBack = () => {
-    handleFinish();
-  };
-
-  /*
-   * =========================================================
-   * LOADING
-   * =========================================================
-   */
-
-  if (
-    isLoadingStudents
-  ) {
+  if (isLoadingStudents) {
     return (
-      <SafeAreaView
-        style={styles.safeArea}
-      >
-        <View
-          style={
-            styles.loadingContainer
-          }
-        >
-          <Text
-            style={
-              styles.loadingText
-            }
-          >
-            Loading students...
-          </Text>
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.topBar}>
+          <HeaderButton
+            onPress={handleBack}
+            icon={<Ionicons name="caret-back" size={24} color="#62A9E6" />}
+          />
+          <Text style={styles.topBarTitle}>Turn-Taking</Text>
+          <View style={styles.topBarSpacer} />
+        </View>
+
+        <View style={styles.loadingContainer}>
+          <ActivityBear width={isTablet ? 150 : 120} height={isTablet ? 150 : 120} />
+          <Text style={styles.loadingText}>Loading class students...</Text>
         </View>
       </SafeAreaView>
     );
   }
 
-  /*
-   * =========================================================
-   * PLAYER SELECTION
-   * =========================================================
-   *
-   * Player 1 is already assigned.
-   * Teacher chooses Player 2.
-   */
+  /* =========================================================
+     SCREEN 1: PLAYER SELECTION
+  ========================================================= */
 
-  if (
-    gameState === 'selecting' &&
-    player1
-  ) {
+  if (gameState === 'selecting' && player1) {
     return (
-      <SafeAreaView
-        style={styles.safeArea}
-      >
-        <View
-          style={styles.topBar}
-        >
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.topBar}>
           <HeaderButton
-            onPress={
-              handleBack
-            }
-            icon={
-              <Ionicons
-                name="caret-back"
-                size={24}
-                color="#62A9E6"
-              />
-            }
+            onPress={handleBack}
+            icon={<Ionicons name="caret-back" size={24} color="#62A9E6" />}
           />
-
-          <Text
-            style={
-              styles.topBarTitle
-            }
-          >
-            Turn-Taking Activity
-          </Text>
-
-          <View
-            style={
-              styles.topBarSpacer
-            }
-          />
+          <Text style={styles.topBarTitle}>Turn-Taking Setup</Text>
+          <View style={styles.topBarSpacer} />
         </View>
 
         <StudentSelector
-          assignedStudent={
-            player1
-          }
-          students={
-            classStudents
-          }
-          isLoading={
-            isLoadingStudents
-          }
-          onStart={
-            handleStudentsSelected
-          }
+          assignedStudent={player1}
+          students={classStudents}
+          isLoading={isLoadingStudents}
+          initialTier={tier}
+          onStart={handleStudentsSelected}
         />
       </SafeAreaView>
     );
   }
 
-  /*
-   * =========================================================
-   * NO PLAYER 1 / PLAYER 2
-   * =========================================================
-   */
+  /* =========================================================
+     SCREEN 2: SPIN WHEEL
+  ========================================================= */
 
-  if (
-    !player1 ||
-    !player2
-  ) {
+  if (gameState === 'spinning' && player1 && player2) {
     return (
-      <SafeAreaView
-        style={styles.safeArea}
-      >
-        <View
-          style={styles.topBar}
-        >
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.topBar}>
           <HeaderButton
-            onPress={
-              handleBack
-            }
-            icon={
-              <Ionicons
-                name="caret-back"
-                size={24}
-                color="#62A9E6"
-              />
-            }
+            onPress={() => setGameState('selecting')}
+            icon={<Ionicons name="caret-back" size={24} color="#62A9E6" />}
           />
-
-          <Text
-            style={
-              styles.topBarTitle
-            }
-          >
-            Turn-Taking Activity
-          </Text>
-
-          <View
-            style={
-              styles.topBarSpacer
-            }
-          />
-        </View>
-
-        <View
-          style={
-            styles.loadingContainer
-          }
-        >
-          <Text
-            style={
-              styles.loadingText
-            }
-          >
-            {bearMessage}
-          </Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  /*
-   * =========================================================
-   * SPIN WHEEL
-   * =========================================================
-   */
-
-  if (
-    gameState ===
-    'spinning'
-  ) {
-    return (
-      <SafeAreaView
-        style={styles.safeArea}
-      >
-        <View
-          style={styles.topBar}
-        >
-          <HeaderButton
-            onPress={
-              handleBack
-            }
-            icon={
-              <Ionicons
-                name="caret-back"
-                size={24}
-                color="#62A9E6"
-              />
-            }
-          />
-
-          <Text
-            style={
-              styles.topBarTitle
-            }
-          >
-            Turn-Taking Activity
-          </Text>
-
-          <View
-            style={
-              styles.topBarSpacer
-            }
-          />
+          <Text style={styles.topBarTitle}>Turn-Taking Wheel</Text>
+          <View style={styles.topBarSpacer} />
         </View>
 
         <SpinWheel
           player1={player1}
           player2={player2}
-          onComplete={
-            handleSpinComplete
-          }
+          onComplete={handleSpinComplete}
         />
       </SafeAreaView>
     );
   }
 
-  /*
-   * =========================================================
-   * RESULTS
-   * =========================================================
-   */
+  /* =========================================================
+     SCREEN 4: RESULTS SCREEN
+  ========================================================= */
 
-  if (
-    gameState ===
-      'result' &&
-    player1 &&
-    player2
-  ) {
+  if (gameState === 'result' && player1 && player2) {
     return (
-      <SafeAreaView
-        style={styles.safeArea}
-      >
-        <View
-          style={styles.topBar}
-        >
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.topBar}>
           <HeaderButton
-            onPress={
-              handleBack
-            }
-            icon={
-              <Ionicons
-                name="caret-back"
-                size={24}
-                color="#62A9E6"
-              />
-            }
+            onPress={handleBack}
+            icon={<Ionicons name="caret-back" size={24} color="#62A9E6" />}
           />
-
-          <Text
-            style={
-              styles.topBarTitle
-            }
-          >
-            Activity Results
-          </Text>
-
-          <View
-            style={
-              styles.topBarSpacer
-            }
-          />
+          <Text style={styles.topBarTitle}>Activity Results</Text>
+          <View style={styles.topBarSpacer} />
         </View>
 
         <ResultScreen
           player1={player1}
           player2={player2}
           results={results}
-          completedLevels={
-            completedLevels
-          }
-          onPlayAgain={
-            handlePlayAgain
-          }
-          onFinish={
-            handleFinish
-          }
+          completedLevels={completedLevels}
+          onPlayAgain={handlePlayAgain}
+          onFinish={handleFinish}
         />
       </SafeAreaView>
     );
   }
 
-  /*
-   * =========================================================
-   * GAME
-   * =========================================================
-   */
+  /* =========================================================
+     SCREEN 3: COOPERATIVE GAMEPLAY (MATCHING TRACING & SETMANAGER)
+  ========================================================= */
 
-  if (
-    gameState ===
-      'playing' &&
-    player1 &&
-    player2 &&
-    currentPlayer
-  ) {
-    const level =
-      TURN_TAKING_LEVELS[
-        currentLevel - 1
-      ];
+  if (gameState === 'playing' && player1 && player2 && currentPlayer) {
+    const progressPercent = totalTurns > 0 ? (completedLevels / totalTurns) * 100 : 0;
+    const isActivityDone = isTransitioning; // Using this as equivalent
 
     return (
-      <SafeAreaView
-        style={styles.safeArea}
-      >
-        {/* HEADER */}
+      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+        {/* Header: X, Title, and Language Toggle */}
+        <View className="flex-row items-center justify-between px-6 pt-4 pb-4">
+          <View className="flex-row items-center flex-1 mr-3">
+            <HoldToExitButton onExit={handleBack} />
+            <Text className="text-2xl font-fredoka-one text-[#535B74] flex-shrink" numberOfLines={1}>
+              Turn-Taking: Tracing
+            </Text>
+          </View>
 
-        <View
-          style={styles.gameHeader}
-        >
+          {/* Translate Toggle Button (EN <-> TL) */}
           <HeaderButton
-            onPress={
-              handleBack
-            }
+            onPress={toggleLanguage}
             icon={
-              <Ionicons
-                name="close"
-                size={25}
-                color="#62A9E6"
-              />
+              <Text className={`font-fredoka-one ${isTablet ? 'text-base' : 'text-sm'} text-[#62A9E6]`}>
+                {language === 'en' ? 'TL' : 'EN'}
+              </Text>
             }
           />
-
-          <View
-            style={
-              styles.gameHeaderCenter
-            }
-          >
-            <Text
-              style={
-                styles.gameTitle
-              }
-            >
-              Curve Tracing
-            </Text>
-
-            <Text
-              style={
-                styles.gameSubtitle
-              }
-            >
-              Level {currentLevel} of{' '}
-              {TURN_TAKING_LEVELS.length}
-            </Text>
-          </View>
-
-          {/* GUIDE */}
-
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={
-              handleGuideToggle
-            }
-            style={[
-              styles.iconButton,
-              styles.guideButton,
-              showGuide &&
-                styles.guideButtonActive,
-            ]}
-          >
-            <Ionicons
-              name="bulb-outline"
-              size={25}
-              color="#EAB308"
-            />
-          </TouchableOpacity>
-
-          {/* SOUND */}
-
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={
-              handleSoundToggle
-            }
-            style={[
-              styles.iconButton,
-              styles.soundButton,
-            ]}
-          >
-            <Ionicons
-              name={
-                soundEnabled
-                  ? 'volume-high-outline'
-                  : 'volume-mute-outline'
-              }
-              size={25}
-              color="#62A9E6"
-            />
-          </TouchableOpacity>
         </View>
 
-        {/* BEAR / INSTRUCTION */}
-
-        <View
-          style={
-            styles.instructionArea
-          }
-        >
-          <View
-            style={
-              styles.bearPlaceholder
-            }
-          >
-            <Text
-              style={
-                styles.bearEmoji
-              }
-            >
-              🐻
+        {/* Progress Bar Row */}
+        <View className="flex-row items-center px-6 pb-6">
+          <View className="bg-white px-2.5 py-1 rounded-full border-[1.5px] border-[#BBE8FB] mr-3">
+            <Text className="font-fredoka-one text-[13px] text-[#62A9E6]">
+              {currentTrackIndex + 1}/{activeTracks.length}
             </Text>
           </View>
 
-          <View
-            style={
-              styles.speechBubble
-            }
-          >
-            <Text
-              style={
-                styles.speechText
-              }
+          <View className="flex-1 h-[18px] bg-[#C4E0F9] rounded-full overflow-hidden">
+            <Animated.View className="h-full bg-[#69AEE3] rounded-full" style={{ width: `${progressPercent}%` }} />
+          </View>
+
+          <View className="flex-row items-center ml-3 gap-2.5">
+            <HintButton
+              onPress={handleGuideToggle}
+              size={isTablet ? 44 : 36}
+              iconSize={isTablet ? 22 : 18}
+            />
+            <InstructionSpeakerButton
+              text={displayBearMessage}
+              language={language}
+              autoPlay={true}
+              size={isTablet ? 44 : 36}
+              iconSize={isTablet ? 22 : 18}
+            />
+          </View>
+        </View>
+
+        {/* Bear & Dialogue Row (Exact Autivity SetManager Specification) */}
+        <View className={`flex-row items-center ${isTablet ? 'px-6 pb-4' : 'px-4 pb-2'}`}>
+          <ActivityBear width={isTablet ? 180 : 135} height={isTablet ? 180 : 135} />
+
+          <View className={`flex-1 ${isTablet ? 'ml-5' : 'ml-3'} justify-center relative`}>
+            <View className={`rounded-2xl ${isTablet ? 'p-6 border-[1.5px]' : 'p-4 border-[1.5px]'} justify-center z-10 ${
+                isTransitioning
+                  ? 'bg-[#F0FDF4] border-[#86EFAC]'
+                  : 'bg-[#FCF5F5] border-[#EAD5D5]'
+              }`}
             >
-              {bearMessage}
+              <Text className={`text-[#6D7179] font-quicksand-medium ${isTablet ? 'text-2xl leading-9' : 'text-lg leading-7'}`}>
+                {displayBearMessage}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Turn-Taking Player Banner */}
+        <View style={styles.playerBanner}>
+          <View style={styles.playerAvatarCircle}>
+            <Text style={styles.playerAvatarInitial}>
+              {currentPlayer.name.charAt(0).toUpperCase()}
+            </Text>
+          </View>
+
+          <View style={styles.playerInfoColumn}>
+            <Text style={styles.playerNameText}>
+              {language === 'tl'
+                ? `Turn ni ${currentPlayer.name}`
+                : `${currentPlayer.name}'s Turn`}
+            </Text>
+            <Text style={styles.playerSubText}>
+              {language === 'tl' ? `Aktibidad: ${level?.name}` : `Track: ${level?.name}`}
             </Text>
           </View>
         </View>
 
-        {/* CURRENT PLAYER */}
-
-        <View
-          style={
-            styles.playerInfo
-          }
-        >
-          <View
-            style={
-              styles.playerAvatar
-            }
-          >
-            <Text
-              style={
-                styles.playerInitial
-              }
-            >
-              {currentPlayer.name
-                .charAt(0)
-                .toUpperCase()}
-            </Text>
-          </View>
-
-          <View
-            style={
-              styles.playerInfoText
-            }
-          >
-            <Text
-              style={
-                styles.playerName
-              }
-            >
-              {currentPlayer.name}
-            </Text>
-
-            <Text
-              style={
-                styles.levelName
-              }
-            >
-              {level?.name}
-            </Text>
-          </View>
-
-          <View
-            style={
-              styles.progressBadge
-            }
-          >
-            <Text
-              style={
-                styles.progressBadgeText
-              }
-            >
-              {currentLevel}/3
-            </Text>
+        {/* Tracing Canvas Card (Exact Tracing Container: Framed Canvas) */}
+        <View className="flex-1 px-6 pb-6 mt-1">
+          <View className="flex-1 bg-[#FCFCFC] border-[1.5px] border-[#EBE5E5] rounded-2xl overflow-hidden">
+            {level && (
+              <CurvedPath
+                key={`${currentPlayer.id}-${currentLevel}-${level.id}`}
+                level={level}
+                player={currentPlayer}
+                showGuide={showGuide}
+                hintSignal={hintSignal}
+                onComplete={handleTurnComplete}
+                onMistake={handleMistake}
+              />
+            )}
           </View>
         </View>
-
-        {/* PATH */}
-
-        <View
-          style={
-            styles.pathContainer
-          }
-        >
-          {level && (
-            <CurvedPath
-              key={`${currentPlayer.id}-${currentLevel}`}
-              level={level}
-              player={
-                currentPlayer
-              }
-              showGuide={
-                showGuide
-              }
-              onComplete={
-                handleTurnComplete
-              }
-              onMistake={
-                handleMistake
-              }
-            />
-          )}
+        
+        {/* CHECK Button (matches SetManager format) */}
+        <View className="px-6 pb-4">
+            <Pressable
+                disabled={true}
+                className="w-full flex items-center justify-center border-b-[4px] p-[10px] h-[60px] rounded-full bg-[#D1D5DB] border-[#9CA3AF]"
+            >
+                <Text className="text-white font-fredoka-regular text-2xl">
+                    CHECK
+                </Text>
+            </Pressable>
         </View>
       </SafeAreaView>
     );
   }
 
-  /*
-   * =========================================================
-   * FALLBACK
-   * =========================================================
-   */
-
+  /* Fallback */
   return (
-    <SafeAreaView
-      style={styles.safeArea}
-    >
-      <View
-        style={
-          styles.loadingContainer
-        }
-      >
-        <Text
-          style={
-            styles.loadingText
-          }
-        >
-          Loading activity...
-        </Text>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.loadingContainer}>
+        <ActivityBear width={120} height={120} />
+        <Text style={styles.loadingText}>Loading activity...</Text>
       </View>
     </SafeAreaView>
   );
 }
 
+/* =========================================================
+   STYLES - Autivity Design System Specification
+========================================================= */
+
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#FBFBFB',
   },
 
   topBar: {
-    height: 58,
+    height: 60,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent:
-      'space-between',
-    paddingHorizontal: 15,
-    backgroundColor:
-      '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor:
-      '#F1F1F1',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1.5,
+    borderBottomColor: '#F1F1F1',
   },
 
   topBarTitle: {
-    fontSize: 17,
-    fontFamily:
-      'FredokaOne-Regular',
+    fontSize: 20,
+    fontFamily: 'FredokaOne-Regular',
     color: '#484A4B',
   },
 
   topBarSpacer: {
-    width: 40,
+    width: 44,
   },
 
-  gameHeader: {
-    minHeight: 64,
+  gameTopBar: {
+    height: 64,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor:
-      '#FFFFFF',
-    paddingHorizontal: 14,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 4,
+  },
+
+  gameTopTitle: {
+    fontSize: 22,
+    fontFamily: 'FredokaOne-Regular',
+    color: '#535B74',
+    flex: 1,
+    marginLeft: 12,
+  },
+
+  rightActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
-    borderBottomWidth: 1,
-    borderBottomColor:
-      '#F1F1F1',
   },
 
-  gameHeaderCenter: {
-    flex: 1,
-    alignItems:
-      'center',
-  },
-
-  gameTitle: {
-    fontSize: 19,
-    fontFamily:
-      'FredokaOne-Regular',
-    color: '#48556A',
-  },
-
-  gameSubtitle: {
-    fontSize: 11,
-    color: '#64748B',
-    marginTop: 2,
-  },
-
-  iconButton: {
-    width: 45,
-    height: 45,
-    borderRadius: 14,
-    alignItems:
-      'center',
-    justifyContent:
-      'center',
-    backgroundColor:
-      '#FFFFFF',
+  actionBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
     borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#BBE8FB',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.8,
+    shadowRadius: 0,
+    elevation: 2,
   },
 
-  guideButton: {
-    borderColor:
-      '#FDE68A',
+  guideBtn: {
+    borderColor: '#FFF3C4',
+    shadowColor: '#FFF3C4',
   },
 
-  guideButtonActive: {
-    backgroundColor:
-      '#FFF7CC',
-    borderColor:
-      '#FACC15',
+  guideBtnActive: {
+    backgroundColor: '#FFFBEB',
+    borderColor: '#FFAE02',
   },
 
-  soundButton: {
-    borderColor:
-      '#BAE6FD',
+  soundBtn: {
+    borderColor: '#BBE8FB',
   },
 
-  instructionArea: {
-    flexDirection:
-      'row',
-    alignItems:
-      'center',
-    paddingHorizontal: 18,
-    paddingTop: 8,
-    paddingBottom: 6,
-    minHeight: 110,
+  /* Progress Bar */
+  progressBarRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingBottom: 10,
+    gap: 12,
   },
 
-  bearPlaceholder: {
-    width: 105,
-    height: 105,
-    alignItems:
-      'center',
-    justifyContent:
-      'center',
-  },
-
-  bearEmoji: {
-    fontSize: 58,
-  },
-
-  speechBubble: {
+  progressBarTrack: {
     flex: 1,
-    marginLeft: 8,
-    backgroundColor:
-      '#FFF9F9',
-    borderWidth: 2,
-    borderColor:
-      '#E8D4D4',
+    height: 16,
+    backgroundColor: '#C4E0F9',
+    borderRadius: 999,
+    overflow: 'hidden',
+  },
+
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: '#69AEE3',
+    borderRadius: 999,
+  },
+
+  progressBadge: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    borderWidth: 1.5,
+    borderColor: '#BBE8FB',
+  },
+
+  progressBadgeText: {
+    fontFamily: 'FredokaOne-Regular',
+    fontSize: 13,
+    color: '#62A9E6',
+  },
+
+  /* Bear & Dialogue Row */
+  bearDialogueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 8,
+  },
+
+  speechBubbleContainer: {
+    flex: 1,
+    marginLeft: 12,
+    justifyContent: 'center',
+  },
+
+  speechBubbleCard: {
     borderRadius: 18,
     paddingHorizontal: 16,
-    paddingVertical: 13,
+    paddingVertical: 12,
+    borderWidth: 1.5,
   },
 
-  speechText: {
-    fontSize: 15,
-    lineHeight: 22,
-    fontFamily:
-      'Quicksand-Bold',
-    color: '#555B66',
+  speechBubbleNormal: {
+    backgroundColor: '#FCF5F5',
+    borderColor: '#EAD5D5',
   },
 
-  playerInfo: {
-    marginHorizontal: 18,
+  speechBubbleSuccess: {
+    backgroundColor: '#F0FDF4',
+    borderColor: '#86EFAC',
+  },
+
+  speechBubbleText: {
+    fontFamily: 'Quicksand-Medium',
+    color: '#6D7179',
+  },
+
+  /* Player Banner */
+  playerBanner: {
+    marginHorizontal: 24,
     marginBottom: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    backgroundColor: '#EFF6FF',
     borderRadius: 16,
-    backgroundColor:
-      '#EAF5FD',
-    flexDirection:
-      'row',
-    alignItems:
-      'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#BBE8FB',
   },
 
-  playerAvatar: {
-    width: 45,
-    height: 45,
-    borderRadius: 23,
-    backgroundColor:
-      '#D3ECFF',
-    alignItems:
-      'center',
-    justifyContent:
-      'center',
+  playerAvatarCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#BBE8FB',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
-  playerInitial: {
+  playerAvatarInitial: {
+    fontFamily: 'FredokaOne-Regular',
     fontSize: 18,
-    fontWeight: '800',
-    color: '#3B82F6',
+    color: '#62A9E6',
   },
 
-  playerInfoText: {
+  playerInfoColumn: {
     flex: 1,
     marginLeft: 10,
   },
 
-  playerName: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#334155',
+  playerNameText: {
+    fontFamily: 'FredokaOne-Regular',
+    fontSize: 16,
+    color: '#484A4B',
   },
 
-  levelName: {
+  playerSubText: {
+    fontFamily: 'Quicksand-Medium',
     fontSize: 12,
     color: '#64748B',
-    marginTop: 2,
   },
 
-  progressBadge: {
-    minWidth: 45,
-    height: 35,
-    paddingHorizontal: 9,
-    borderRadius: 18,
-    backgroundColor:
-      '#FFFFFF',
-    alignItems:
-      'center',
-    justifyContent:
-      'center',
+  trackPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#BBE8FB',
   },
 
-  progressBadgeText: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#3B82F6',
+  trackPillText: {
+    fontFamily: 'FredokaOne-Regular',
+    fontSize: 12,
+    color: '#62A9E6',
+    textTransform: 'uppercase',
   },
 
-  pathContainer: {
+  /* Canvas Container (Exact Framed Canvas) */
+  canvasContainer: {
     flex: 1,
-    paddingHorizontal: 18,
-    paddingBottom: 12,
+    paddingHorizontal: 24,
+    paddingBottom: 16,
+  },
+
+  canvasFrame: {
+    flex: 1,
+    backgroundColor: '#FCFCFC',
+    borderWidth: 1.5,
+    borderColor: '#EBE5E5',
+    borderRadius: 20,
+    overflow: 'hidden',
   },
 
   loadingContainer: {
     flex: 1,
-    alignItems:
-      'center',
-    justifyContent:
-      'center',
-    paddingHorizontal: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
   },
 
   loadingText: {
+    fontFamily: 'Quicksand-Medium',
     fontSize: 15,
     color: '#64748B',
-    textAlign: 'center',
+    marginTop: 14,
   },
 });

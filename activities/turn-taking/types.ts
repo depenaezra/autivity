@@ -9,7 +9,8 @@ export type TurnTakingLevel = {
   id: number;
   name: string;
   difficulty: number;
-  pathPoints: {
+  svgPath: string;
+  pathPoints?: {
     x: number;
     y: number;
   }[];

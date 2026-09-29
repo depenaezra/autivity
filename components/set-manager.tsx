@@ -8,7 +8,7 @@ import Svg, { Circle } from 'react-native-svg';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
 
 // Hold-to-exit button component with progress ring animation
-function HoldToExitButton({ onExit }: { onExit: () => void }) {
+export function HoldToExitButton({ onExit }: { onExit: () => void }) {
     const [progress, setProgress] = useState(0);
     const [showHint, setShowHint] = useState(false);
     const holdTimerRef = useRef<NodeJS.Timeout | null>(null);

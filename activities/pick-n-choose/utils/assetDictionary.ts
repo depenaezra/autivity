@@ -19,6 +19,34 @@ export const pickChoiceAssets: Record<string, ImageSourcePropType> = {
     pillow: require('../../../assets/images/activities/drag-drop/colors/household-items/pillow.png'),
     sofa: require('../../../assets/images/activities/drag-drop/colors/household-items/sofa.png'),
     broom: require('../../../assets/images/activities/drag-drop/colors/household-items/broom.png'),
+
+    // New Animals Assets
+    bird: require('../../../assets/images/activities/pick-n-choose/animals/bird.png'),
+    cat: require('../../../assets/images/activities/pick-n-choose/animals/cat.png'),
+    cow: require('../../../assets/images/activities/pick-n-choose/animals/cow.png'),
+    dog: require('../../../assets/images/activities/pick-n-choose/animals/dog.png'),
+    duck: require('../../../assets/images/activities/pick-n-choose/animals/duck.png'),
+    elephant: require('../../../assets/images/activities/pick-n-choose/animals/elephant.png'),
+    fish: require('../../../assets/images/activities/pick-n-choose/animals/fish.png'),
+    lion: require('../../../assets/images/activities/pick-n-choose/animals/lion.png'),
+
+    // New Body Parts Assets
+    ear: require('../../../assets/images/activities/pick-n-choose/body parts/ear.png'),
+    eye: require('../../../assets/images/activities/pick-n-choose/body parts/eye.png'),
+    feet: require('../../../assets/images/activities/pick-n-choose/body parts/feet.png'),
+    hand: require('../../../assets/images/activities/pick-n-choose/body parts/hand.png'),
+
+    // New Emotions Assets
+    angry: require('../../../assets/images/activities/pick-n-choose/emotions/angry.png'),
+    happy: require('../../../assets/images/activities/pick-n-choose/emotions/happy.png'),
+    sad: require('../../../assets/images/activities/pick-n-choose/emotions/sad.png'),
+
+    // New Vehicles Assets
+    bicycle: require('../../../assets/images/activities/pick-n-choose/vehicles/bicycle.png'),
+    bus: require('../../../assets/images/activities/pick-n-choose/vehicles/bus.png'),
+    car: require('../../../assets/images/activities/pick-n-choose/vehicles/car.png'),
+    plane: require('../../../assets/images/activities/pick-n-choose/vehicles/plane.png'),
+    train: require('../../../assets/images/activities/pick-n-choose/vehicles/train.png'),
 };
 
 /**

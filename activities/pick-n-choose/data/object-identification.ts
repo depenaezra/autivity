@@ -50,6 +50,18 @@ export const OBJECT_IDENTIFICATION_POOL: PickChoiceItem[] = [
         category: 'fruit',
     },
     {
+        id: 'obj-orange',
+        label: 'Orange',
+        asset_key: 'orange',
+        category: 'fruit',
+    },
+    {
+        id: 'obj-notebook',
+        label: 'Notebook',
+        asset_key: 'notebook',
+        category: 'school',
+    },
+    {
         id: 'obj-sofa',
         label: 'Sofa',
         asset_key: 'sofa',
@@ -60,5 +72,139 @@ export const OBJECT_IDENTIFICATION_POOL: PickChoiceItem[] = [
         label: 'Pillow',
         asset_key: 'pillow',
         category: 'household',
+    },
+    {
+        id: 'obj-broom',
+        label: 'Broom',
+        asset_key: 'broom',
+        category: 'household',
+    },
+
+    // ANIMALS
+    {
+        id: 'obj-dog',
+        label: 'Dog',
+        asset_key: 'dog',
+        category: 'animals',
+    },
+    {
+        id: 'obj-cat',
+        label: 'Cat',
+        asset_key: 'cat',
+        category: 'animals',
+    },
+    {
+        id: 'obj-cow',
+        label: 'Cow',
+        asset_key: 'cow',
+        category: 'animals',
+    },
+    {
+        id: 'obj-duck',
+        label: 'Duck',
+        asset_key: 'duck',
+        category: 'animals',
+    },
+    {
+        id: 'obj-bird',
+        label: 'Bird',
+        asset_key: 'bird',
+        category: 'animals',
+    },
+    {
+        id: 'obj-fish',
+        label: 'Fish',
+        asset_key: 'fish',
+        category: 'animals',
+    },
+    {
+        id: 'obj-lion',
+        label: 'Lion',
+        asset_key: 'lion',
+        category: 'animals',
+    },
+    {
+        id: 'obj-elephant',
+        label: 'Elephant',
+        asset_key: 'elephant',
+        category: 'animals',
+    },
+
+    // BODY PARTS
+    {
+        id: 'obj-eye',
+        label: 'Eye',
+        asset_key: 'eye',
+        category: 'body_parts',
+    },
+    {
+        id: 'obj-ear',
+        label: 'Ear',
+        asset_key: 'ear',
+        category: 'body_parts',
+    },
+    {
+        id: 'obj-hand',
+        label: 'Hand',
+        asset_key: 'hand',
+        category: 'body_parts',
+    },
+    {
+        id: 'obj-feet',
+        label: 'Feet',
+        asset_key: 'feet',
+        category: 'body_parts',
+    },
+
+    // EMOTIONS
+    {
+        id: 'obj-happy',
+        label: 'Happy',
+        asset_key: 'happy',
+        category: 'emotions',
+    },
+    {
+        id: 'obj-sad',
+        label: 'Sad',
+        asset_key: 'sad',
+        category: 'emotions',
+    },
+    {
+        id: 'obj-angry',
+        label: 'Angry',
+        asset_key: 'angry',
+        category: 'emotions',
+    },
+
+    // VEHICLES
+    {
+        id: 'obj-car',
+        label: 'Car',
+        asset_key: 'car',
+        category: 'vehicles',
+    },
+    {
+        id: 'obj-bus',
+        label: 'Bus',
+        asset_key: 'bus',
+        category: 'vehicles',
+    },
+    {
+        id: 'obj-bicycle',
+        label: 'Bicycle',
+        asset_key: 'bicycle',
+        category: 'vehicles',
+    },
+    {
+        id: 'obj-plane',
+        label: 'Airplane',
+        asset_key: 'plane',
+        category: 'vehicles',
+    },
+    {
+        id: 'obj-train',
+        label: 'Train',
+        asset_key: 'train',
+        category: 'vehicles',
     },
 ];
