@@ -35,7 +35,8 @@ type ActivityType =
   | 'bubble'
   | 'pick-n-choose'
   | 'sequencing'
-  | 'turn-taking';
+  | 'turn-taking'
+  | 'counting';
 
 export default function StudentHome() {
   const router = useRouter();
@@ -264,6 +265,11 @@ export default function StudentHome() {
     return normalizedPath === 'turntaking';
   };
 
+  const isCountingPath = (path: string) => {
+    const lower = path.toLowerCase();
+    return lower.includes('count') || lower.includes('basket');
+  };
+
   const navigateToLesson = (
     activityType: ActivityType
   ) => {
@@ -294,6 +300,10 @@ export default function StudentHome() {
 
       if (activityType === 'turn-taking') {
         return isTurnTakingPath(path);
+      }
+
+      if (activityType === 'counting') {
+        return isCountingPath(path);
       }
 
       return false;

@@ -4,6 +4,7 @@ import DragDropActivity from '@/activities/drag-drop/components/dragdrop-activit
 import BubbleActivity from '@/activities/bubble-pop/components/bubble-activity';
 import PickChoiceActivity from '@/activities/pick-n-choose/components/pick-n-choose-activity';
 import SequencingActivity from '@/activities/sequencing/components/sequencing-activity';
+import CountingActivity from '@/activities/counting/components/counting-activity';
 
 type ActivityRendererProps = {
     activity: any;
@@ -15,6 +16,18 @@ type ActivityRendererProps = {
 
 export default function ActivityRenderer({ activity, onComplete, onFeedback, onIncorrectAttempt, hintSignal }: ActivityRendererProps) {
     const activityType = (activity.type || activity.content_data?.type || activity.category || '').toLowerCase();
+
+    if (activityType.includes('count') || activityType.includes('basket')) {
+        return (
+            <CountingActivity
+                contentData={activity.content_data}
+                onComplete={onComplete}
+                onFeedback={onFeedback}
+                onIncorrectAttempt={onIncorrectAttempt}
+                hintSignal={hintSignal}
+            />
+        );
+    }
 
     if (activityType.includes('sequenc')) {
         return (
@@ -101,6 +114,18 @@ export default function ActivityRenderer({ activity, onComplete, onFeedback, onI
         case 'identification':
             return (
                 <PickChoiceActivity
+                    contentData={activity.content_data}
+                    onComplete={onComplete}
+                    onFeedback={onFeedback}
+                    onIncorrectAttempt={onIncorrectAttempt}
+                    hintSignal={hintSignal}
+                />
+            );
+
+        case 'counting':
+        case 'basket-counting':
+            return (
+                <CountingActivity
                     contentData={activity.content_data}
                     onComplete={onComplete}
                     onFeedback={onFeedback}

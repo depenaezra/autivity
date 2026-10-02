@@ -1,8 +1,7 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -15,21 +14,9 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
-import { RubricEvaluation, validateSession } from '../src/services/sessions';
-
-interface FeedbackModalProps {
-  visible: boolean;
-  sessionId: string | null;
-  activityTitle?: string;
-  studentName?: string;
-  onClose: () => void;
-  onSuccess?: (scores: RubricEvaluation, feedback: string) => void;
-  isReadOnly?: boolean;
-  isEditing?: boolean;
-  initialScores?: RubricEvaluation;
-  initialFeedback?: string;
-  validatedAt?: string;
-}
+import { RubricEvaluation, validateSession } from '@/src/services/sessions';
+import { speakInstruction } from '@/src/utils/speech';
+import { TurnTakingPlayer } from '../types';
 
 export const RUBRIC_CRITERIA = [
   { key: 'looking_at_objects', title: 'Looking at Objects', icon: 'eye' },
@@ -39,7 +26,17 @@ export const RUBRIC_CRITERIA = [
   { key: 'completed_work', title: 'Completed Work', icon: 'check-circle' },
 ] as const;
 
-export const RUBRIC_SCALE: Record<number, { label: string; description: string; color: string; bgColor: string; borderColor: string; iconName: keyof typeof Ionicons.glyphMap }> = {
+export const RUBRIC_SCALE: Record<
+  number,
+  {
+    label: string;
+    description: string;
+    color: string;
+    bgColor: string;
+    borderColor: string;
+    iconName: keyof typeof Ionicons.glyphMap;
+  }
+> = {
   0: {
     label: 'Try again',
     description: 'The task will be repeated by the pupil',
@@ -82,118 +79,144 @@ export const RUBRIC_SCALE: Record<number, { label: string; description: string; 
   },
 };
 
-export default function FeedbackModal({
+export interface TeacherDualEvaluationResult {
+  p1: { scores: RubricEvaluation; feedback: string };
+  p2: { scores: RubricEvaluation; feedback: string };
+}
+
+interface DualFeedbackModalProps {
+  visible: boolean;
+  player1: TurnTakingPlayer;
+  player2: TurnTakingPlayer;
+  session1Id: string | null;
+  session2Id: string | null;
+  categoryTitle?: string;
+  onClose: () => void;
+  onComplete: (evaluations: TeacherDualEvaluationResult) => void;
+}
+
+const DEFAULT_SCORES: RubricEvaluation = {
+  looking_at_objects: 4,
+  concentrating: 4,
+  performing_task: 4,
+  following_instructions: 4,
+  completed_work: 4,
+};
+
+export default function DualFeedbackModal({
   visible,
-  sessionId,
-  activityTitle,
-  studentName,
+  player1,
+  player2,
+  session1Id,
+  session2Id,
+  categoryTitle = 'Tracing',
   onClose,
-  onSuccess,
-  isReadOnly = false,
-  isEditing = false,
-  initialScores,
-  initialFeedback,
-  validatedAt,
-}: FeedbackModalProps) {
+  onComplete,
+}: DualFeedbackModalProps) {
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
 
+  // Active student evaluation: 0 = Player 1, 1 = Player 2
+  const [currentStudentIndex, setCurrentStudentIndex] = useState<0 | 1>(0);
   const [step, setStep] = useState<'draft' | 'review'>('draft');
-  const [scores, setScores] = useState<RubricEvaluation>({
-    looking_at_objects: 4,
-    concentrating: 4,
-    performing_task: 4,
-    following_instructions: 4,
-    completed_work: 4,
-  });
-  const [teacherFeedback, setTeacherFeedback] = useState('');
+
+  // Player 1 evaluation state
+  const [p1Scores, setP1Scores] = useState<RubricEvaluation>({ ...DEFAULT_SCORES });
+  const [p1Feedback, setP1Feedback] = useState('');
+  const [p1Submitted, setP1Submitted] = useState(false);
+
+  // Player 2 evaluation state
+  const [p2Scores, setP2Scores] = useState<RubricEvaluation>({ ...DEFAULT_SCORES });
+  const [p2Feedback, setP2Feedback] = useState('');
+  const [p2Submitted, setP2Submitted] = useState(false);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
-  const scrollViewRef = useRef<ScrollView>(null);
 
-  // Track keyboard height to adjust scroll padding
-  useEffect(() => {
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-
-    const showSub = Keyboard.addListener(showEvent, (e) => {
-      setKeyboardHeight(e.endCoordinates.height);
-    });
-    const hideSub = Keyboard.addListener(hideEvent, () => {
-      setKeyboardHeight(0);
-    });
-
-    return () => {
-      showSub.remove();
-      hideSub.remove();
-    };
-  }, []);
-
+  // Reset when modal opens
   useEffect(() => {
     if (visible) {
-      if (isReadOnly) {
-        setStep('review');
-        if (initialScores) {
-          setScores(initialScores);
-        }
-        if (initialFeedback !== undefined && initialFeedback !== null) {
-          setTeacherFeedback(initialFeedback);
-        }
-      } else if (isEditing) {
-        setStep('draft');
-        if (initialScores) {
-          setScores(initialScores);
-        }
-        if (initialFeedback !== undefined && initialFeedback !== null) {
-          setTeacherFeedback(initialFeedback);
-        }
-      } else {
-        setStep('draft');
-        setScores({
-          looking_at_objects: 4,
-          concentrating: 4,
-          performing_task: 4,
-          following_instructions: 4,
-          completed_work: 4,
-        });
-        setTeacherFeedback('');
-      }
+      setCurrentStudentIndex(0);
+      setStep('draft');
+      setP1Scores({ ...DEFAULT_SCORES });
+      setP1Feedback('');
+      setP1Submitted(false);
+      setP2Scores({ ...DEFAULT_SCORES });
+      setP2Feedback('');
+      setP2Submitted(false);
       setIsSubmitting(false);
+
+      if (player1?.name) {
+        speakInstruction(`Teacher evaluation for ${player1.name}. Please select your ratings.`);
+      }
     }
-  }, [visible, sessionId, isReadOnly, isEditing, initialScores, initialFeedback]);
+  }, [visible, player1?.name]);
+
+  const currentStudent = currentStudentIndex === 0 ? player1 : player2;
+  const currentSessionId = currentStudentIndex === 0 ? session1Id : session2Id;
+  const currentScores = currentStudentIndex === 0 ? p1Scores : p2Scores;
+  const currentFeedback = currentStudentIndex === 0 ? p1Feedback : p2Feedback;
 
   const handleScoreSelect = (key: keyof RubricEvaluation, score: number) => {
-    setScores((prev) => ({
-      ...prev,
-      [key]: score,
-    }));
+    if (currentStudentIndex === 0) {
+      setP1Scores((prev) => ({ ...prev, [key]: score }));
+    } else {
+      setP2Scores((prev) => ({ ...prev, [key]: score }));
+    }
   };
 
-  const handleConfirmAndSend = async () => {
-    if (!sessionId) {
-      Alert.alert('Error', 'No active session found to validate.');
-      return;
+  const handleFeedbackChange = (text: string) => {
+    if (currentStudentIndex === 0) {
+      setP1Feedback(text);
+    } else {
+      setP2Feedback(text);
     }
+  };
 
+  const handleConfirmAndSendCurrentStudent = async () => {
     setIsSubmitting(true);
+
     try {
-      if (!sessionId.startsWith('mock-') && !sessionId.startsWith('local-')) {
-        await validateSession(sessionId, scores, teacherFeedback.trim(), isEditing);
+      if (currentSessionId) {
+        await validateSession(
+          currentSessionId,
+          currentScores,
+          currentFeedback.trim()
+        );
       }
-      setIsSubmitting(false);
-      onSuccess?.(scores, teacherFeedback.trim());
-      onClose();
+
+      if (currentStudentIndex === 0) {
+        // Player 1 submitted successfully -> proceed to Player 2
+        setP1Submitted(true);
+        setIsSubmitting(false);
+        setCurrentStudentIndex(1);
+        setStep('draft');
+
+        speakInstruction(`Great! Now please evaluate ${player2.name}.`);
+      } else {
+        // Player 2 submitted successfully -> all done!
+        setP2Submitted(true);
+        setIsSubmitting(false);
+
+        speakInstruction('Both teacher evaluations have been saved successfully!');
+
+        onComplete({
+          p1: { scores: p1Scores, feedback: p1Feedback },
+          p2: { scores: p2Scores, feedback: p2Feedback },
+        });
+        onClose();
+      }
     } catch (error: any) {
       setIsSubmitting(false);
-      Alert.alert('Submission Failed', error.message || 'Could not save feedback to database.');
+      Alert.alert(
+        'Submission Failed',
+        error.message || 'Could not save feedback to database.'
+      );
     }
   };
 
-  const totalPoints = Object.values(scores).reduce((sum, val) => sum + val, 0);
+  const totalPoints = Object.values(currentScores).reduce((sum, val) => sum + val, 0);
 
   if (!visible) return null;
-
-  const isKeyboardOpen = keyboardHeight > 0;
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -206,36 +229,103 @@ export default function FeedbackModal({
           style={{
             width: '100%',
             maxWidth: isTablet ? 700 : undefined,
-            maxHeight: isKeyboardOpen ? (isTablet ? '90%' : '94%') : (isTablet ? '85%' : '90%'),
+            maxHeight: isTablet ? '85%' : '90%',
           }}
           className="bg-white rounded-[28px] border-[3px] border-[#D1D5DB] border-b-[6px] shadow-2xl overflow-hidden flex-col flex-1"
         >
-          {/* Modal Header */}
+          {/* Modal Header (Exact same design and tokens as standard FeedbackModal) */}
           <View className="bg-[#F5F8FA] px-6 py-5 border-b border-[#E5E7EB] flex-row items-center justify-between">
             <View className="flex-1 mr-4">
+              {/* 2-Student Progression Pills */}
+              <View className="flex-row items-center gap-2 mb-1.5">
+                <View
+                  className={`px-3 py-1 rounded-full border flex-row items-center gap-1.5 ${
+                    currentStudentIndex === 0
+                      ? 'bg-[#EBF5FF] border-[#62A9E6]'
+                      : p1Submitted
+                      ? 'bg-[#ECFDF5] border-[#10B981]'
+                      : 'bg-[#F3F4F6] border-[#D1D5DB]'
+                  }`}
+                >
+                  <Ionicons
+                    name={p1Submitted ? 'checkmark-circle' : 'person'}
+                    size={13}
+                    color={
+                      p1Submitted
+                        ? '#10B981'
+                        : currentStudentIndex === 0
+                        ? '#2563EB'
+                        : '#6B7280'
+                    }
+                  />
+                  <Text
+                    className={`font-quicksand-bold text-xs ${
+                      currentStudentIndex === 0
+                        ? 'text-[#2563EB]'
+                        : p1Submitted
+                        ? 'text-[#10B981]'
+                        : 'text-[#6B7280]'
+                    }`}
+                  >
+                    1. {player1.name} {p1Submitted ? '✓' : ''}
+                  </Text>
+                </View>
+
+                <Ionicons name="arrow-forward" size={12} color="#9CA3AF" />
+
+                <View
+                  className={`px-3 py-1 rounded-full border flex-row items-center gap-1.5 ${
+                    currentStudentIndex === 1
+                      ? 'bg-[#EBF5FF] border-[#62A9E6]'
+                      : p2Submitted
+                      ? 'bg-[#ECFDF5] border-[#10B981]'
+                      : 'bg-[#F3F4F6] border-[#D1D5DB]'
+                  }`}
+                >
+                  <Ionicons
+                    name={p2Submitted ? 'checkmark-circle' : 'person'}
+                    size={13}
+                    color={
+                      p2Submitted
+                        ? '#10B981'
+                        : currentStudentIndex === 1
+                        ? '#2563EB'
+                        : '#6B7280'
+                    }
+                  />
+                  <Text
+                    className={`font-quicksand-bold text-xs ${
+                      currentStudentIndex === 1
+                        ? 'text-[#2563EB]'
+                        : p2Submitted
+                        ? 'text-[#10B981]'
+                        : 'text-[#6B7280]'
+                    }`}
+                  >
+                    2. {player2.name} {p2Submitted ? '✓' : ''}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Title & Step Badge */}
               <View className="flex-row items-center gap-2">
                 <Text className="font-fredoka-one text-2xl text-[#4B5563]">
-                  {isEditing
-                    ? step === 'draft'
-                      ? 'Edit Evaluation Rubric'
-                      : 'Review Updated Evaluation'
-                    : isReadOnly
-                    ? 'Teacher Evaluation Review'
-                    : step === 'draft'
+                  {step === 'draft'
                     ? 'Teacher Evaluation Rubric'
                     : 'Review & Confirm Evaluation'}
                 </Text>
-                {!isReadOnly && (
-                  <View className="bg-[#EBF5FF] border border-[#A3CFF1] px-2.5 py-0.5 rounded-full">
-                    <Text className="font-quicksand-bold text-[#62A9E6] text-xs uppercase tracking-wider">
-                      {step === 'draft' ? 'Step 1 of 2' : 'Step 2 of 2'}
-                    </Text>
-                  </View>
-                )}
+                <View className="bg-[#EBF5FF] border border-[#A3CFF1] px-2.5 py-0.5 rounded-full">
+                  <Text className="font-quicksand-bold text-[#62A9E6] text-xs uppercase tracking-wider">
+                    Student {currentStudentIndex + 1} of 2 • {step === 'draft' ? 'Step 1 of 2' : 'Step 2 of 2'}
+                  </Text>
+                </View>
               </View>
-              <Text className="font-quicksand-medium text-[#6B7280] text-sm mt-1" numberOfLines={1}>
-                {studentName ? `Learner: ${studentName}` : 'Student Evaluation'}
-                {activityTitle ? ` • Session: ${activityTitle}` : ''}
+
+              <Text
+                className="font-quicksand-medium text-[#6B7280] text-sm mt-1"
+                numberOfLines={1}
+              >
+                Learner: <Text className="font-quicksand-bold text-[#4B5563]">{currentStudent.name}</Text> ({currentStudentIndex === 0 ? 'Player 1' : 'Player 2'}) • Session: Turn-Taking ({categoryTitle})
               </Text>
             </View>
 
@@ -250,26 +340,22 @@ export default function FeedbackModal({
 
           {/* Scrollable Content Body */}
           <ScrollView
-            ref={scrollViewRef}
             className="flex-1 px-6 py-5"
-            contentContainerStyle={{
-              paddingBottom: 36,
-              flexGrow: 1,
-            }}
+            contentContainerStyle={{ paddingBottom: 32 }}
             showsVerticalScrollIndicator={true}
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="none"
+            keyboardShouldPersistTaps="always"
             bounces={false}
           >
             {step === 'draft' ? (
               <View className="gap-6 pb-6">
                 <Text className="font-quicksand-bold text-[#6B7280] text-sm">
-                  Select a score (0 - 4) for each rubric criterion below:
+                  Select a score (0 - 4) for each rubric criterion below for{' '}
+                  <Text className="text-[#2563EB]">{currentStudent.name}</Text>:
                 </Text>
 
-                {/* 5 Rubric Criteria Cards */}
+                {/* 5 Rubric Criteria Cards (Identical to standard FeedbackModal) */}
                 {RUBRIC_CRITERIA.map((item) => {
-                  const currentScore = scores[item.key as keyof RubricEvaluation];
+                  const currentScore = currentScores[item.key as keyof RubricEvaluation];
                   const scaleInfo = RUBRIC_SCALE[currentScore];
 
                   return (
@@ -312,7 +398,9 @@ export default function FeedbackModal({
                             <TouchableOpacity
                               key={pointValue}
                               activeOpacity={0.8}
-                              onPress={() => handleScoreSelect(item.key as keyof RubricEvaluation, pointValue)}
+                              onPress={() =>
+                                handleScoreSelect(item.key as keyof RubricEvaluation, pointValue)
+                              }
                               className={`flex-1 py-3 rounded-xl border-[2px] items-center justify-center transition-all ${
                                 isSelected
                                   ? 'border-b-[4px]'
@@ -348,7 +436,12 @@ export default function FeedbackModal({
                           borderColor: scaleInfo.borderColor,
                         }}
                       >
-                        <Ionicons name={scaleInfo.iconName} size={20} color={scaleInfo.color} style={{ marginTop: 1 }} />
+                        <Ionicons
+                          name={scaleInfo.iconName}
+                          size={20}
+                          color={scaleInfo.color}
+                          style={{ marginTop: 1 }}
+                        />
                         <View className="flex-1">
                           <Text
                             className="font-quicksand-bold text-xs mb-0.5"
@@ -370,46 +463,36 @@ export default function FeedbackModal({
                   <View className="flex-row items-center gap-2 mb-2">
                     <Feather name="message-square" size={18} color="#62A9E6" />
                     <Text className="font-fredoka-one text-lg text-[#4B5563]">
-                      Teacher Remarks & Notes
+                      Teacher Remarks & Notes for {currentStudent.name}
                     </Text>
                   </View>
                   <Text className="font-quicksand-medium text-xs text-[#6B7280] mb-3">
                     Add free-form notes on pupil performance, focus level, or recommendations for parents.
                   </Text>
                   <TextInput
-                    placeholder="E.g., Great effort today! Student maintained steady focus when matching colors and responded very well to verbal prompts..."
+                    placeholder={`E.g., Great turn-taking effort today! ${currentStudent.name} maintained focus and waited patiently...`}
                     placeholderTextColor="#9CA3AF"
                     multiline
                     numberOfLines={4}
                     textAlignVertical="top"
                     className="w-full min-h-[110px] bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl p-3 text-sm font-quicksand-medium text-[#4B5563]"
-                    value={teacherFeedback}
-                    onChangeText={setTeacherFeedback}
-                    onFocus={() => {
-                      setTimeout(() => {
-                        scrollViewRef.current?.scrollToEnd({ animated: true });
-                      }, 150);
-                    }}
+                    value={currentFeedback}
+                    onChangeText={handleFeedbackChange}
                   />
                 </View>
               </View>
             ) : (
-              /* Review View */
+              /* Review View (Exact same design and tokens as standard FeedbackModal) */
               <View className="gap-6 pb-6">
                 <View className="bg-[#ECFDF5] border border-[#A7F3D0] rounded-2xl p-4 flex-row items-center justify-between">
                   <View className="flex-row items-center gap-3 flex-1">
                     <Ionicons name="shield-checkmark" size={32} color="#10B981" />
                     <View className="flex-1">
                       <Text className="font-fredoka-one text-lg text-[#065F46]">
-                        {isReadOnly ? 'Session Validated' : 'Ready to Validate Session'}
+                        Ready to Validate {currentStudent.name}'s Session
                       </Text>
                       <Text className="font-quicksand-medium text-xs text-[#047857]">
-                        {isReadOnly
-                          ? `Validated on ${validatedAt ? (() => {
-                              const date = new Date(validatedAt);
-                              return `${date.toLocaleDateString()} at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-                            })() : 'N/A'}`
-                          : 'Please double check the 0-4 score evaluations and notes below before finalizing.'}
+                        Please double check the 0-4 score evaluations and notes below before finalizing.
                       </Text>
                     </View>
                   </View>
@@ -424,10 +507,10 @@ export default function FeedbackModal({
                 {/* Summary of 5 Rubric Criteria */}
                 <View className="bg-white rounded-2xl border-[1.5px] border-[#E5E7EB] p-4 shadow-sm gap-3">
                   <Text className="font-fredoka-one text-base text-[#4B5563] border-b border-[#F3F4F6] pb-2">
-                    Rubric Criteria Evaluation Summary
+                    Rubric Criteria Evaluation Summary: {currentStudent.name}
                   </Text>
                   {RUBRIC_CRITERIA.map((item) => {
-                    const value = scores[item.key as keyof RubricEvaluation];
+                    const value = currentScores[item.key as keyof RubricEvaluation];
                     const info = RUBRIC_SCALE[value];
                     return (
                       <View
@@ -446,10 +529,16 @@ export default function FeedbackModal({
                         </View>
                         <View
                           className="px-3 py-1 rounded-full border flex-row items-center gap-1 self-start"
-                          style={{ backgroundColor: info.bgColor, borderColor: info.borderColor }}
+                          style={{
+                            backgroundColor: info.bgColor,
+                            borderColor: info.borderColor,
+                          }}
                         >
                           <Ionicons name={info.iconName} size={13} color={info.color} />
-                          <Text className="font-quicksand-bold text-xs" style={{ color: info.color }}>
+                          <Text
+                            className="font-quicksand-bold text-xs"
+                            style={{ color: info.color }}
+                          >
                             Score {value} • {info.label}
                           </Text>
                         </View>
@@ -463,9 +552,9 @@ export default function FeedbackModal({
                   <Text className="font-fredoka-one text-base text-[#4B5563] border-b border-[#F3F4F6] pb-2 mb-2">
                     Teacher Remarks Summary
                   </Text>
-                  {teacherFeedback.trim() ? (
+                  {currentFeedback.trim() ? (
                     <Text className="font-quicksand-medium text-sm text-[#4B5563] leading-5">
-                      &ldquo;{teacherFeedback.trim()}&rdquo;
+                      &ldquo;{currentFeedback.trim()}&rdquo;
                     </Text>
                   ) : (
                     <Text className="font-quicksand-medium text-sm text-[#9CA3AF] italic">
@@ -477,18 +566,9 @@ export default function FeedbackModal({
             )}
           </ScrollView>
 
-          {/* Modal Footer Actions */}
+          {/* Modal Footer Actions (Exact match to standard FeedbackModal) */}
           <View className="bg-[#F5F8FA] px-6 py-4 border-t border-[#E5E7EB] flex-row gap-3 items-center">
-            {isReadOnly ? (
-              <Pressable
-                onPress={onClose}
-                className="flex-1 h-13 py-3.5 bg-[#62A9E6] border border-[#4895D6] border-b-[4px] rounded-full items-center justify-center active:bg-[#5298D4]"
-              >
-                <Text className="font-fredoka-regular text-white text-lg">
-                  Close
-                </Text>
-              </Pressable>
-            ) : step === 'draft' ? (
+            {step === 'draft' ? (
               <>
                 {/* Do Later / Cancel Button */}
                 <Pressable
@@ -507,9 +587,7 @@ export default function FeedbackModal({
                   disabled={isSubmitting}
                   className="flex-1 h-13 py-3.5 bg-[#62A9E6] border border-[#4895D6] border-b-[4px] rounded-full items-center justify-center active:bg-[#5298D4]"
                 >
-                  <Text className="font-fredoka-regular text-white text-lg">
-                    Next
-                  </Text>
+                  <Text className="font-fredoka-regular text-white text-lg">Next</Text>
                 </Pressable>
               </>
             ) : (
@@ -525,19 +603,27 @@ export default function FeedbackModal({
                   </Text>
                 </Pressable>
 
-                {/* Confirm & Send to Parent Button */}
+                {/* Confirm & Send Button */}
                 <Pressable
-                  onPress={handleConfirmAndSend}
+                  onPress={handleConfirmAndSendCurrentStudent}
                   disabled={isSubmitting}
                   className="flex-[1.4] h-13 py-3.5 bg-[#10B981] border border-[#059669] border-b-[4px] rounded-full items-center justify-center flex-row gap-2 active:bg-[#059669]"
                 >
                   {isSubmitting ? (
                     <ActivityIndicator color="white" size="small" />
                   ) : (
-                    <Ionicons name="send" size={18} color="white" />
+                    <Ionicons
+                      name={currentStudentIndex === 0 ? 'arrow-forward' : 'send'}
+                      size={18}
+                      color="white"
+                    />
                   )}
                   <Text className="font-fredoka-regular text-white text-lg">
-                    {isSubmitting ? (isEditing ? 'Saving...' : 'Sending...') : (isEditing ? 'Save Changes' : 'Confirm & Send to Parent')}
+                    {isSubmitting
+                      ? 'Saving...'
+                      : currentStudentIndex === 0
+                      ? `Save & Evaluate ${player2.name}`
+                      : 'Confirm & Send to Parent'}
                   </Text>
                 </Pressable>
               </>

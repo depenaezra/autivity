@@ -349,60 +349,70 @@ export default function SetManager({
             const subCategory = initialPool[0]?.sub_category || initialPool[0]?.path || initialPool[0]?.title || undefined;
             let startingActivity: any = null;
 
-            // Step 2: Fetch student's historical baseline
-            const baseline = studentId ? await getStudentHistoricalBaseline(studentId, category, subCategory) : null;
+            const isCounting = initialPool[0]?.category?.toLowerCase().includes('count') || initialPool[0]?.path?.toLowerCase().includes('count');
 
-            if (baseline && baseline.lastPath) {
-                // SCENARIO B (History Exists):
-                // 1. Find historical activity matching lastPath string
-                const historicalActivity = initialPool.find(
-                    (a) => a.path === baseline.lastPath || a.path?.toLowerCase() === baseline.lastPath.toLowerCase()
-                );
+            if (isCounting) {
+                // User requirement: "random (2,3,4) on first"
+                const initialChoices = [2, 3, 4];
+                const randomChoice = initialChoices[Math.floor(Math.random() * initialChoices.length)];
+                const matching = initialPool.filter((a) => a.difficulty_level === randomChoice);
+                startingActivity = matching.length > 0
+                    ? matching[Math.floor(Math.random() * matching.length)]
+                    : initialPool[0];
+            } else {
+                // Step 2: Fetch student's historical baseline
+                const baseline = studentId ? await getStudentHistoricalBaseline(studentId, category, subCategory) : null;
 
-                // SAFETY FALLBACK CHECK: If historicalActivity exists in today's activityPool
-                if (historicalActivity && typeof historicalActivity.difficulty_level === 'number') {
-                    const histDiff = historicalActivity.difficulty_level;
+                if (baseline && baseline.lastPath) {
+                    // SCENARIO B (History Exists):
+                    // 1. Find historical activity matching lastPath string
+                    const historicalActivity = initialPool.find(
+                        (a) => a.path === baseline.lastPath || a.path?.toLowerCase() === baseline.lastPath.toLowerCase()
+                    );
 
-                    // 2. Extract unique difficulty levels and sort in ascending order
-                    const uniqueDiffs = Array.from(
-                        new Set(initialPool.map((a) => a.difficulty_level).filter((d) => typeof d === 'number'))
-                    ).sort((a: number, b: number) => a - b);
+                    // SAFETY FALLBACK CHECK: If historicalActivity exists in today's activityPool
+                    if (historicalActivity && typeof historicalActivity.difficulty_level === 'number') {
+                        const histDiff = historicalActivity.difficulty_level;
 
-                    // 3. Find index of historical difficulty
-                    const histIndex = uniqueDiffs.indexOf(histDiff);
+                        // 2. Extract unique difficulty levels and sort in ascending order
+                        const uniqueDiffs = Array.from(
+                            new Set(initialPool.map((a) => a.difficulty_level).filter((d) => typeof d === 'number'))
+                        ).sort((a: number, b: number) => a - b);
 
-                    if (histIndex !== -1) {
-                        // 4. Calculate today's starting index based on historical mistakes
-                        let targetIndex = histIndex;
-                        if (baseline.previousMistakes === 0) {
-                            targetIndex = histIndex + 1; // Mastery: start harder (+1)
-                        } else if (baseline.previousMistakes === 1) {
-                            targetIndex = histIndex; // Acceptable: maintain tier (0)
-                        } else if (baseline.previousMistakes >= 2) {
-                            targetIndex = histIndex - 1; // Struggle: start easier (-1)
+                        // 3. Find index of historical difficulty
+                        const histIndex = uniqueDiffs.indexOf(histDiff);
+
+                        if (histIndex !== -1) {
+                            // 4. Calculate today's starting index based on historical mistakes
+                            let targetIndex = histIndex;
+                            if (baseline.previousMistakes === 0) {
+                                targetIndex = histIndex + 1; // Mastery: start harder (+1)
+                            } else if (baseline.previousMistakes === 1) {
+                                targetIndex = histIndex; // Acceptable: maintain tier (0)
+                            } else if (baseline.previousMistakes >= 2) {
+                                targetIndex = histIndex - 1; // Struggle: start easier (-1)
+                            }
+
+                            // 5. Securely clamp target index between 0 and (uniqueDiffs.length - 1)
+                            const clampedIndex = Math.max(0, Math.min(uniqueDiffs.length - 1, targetIndex));
+                            const targetDifficulty = uniqueDiffs[clampedIndex];
+
+                            // 6. Find an unplayed activity matching targetDifficulty
+                            startingActivity = initialPool.find((a) => a.difficulty_level === targetDifficulty);
                         }
-
-                        // 5. Securely clamp target index between 0 and (uniqueDiffs.length - 1)
-                        const clampedIndex = Math.max(0, Math.min(uniqueDiffs.length - 1, targetIndex));
-                        const targetDifficulty = uniqueDiffs[clampedIndex];
-
-                        // 6. Find an unplayed activity matching targetDifficulty
-                        startingActivity = initialPool.find((a) => a.difficulty_level === targetDifficulty);
                     }
                 }
-                // SAFETY FALLBACK: If historicalActivity is not found in initialPool, startingActivity remains null
-                // and gracefully falls through to Scenario A below!
-            }
 
-            // SCENARIO A (No History OR Safety Fallback triggered):
-            if (!startingActivity) {
-                const levels = initialPool
-                    .map((a) => a.difficulty_level)
-                    .filter((d) => typeof d === 'number');
-                const lowestDiff = levels.length > 0 ? Math.min(...levels) : 21;
+                // SCENARIO A (No History OR Safety Fallback triggered):
+                if (!startingActivity) {
+                    const levels = initialPool
+                        .map((a) => a.difficulty_level)
+                        .filter((d) => typeof d === 'number');
+                    const lowestDiff = levels.length > 0 ? Math.min(...levels) : 21;
 
-                const matchingItems = initialPool.filter((a) => a.difficulty_level === lowestDiff);
-                startingActivity = matchingItems[Math.floor(Math.random() * matchingItems.length)] || initialPool[0];
+                    const matchingItems = initialPool.filter((a) => a.difficulty_level === lowestDiff);
+                    startingActivity = matchingItems[Math.floor(Math.random() * matchingItems.length)] || initialPool[0];
+                }
             }
 
             if (isMounted && startingActivity) {
@@ -798,6 +808,19 @@ export default function SetManager({
         }
     };
 
+    // Auto-advance for counting activity after the praise word is spoken ("after every count it it will prompt a good job word then proceed to next number")
+    useEffect(() => {
+        const isCounting =
+            currentActivity?.category?.toLowerCase().includes('count') ||
+            currentActivity?.path?.toLowerCase().includes('count');
+        if (isCounting && isActivityDone && successMode && !isSetComplete) {
+            const timer = setTimeout(() => {
+                handleCheckPress();
+            }, 2200);
+            return () => clearTimeout(timer);
+        }
+    }, [isActivityDone, successMode, isSetComplete, currentActivity, completedMetrics]);
+
     // CHECK / Next Activity double-click transition logic
     const handleCheckPress = async () => {
         if (!isActivityDone || !completedMetrics || !currentActivity || isSavingRef.current || isSetComplete) return;
@@ -818,21 +841,28 @@ export default function SetManager({
             // 2. Locate current difficulty index
             const currentIndex = uniqueDiffs.indexOf(currentDiff);
 
-            // 3. Shift index based on mistakes count
+            const isCountingActivity =
+                currentActivity.category?.toLowerCase().includes('count') ||
+                currentActivity.path?.toLowerCase().includes('count') ||
+                currentTask?.type === 'counting';
+            // User requirement: "if kid finished it under 1 minute then harder when 1 min above then easier"
+            const isSlow = isCountingActivity ? timeSpent >= 60 : false;
+
+            // 3. Shift index based on performance (mistakes & speed)
             let nextIndex = currentIndex;
-            if (mistakes === 0) {
-                nextIndex = currentIndex + 1; // Upshift tier for perfect mastery
+            if (mistakes === 0 && !isSlow) {
+                nextIndex = currentIndex + 1; // Upshift tier for fast perfect mastery
+            } else if (mistakes >= 2 || (isCountingActivity && (isSlow || mistakes >= 1))) {
+                nextIndex = currentIndex - 1; // Bailout downgrade tier if slower or struggled
             } else if (mistakes === 1) {
                 nextIndex = currentIndex; // Maintain tier for acceptable performance
-            } else if (mistakes >= 2) {
-                nextIndex = currentIndex - 1; // Bailout downgrade tier to prevent student frustration
             }
 
             // 4. Clamp index securely
             const clampedIndex = Math.max(0, Math.min(uniqueDiffs.length - 1, nextIndex));
             const nextDiff = uniqueDiffs[clampedIndex] !== undefined ? uniqueDiffs[clampedIndex] : currentDiff;
 
-            if (completedCount < 2) {
+            if (completedCount < 2 && !isCountingActivity) {
                 // Transitions for Activity 1 & 2
                 // 1. Try to find an unplayed activity of nextDiff difficulty level
                 let nextActivity = activityPool.find(
@@ -893,7 +923,7 @@ export default function SetManager({
                 } else {
                     console.warn("[SET_MANAGER] No more unplayed activities left in pool.");
                 }
-            } else if (completedCount === 2) {
+            } else if (completedCount === 2 || isCountingActivity) {
                 await persistSession({ isTimeout: false });
             }
         }
@@ -930,6 +960,7 @@ export default function SetManager({
         return {
             id: currentActivity.id || `set-activity-${completedCount}`,
             type: parsedContentData.type || (
+                (currentActivity.category?.toLowerCase().includes('count') || currentActivity.path?.toLowerCase().includes('count')) ? 'counting' :
                 currentActivity.category?.toLowerCase().includes('drag') ? 'drag-and-drop' :
                 (currentActivity.category?.toLowerCase().includes('bubble') || currentActivity.path?.toLowerCase().includes('bubble')) ? 'bubble-pop' :
                 'tracing'
@@ -983,6 +1014,7 @@ export default function SetManager({
     const isFrameless =
         currentTask?.type?.toLowerCase().includes('drag') ||
         currentTask?.type?.toLowerCase().includes('match') ||
+        currentTask?.type === 'counting' ||
         isPickActivity;
 
     return (
@@ -1023,7 +1055,7 @@ export default function SetManager({
                         <InstructionSpeakerButton
                             text={displayBearMessage}
                             language={language}
-                            autoPlay={true}
+                            autoPlay={currentTask?.type !== 'counting'}
                             size={isTablet ? 44 : 36}
                             iconSize={isTablet ? 22 : 18}
                         />
@@ -1072,7 +1104,7 @@ export default function SetManager({
                 </View>
 
                 {/* CHECK / NEXT ACTIVITY Button */}
-                {!isSetComplete && (
+                {!isSetComplete && currentTask?.type !== 'counting' && (
                     <View className="px-6 pb-4">
                         <Pressable
                             disabled={!isActivityDone || isSaving}
