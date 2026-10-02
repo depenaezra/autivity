@@ -175,7 +175,7 @@ export function ParentProgressTrend({ sessions, globalFilter, activityType = 'al
     <View className="flex-col mt-6">
       {/* Header and Filter Selector */}
       <View className="mb-4">
-        <View className={`${isTablet ? 'flex-row items-center justify-between' : 'flex-col items-start'} gap-3`}>
+        <View className="flex-col items-start gap-2.5">
           <View className="flex-row items-center gap-2">
             <Text className={`font-fredoka-one text-[#484A4B] ${isTablet ? 'text-[28px]' : 'text-[20px]'}`}>
               {isTl ? 'Takbo ng Pag-unlad' : 'Progress Over Time'}

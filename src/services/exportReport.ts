@@ -124,10 +124,8 @@ const generateTrendChartSvg = (sessions: ParentSessionRecord[]) => {
     return `<div style="background:#FFFFFF; border:2px solid #E2E8F0; border-radius:12px; padding:20px; text-align:center; color:#94A3B8; font-size:13px; font-weight:600;">No session trend data available for this timeframe.</div>`;
   }
 
-  const dateMap: Record<string, { sum: number; count: number }> = {};
-  const sorted = [...sessions].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-  sorted.forEach((s) => {
+  const groups: Record<string, number[]> = {};
+  sessions.forEach((s) => {
     let scorePct: number | null = null;
     if (s.status === 'validated' && s.rubricEvaluation) {
       const r = s.rubricEvaluation;
@@ -139,19 +137,30 @@ const generateTrendChartSvg = (sessions: ParentSessionRecord[]) => {
         (r.completed_work || 0);
       scorePct = Math.round((sum / 25) * 100);
     }
-    if (scorePct != null) {
-      const d = new Date(s.date);
-      const key = `${d.getMonth() + 1}/${d.getDate()}`;
-      if (!dateMap[key]) dateMap[key] = { sum: 0, count: 0 };
-      dateMap[key].sum += scorePct;
-      dateMap[key].count += 1;
+    if (scorePct !== null) {
+      const dateKey = new Date(s.date).toISOString().split('T')[0];
+      if (!groups[dateKey]) {
+        groups[dateKey] = [];
+      }
+      groups[dateKey].push(scorePct);
     }
   });
 
-  const chartData = Object.keys(dateMap).map((key) => ({
-    date: key,
-    score: Math.round(dateMap[key].sum / dateMap[key].count),
-  })).slice(-10);
+  const sortedDateKeys = Object.keys(groups).sort();
+  const chartData = sortedDateKeys.map((dateKey) => {
+    const scores = groups[dateKey];
+    const avg = scores.reduce((sum, val) => sum + val, 0) / scores.length;
+    const d = new Date(dateKey + 'T00:00:00');
+    const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+    const label = `${monthNames[d.getMonth()]} ${d.getDate()}`;
+    const shortDate = `${d.getMonth() + 1}/${d.getDate()}`;
+    return {
+      date: dateKey,
+      label,
+      shortDate,
+      score: Math.round(avg),
+    };
+  });
 
   if (chartData.length === 0) {
     return `<div style="background:#FFFFFF; border:2px solid #E2E8F0; border-radius:12px; padding:20px; text-align:center; color:#94A3B8; font-size:13px; font-weight:600;">No scored sessions available for this timeframe.</div>`;
@@ -192,7 +201,7 @@ const generateTrendChartSvg = (sessions: ParentSessionRecord[]) => {
   const points = chartData.map((d, idx) => {
     const x = paddingLeft + (chartData.length > 1 ? idx * step : chartW / 2);
     const y = paddingTop + (chartH - (d.score / 100) * chartH);
-    return { x, y, score: d.score, date: d.date };
+    return { x, y, score: d.score, date: d.shortDate, label: d.label };
   });
 
   const baselineY = paddingTop + chartH;
@@ -222,11 +231,14 @@ const generateTrendChartSvg = (sessions: ParentSessionRecord[]) => {
     areaPathD = `${linePathD} L ${lastPt.x.toFixed(1)} ${baselineY.toFixed(1)} L ${firstPt.x.toFixed(1)} ${baselineY.toFixed(1)} Z`;
   }
 
-  const dotsSvg = points.map((p) => `
-    <circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="4.5" fill="#62A9E6" stroke="#FFFFFF" stroke-width="2" />
-    <text x="${p.x.toFixed(1)}" y="${(p.y - 8).toFixed(1)}" font-size="11" font-weight="700" fill="#62A9E6" text-anchor="middle">${p.score}%</text>
-    <text x="${p.x.toFixed(1)}" y="${svgHeight - 8}" font-size="11" font-weight="600" fill="#64748B" text-anchor="middle">${p.date}</text>
-  `).join('');
+  const dotsSvg = points.map((p, idx) => {
+    const showLabel = points.length <= 10 || idx === 0 || idx === points.length - 1 || idx % Math.ceil(points.length / 8) === 0;
+    return `
+      <circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="4.5" fill="#62A9E6" stroke="#FFFFFF" stroke-width="2" />
+      <text x="${p.x.toFixed(1)}" y="${(p.y - 8).toFixed(1)}" font-size="11" font-weight="700" fill="#62A9E6" text-anchor="middle">${p.score}%</text>
+      ${showLabel ? `<text x="${p.x.toFixed(1)}" y="${svgHeight - 8}" font-size="11" font-weight="600" fill="#64748B" text-anchor="middle">${p.date}</text>` : ''}
+    `;
+  }).join('');
 
   const gridLines = [0, 25, 50, 75, 100].map((pct) => {
     const y = paddingTop + chartH - (pct / 100) * chartH;
@@ -304,8 +316,11 @@ const generateActivityPerformanceSvg = (sessions: ParentSessionRecord[]) => {
       scorePct = Math.round((sum / 25) * 100);
     }
     if (scorePct == null) return;
-    if (!byCategory[s.category]) byCategory[s.category] = [];
-    byCategory[s.category].push(scorePct);
+    const formatted = s.category
+      ? s.category.replace(/_/g, ' ').replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+      : 'Activity';
+    if (!byCategory[formatted]) byCategory[formatted] = [];
+    byCategory[formatted].push(scorePct);
   });
 
   const activityData = Object.entries(byCategory)
@@ -314,7 +329,7 @@ const generateActivityPerformanceSvg = (sessions: ParentSessionRecord[]) => {
       value: Math.round(scores.reduce((a, b) => a + b, 0) / scores.length),
     }))
     .sort((a, b) => b.value - a.value)
-    .slice(0, 5);
+    .slice(0, 6);
 
   if (activityData.length === 0) {
     return `<div style="background:#FFFFFF; border:2px solid #E2E8F0; border-radius:12px; padding:20px; text-align:center; color:#94A3B8; font-size:13px; font-weight:600;">No activity performance data available.</div>`;
@@ -547,8 +562,60 @@ const buildReportHtml = (
   const trendChartHtml = generateTrendChartSvg(data.sessions);
   const activityChartHtml = activityType !== 'classroom' ? generateActivityPerformanceSvg(data.sessions) : '';
   const skillChartHtml = generateSkillRadarSvg(stats.skillBreakdown);
-  const domainPracticeHtml = data.domainExposure && data.domainExposure.length > 0
-    ? generateClassDevelopmentalDomainPracticeSvg(data.domainExposure)
+
+  const computedDomainExposure: MasterDomainExposure[] =
+    data.domainExposure && data.domainExposure.length > 0
+      ? data.domainExposure
+      : (data.masterDomains || []).map((dom) => {
+          const subSkillCounts: Record<string, number> = {};
+          dom.subSkills.forEach((s) => {
+            subSkillCounts[s] = 0;
+          });
+
+          let totalScore = 0;
+          let evalCount = 0;
+
+          data.sessions.forEach((s) => {
+            const isRel = s.skill_domain?.some((tag) =>
+              dom.subSkills.some((sub) => sub.trim().toLowerCase() === tag.trim().toLowerCase())
+            );
+            if (isRel) {
+              s.skill_domain?.forEach((tag) => {
+                const matched = dom.subSkills.find(
+                  (sub) => sub.trim().toLowerCase() === tag.trim().toLowerCase()
+                );
+                if (matched) {
+                  subSkillCounts[matched] = (subSkillCounts[matched] || 0) + 1;
+                }
+              });
+              if (s.rubricEvaluation) {
+                const r = s.rubricEvaluation;
+                const rSum =
+                  (r.looking_at_objects || 0) +
+                  (r.concentrating || 0) +
+                  (r.performing_task || 0) +
+                  (r.following_instructions || 0) +
+                  (r.completed_work || 0);
+                totalScore += rSum / 5;
+                evalCount++;
+              }
+            }
+          });
+
+          return {
+            masterDomain: dom.name,
+            color: dom.color || '#62A9E6',
+            averageScore: evalCount > 0 ? totalScore / evalCount : null,
+            evaluatedCount: evalCount,
+            skills: Object.entries(subSkillCounts).map(([name, count]) => ({
+              name,
+              count,
+            })),
+          };
+        });
+
+  const domainPracticeHtml = computedDomainExposure.length > 0
+    ? generateClassDevelopmentalDomainPracticeSvg(computedDomainExposure)
     : '';
 
   const studentRecs = generateStudentRecommendations(
@@ -560,7 +627,7 @@ const buildReportHtml = (
         rubric_evaluation: s.rubricEvaluation,
         created_at: s.date.toISOString(),
       })),
-    data.domainExposure || [],
+    computedDomainExposure,
     student?.name || 'Learner'
   );
 
@@ -1390,22 +1457,6 @@ export const exportChildReportPdf = async (
   timeframeLabel?: string,
   activityType: ActivityTypeFilter = 'all'
 ) => {
-  if (data.student?.id) {
-    return exportStudentAnalyticsReportPdf(
-      data.student.id,
-      {
-        id: data.student.id,
-        name: data.student.name || 'Learner',
-        learnerCode: data.student.learner_code || 'AUT-000',
-        grade: data.classInfo?.grade || 'SPED',
-        lastSessionDate: null,
-        isLinked: true,
-      },
-      'overall',
-      timeframeLabel || 'Overall',
-      activityType
-    );
-  }
   const html = buildReportHtml(data, stats, timeframeLabel, activityType);
   const { uri } = await Print.printToFileAsync({ html });
 

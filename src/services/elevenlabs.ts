@@ -60,8 +60,8 @@ export const speakElevenLabs = async (
     onDone?: () => void,
     onError?: (err: any) => void
 ): Promise<boolean> => {
-    // Disabled for testing (uses native device voice)
-    const ENABLE_ELEVEN_LABS = false;
+    // Enabled for testing
+    const ENABLE_ELEVEN_LABS = true;
     if (!ENABLE_ELEVEN_LABS) {
         return false;
     }

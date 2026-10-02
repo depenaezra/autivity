@@ -206,9 +206,15 @@ export const uploadMaterial = async (
 };
 
 // Delete material from Database AND Storage
-export const deleteMaterial = async (id: string, filePath: string) => {
-    // 1. Delete the physical file from the bucket
-    await supabase.storage.from('materials').remove([filePath]);
+export const deleteMaterial = async (id: string, filePath?: string) => {
+    // 1. Delete the physical file from the bucket if filePath exists
+    if (filePath) {
+        try {
+            await supabase.storage.from('materials').remove([filePath]);
+        } catch (storageErr) {
+            console.warn('[STORAGE] Error deleting file from bucket:', storageErr);
+        }
+    }
 
     // 2. Delete the row from the database
     const { error } = await supabase.from('lesson_materials').delete().eq('id', id);

@@ -282,8 +282,8 @@ export default function LessonMaterialsScreen() {
 
   const handleDeleteMaterial = (item: LessonMaterial) => {
     Alert.alert(
-      'Delete Material',
-      `Are you sure you want to remove "${item.title}"? This cannot be undone.`,
+      'Delete Resource',
+      `Are you sure you want to delete "${item.title}"? This action cannot be undone.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -291,12 +291,18 @@ export default function LessonMaterialsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              if (item.file_path) {
-                await deleteMaterial(item.id, item.file_path);
-                setMaterials(materials.filter((m) => m.id !== item.id));
+              await deleteMaterial(item.id, item.file_path);
+              setMaterials((prev) => prev.filter((m) => m.id !== item.id));
+              if (previewMaterial?.id === item.id) {
+                setPreviewMaterial(null);
               }
+              if (editingMaterial?.id === item.id) {
+                setEditModalVisible(false);
+                setEditingMaterial(null);
+              }
+              Alert.alert('Resource Deleted', `"${item.title}" has been deleted successfully.`);
             } catch (error: any) {
-              Alert.alert('Delete Failed', error.message);
+              Alert.alert('Delete Failed', error.message || 'Failed to delete resource.');
             }
           },
         },
@@ -604,9 +610,18 @@ export default function LessonMaterialsScreen() {
                       <Text numberOfLines={2} className="font-fredoka-one text-xl text-[#4B5563]">{previewMaterial.title}</Text>
                     </View>
                   </View>
-                  <Pressable onPress={() => setPreviewMaterial(null)} className="p-1">
-                    <Ionicons name="close" size={26} color="#9CA3AF" />
-                  </Pressable>
+                  <View className="flex-row items-center gap-1.5">
+                    <Pressable 
+                      onPress={() => handleDeleteMaterial(previewMaterial)} 
+                      className="p-1.5 rounded-full active:bg-red-50"
+                      accessibilityLabel="Delete material"
+                    >
+                      <Feather name="trash-2" size={20} color="#FF3B3F" />
+                    </Pressable>
+                    <Pressable onPress={() => setPreviewMaterial(null)} className="p-1">
+                      <Ionicons name="close" size={26} color="#9CA3AF" />
+                    </Pressable>
+                  </View>
                 </View>
 
                 {/* Simulated Viewer Area */}

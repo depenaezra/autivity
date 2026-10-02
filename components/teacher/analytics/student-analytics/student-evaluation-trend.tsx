@@ -278,7 +278,7 @@ export default function StudentEvaluationTrend({ studentId, filter: externalFilt
     <View className="flex-col mt-6">
       {/* Header and Filter Selector */}
       <View className="mb-4">
-        <View className={`${isTablet ? 'flex-row items-center justify-between' : 'flex-col items-start'} gap-3`}>
+        <View className="flex-col items-start gap-3">
           <View className="flex-row items-center gap-2">
             <Text className={`font-fredoka-one text-[#484A4B] ${isTablet ? 'text-[32px]' : 'text-[22px]'}`}>
               Evaluation Trend

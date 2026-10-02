@@ -236,7 +236,7 @@ export default function Sessions({
     <View className="w-full mt-6 mb-12 pb-6">
       {/* Header and Filter Buttons */}
       <View className="mb-4">
-        <View className="flex-row flex-wrap items-center justify-between gap-4">
+        <View className="flex-col items-start gap-3">
           <View className="flex-row items-center gap-2">
             <Text className={`font-fredoka-one text-[#484A4B] ${isTablet ? 'text-[32px]' : 'text-[22px]'}`}>
               Completed Sessions

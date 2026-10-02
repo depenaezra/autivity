@@ -21,12 +21,11 @@ const quickFilters: { label: string; value: FilterPeriod; icon: keyof typeof Fea
   { label: 'All Time', value: 'overall', icon: 'layers' },
 ];
 
-const quarterOptions: { label: string; subLabel: string; key: 'full' | 'q1' | 'q2' | 'q3' | 'q4' }[] = [
-  { label: 'Full School Year', subLabel: 'Aug – Jul (All 4 Quarters)', key: 'full' },
-  { label: 'Quarter 1 (Q1)', subLabel: 'Aug – Oct', key: 'q1' },
-  { label: 'Quarter 2 (Q2)', subLabel: 'Nov – Jan', key: 'q2' },
-  { label: 'Quarter 3 (Q3)', subLabel: 'Feb – Apr', key: 'q3' },
-  { label: 'Quarter 4 (Q4)', subLabel: 'May – Jul', key: 'q4' },
+const quarterOptions: { label: string; subLabel: string; key: 'full' | 'q1' | 'q2' | 'q3' }[] = [
+  { label: 'Full School Year', subLabel: 'Jun 8 – Apr 8 (All 3 Quarters)', key: 'full' },
+  { label: 'Quarter 1 (Q1)', subLabel: 'Jun 8 – Sep 15', key: 'q1' },
+  { label: 'Quarter 2 (Q2)', subLabel: 'Sep 16 – Dec 18', key: 'q2' },
+  { label: 'Quarter 3 (Q3)', subLabel: 'Jan 4 – Apr 8', key: 'q3' },
 ];
 
 export function ParentFilterModal({
@@ -52,7 +51,7 @@ export function ParentFilterModal({
     return currentSYStartYear;
   });
 
-  const [selectedSubScope, setSelectedSubScope] = useState<'full' | 'q1' | 'q2' | 'q3' | 'q4'>(() => {
+  const [selectedSubScope, setSelectedSubScope] = useState<'full' | 'q1' | 'q2' | 'q3'>(() => {
     if (selectedFilter.startsWith('sy-')) {
       const parts = selectedFilter.replace('sy-', '').split('-');
       if (parts.length >= 3) {
@@ -86,7 +85,7 @@ export function ParentFilterModal({
     onClose();
   };
 
-  const handleApplyAcademic = (startYear: number, subScope: 'full' | 'q1' | 'q2' | 'q3' | 'q4') => {
+  const handleApplyAcademic = (startYear: number, subScope: 'full' | 'q1' | 'q2' | 'q3') => {
     const endYear = startYear + 1;
     const filterKey = `sy-${startYear}-${endYear}-${subScope}`;
     onSelectFilter(filterKey);

@@ -152,7 +152,7 @@ export function RecentActivitySection({ onEvaluationValidated, activityType = 'a
   return (
     <View className={`w-full ${isTablet ? 'mt-10' : 'mt-6'}`}>
       {/* Header section with Title & Filter Buttons */}
-      <View className={`${isTablet ? 'flex-row items-center justify-between px-12 mb-6' : 'flex-col items-start px-6 mb-4'} gap-3`}>
+      <View className={`flex-col items-start ${isTablet ? 'px-12 mb-6' : 'px-6 mb-4'} gap-3`}>
         <View className="flex-row items-center gap-2">
           <RecentIcon
             width={isTablet ? 32 : 22}

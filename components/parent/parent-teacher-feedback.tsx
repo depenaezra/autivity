@@ -201,63 +201,61 @@ export function ParentTeacherFeedback({
   return (
     <View className="flex-col mt-6 mb-12 pb-6">
       {/* Header with Title & Action Buttons (Range Filter + Download All) */}
-      <View className="mb-4">
-        <View className="flex-row flex-wrap items-center justify-between gap-2">
-          <Text className={`font-fredoka-one text-[#484A4B] ${isTablet ? 'text-[28px]' : 'text-[20px]'}`}>
-            Teacher Feedbacks
-          </Text>
+      <View className="mb-4 flex-col items-start gap-2.5">
+        <Text className={`font-fredoka-one text-[#484A4B] ${isTablet ? 'text-[28px]' : 'text-[20px]'}`}>
+          Teacher Feedbacks
+        </Text>
 
-          <View className="flex-row items-center gap-2 flex-wrap">
-            {/* Range Filter Selector Button */}
-            {onOpenFilterModal && (
-              <Pressable
-                onPress={onOpenFilterModal}
-                className="flex-row items-center justify-center gap-1.5 bg-white border-[2px] border-[#BBE8FB] px-3 h-[36px] rounded-xl active:scale-95 transition-transform"
-                style={{
-                  borderColor: '#BBE8FB',
-                  shadowColor: '#BBE8FB',
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 1,
-                  shadowRadius: 0,
-                  elevation: 2,
-                }}
-              >
-                <Feather name="calendar" size={13} color="#62A9E6" />
-                <Text className="font-fredoka-one text-[#62A9E6] text-[11px] uppercase" numberOfLines={1}>
-                  RANGE: {getFilterLabel(globalFilter || 'overall').toUpperCase()}
-                </Text>
-                <Feather name="chevron-down" size={13} color="#62A9E6" />
-              </Pressable>
-            )}
+        <View className="flex-row items-center gap-2 flex-wrap">
+          {/* Range Filter Selector Button */}
+          {onOpenFilterModal && (
+            <Pressable
+              onPress={onOpenFilterModal}
+              className="flex-row items-center justify-center gap-1.5 bg-white border-[2px] border-[#BBE8FB] px-3 h-[36px] rounded-xl active:scale-95 transition-transform"
+              style={{
+                borderColor: '#BBE8FB',
+                shadowColor: '#BBE8FB',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 1,
+                shadowRadius: 0,
+                elevation: 2,
+              }}
+            >
+              <Feather name="calendar" size={13} color="#62A9E6" />
+              <Text className="font-fredoka-one text-[#62A9E6] text-[11px] uppercase" numberOfLines={1}>
+                RANGE: {getFilterLabel(globalFilter || 'overall').toUpperCase()}
+              </Text>
+              <Feather name="chevron-down" size={13} color="#62A9E6" />
+            </Pressable>
+          )}
 
-            {/* Download All Reports Button */}
-            {feedbackList.length > 0 && (
-              <Pressable
-                onPress={handleDownloadAll}
-                disabled={isExportingAll}
-                className="flex-row items-center justify-center gap-1.5 bg-white border-[2px] border-[#BBE8FB] px-3 h-[36px] rounded-xl active:scale-95 transition-transform"
-                style={{
-                  borderColor: '#BBE8FB',
-                  shadowColor: '#BBE8FB',
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 1,
-                  shadowRadius: 0,
-                  elevation: 2,
-                }}
-              >
-                {isExportingAll ? (
-                  <ActivityIndicator size="small" color="#62A9E6" style={{ height: 16 }} />
-                ) : (
-                  <>
-                    <Feather name="download" size={13} color="#62A9E6" />
-                    <Text className="font-fredoka-one text-[#62A9E6] text-[11px] uppercase">
-                      DOWNLOAD ALL
-                    </Text>
-                  </>
-                )}
-              </Pressable>
-            )}
-          </View>
+          {/* Download All Reports Button */}
+          {feedbackList.length > 0 && (
+            <Pressable
+              onPress={handleDownloadAll}
+              disabled={isExportingAll}
+              className="flex-row items-center justify-center gap-1.5 bg-white border-[2px] border-[#BBE8FB] px-3 h-[36px] rounded-xl active:scale-95 transition-transform"
+              style={{
+                borderColor: '#BBE8FB',
+                shadowColor: '#BBE8FB',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 1,
+                shadowRadius: 0,
+                elevation: 2,
+              }}
+            >
+              {isExportingAll ? (
+                <ActivityIndicator size="small" color="#62A9E6" style={{ height: 16 }} />
+              ) : (
+                <>
+                  <Feather name="download" size={13} color="#62A9E6" />
+                  <Text className="font-fredoka-one text-[#62A9E6] text-[11px] uppercase">
+                    DOWNLOAD ALL
+                  </Text>
+                </>
+              )}
+            </Pressable>
+          )}
         </View>
       </View>
 

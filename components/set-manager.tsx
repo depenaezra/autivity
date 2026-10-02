@@ -488,6 +488,7 @@ export default function SetManager({
 
     // Handle feedback from activities
     const handleFeedback = (message: string) => {
+        if (isSetComplete || isSavingRef.current) return;
         setBearMessage(message);
         
         const isError = message.startsWith("Not quite") || 
@@ -506,6 +507,7 @@ export default function SetManager({
 
     // Callback caught from finished game loop
     const handleActivityComplete = (score: number, timeSpent: number, mistakes: number, hintsUsed?: number) => {
+        if (isSetComplete || isSavingRef.current) return;
         playCorrectSound(studentPreferences.sfx_enabled);
         setCompletedMetrics({ score, timeSpent, mistakes, hintsUsed: hintsUsed || 0 });
         // Immediately add activity finished score and mistakes to accumulators
@@ -526,6 +528,9 @@ export default function SetManager({
         if (isSavingRef.current || isSetComplete) return;
         isSavingRef.current = true;
         setIsSaving(true);
+        setIsSetComplete(true);
+        stopSpeech().catch(() => {});
+        stopBackgroundMusic();
 
         const isTimeout = options?.isTimeout ?? false;
         const currentCompletedCount = isTimeout ? completedCount : 3;
@@ -534,6 +539,18 @@ export default function SetManager({
         const finalScore = 15; // Always give 15 stars each session, no matter their performance
         const totalDuration = isTimeout ? 900 : Math.max(1, 900 - globalTimer); // unified elapsed global session time
         const allPaths = playedActivityPaths.length > 0 ? playedActivityPaths : (currentActivity?.path ? [currentActivity.path] : []);
+
+        if (isTimeout) {
+            const randomMsg = getRandomTimeUpMessage(language);
+            setBearMessage(randomMsg);
+        } else {
+            setCompletedCount(3);
+            setBearMessage(
+                language === 'tl'
+                    ? "Napakagaling! Natapos mo ang lahat ng 3 gawain! 🎉"
+                    : "Incredible job! You finished all 3 activities! 🎉"
+            );
+        }
 
         try {
             const payload: any = {
@@ -562,7 +579,7 @@ export default function SetManager({
 
             if (error) {
                 console.warn("[DATABASE] Supabase insert failed, trying fallback payload:", error.message);
-                const { is_timed_out, completed_count, ...fallbackPayload } = payload;
+                const { is_timed_out, completed_count, sub_category, ...fallbackPayload } = payload;
                 const { data: fbData, error: fbErr } = await supabase
                     .from('student_sessions')
                     .insert([fallbackPayload])
@@ -790,22 +807,7 @@ export default function SetManager({
             }
         }
 
-        if (isTimeout) {
-            setIsSetComplete(true);
-            const randomMsg = getRandomTimeUpMessage(language);
-            setBearMessage(randomMsg);
-            setIsSaving(false);
-        } else {
-            // Increment to 3, freeze global timer, and display visual confetti praise card
-            setCompletedCount(3);
-            setIsSetComplete(true);
-            setBearMessage(
-                language === 'tl'
-                    ? "Napakagaling! Natapos mo ang lahat ng 3 gawain! 🎉"
-                    : "Incredible job! You finished all 3 activities! 🎉"
-            );
-            setIsSaving(false);
-        }
+        setIsSaving(false);
     };
 
     // Auto-advance for counting activity after the praise word is spoken ("after every count it it will prompt a good job word then proceed to next number")
@@ -1055,7 +1057,7 @@ export default function SetManager({
                         <InstructionSpeakerButton
                             text={displayBearMessage}
                             language={language}
-                            autoPlay={currentTask?.type !== 'counting'}
+                            autoPlay={!isSetComplete && (currentTask?.type !== 'counting' || displayBearMessage.startsWith('💡') || displayBearMessage.startsWith('Hint'))}
                             size={isTablet ? 44 : 36}
                             iconSize={isTablet ? 22 : 18}
                         />
@@ -1093,13 +1095,15 @@ export default function SetManager({
                 {/* Tracing / Matching Area */}
                 <View className="flex-1 px-6 pb-6 mt-1">
                     <View className={isFrameless ? "flex-1" : "flex-1 bg-[#FCFCFC] border-[1.5px] border-[#EBE5E5] rounded-2xl overflow-hidden"}>
-                        <ActivityRenderer
-                            key={`${currentActivity.id}-${completedCount}`}
-                            activity={currentTask}
-                            onComplete={handleActivityComplete}
-                            onFeedback={handleFeedback}
-                            hintSignal={hintSignal}
-                        />
+                        {!isSetComplete && (
+                            <ActivityRenderer
+                                key={`${currentActivity.id}-${completedCount}`}
+                                activity={currentTask}
+                                onComplete={handleActivityComplete}
+                                onFeedback={handleFeedback}
+                                hintSignal={hintSignal}
+                            />
+                        )}
                     </View>
                 </View>
 

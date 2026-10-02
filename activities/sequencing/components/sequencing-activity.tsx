@@ -87,8 +87,11 @@ export default function SequencingActivity({
         const correctStep = currentRoutine.steps.find((s) => s.step_number === correctTargetStepNumber);
         if (correctStep) {
           const hintMsg = `Hint: Step ${correctTargetStepNumber} is "${correctStep.label}"!`;
-          onFeedback?.(hintMsg);
-          speakInstruction(hintMsg);
+          if (onFeedback) {
+            onFeedback(hintMsg);
+          } else {
+            speakInstruction(hintMsg);
+          }
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
         }
       }

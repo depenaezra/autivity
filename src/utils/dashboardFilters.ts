@@ -12,8 +12,10 @@ export type FilterPeriod =
 export function getCurrentSchoolYearStartYear(): number {
   const now = new Date();
   const year = now.getFullYear();
-  const month = now.getMonth(); // 0-indexed (0 = Jan, 7 = Aug)
-  return month >= 7 ? year : year - 1;
+  const month = now.getMonth(); // 0-indexed (0 = Jan, 5 = Jun)
+  const date = now.getDate();
+  // School year starts on June 8
+  return month > 5 || (month === 5 && date >= 8) ? year : year - 1;
 }
 
 export function getSchoolYearLabel(startYear: number): string {
@@ -108,28 +110,24 @@ export function getDateRangeForFilter(period: FilterPeriod): {
       if (!isNaN(startYear) && !isNaN(endYear)) {
         if (subScope === 'q1') {
           return {
-            startDate: new Date(startYear, 7, 1, 0, 0, 0), // Aug 1
-            endDate: new Date(startYear, 9, 31, 23, 59, 59), // Oct 31
+            startDate: new Date(startYear, 5, 8, 0, 0, 0, 0), // June 8
+            endDate: new Date(startYear, 8, 15, 23, 59, 59, 999), // September 15
           };
         } else if (subScope === 'q2') {
           return {
-            startDate: new Date(startYear, 10, 1, 0, 0, 0), // Nov 1
-            endDate: new Date(endYear, 0, 31, 23, 59, 59), // Jan 31
+            startDate: new Date(startYear, 8, 16, 0, 0, 0, 0), // September 16
+            endDate: new Date(startYear, 11, 18, 23, 59, 59, 999), // December 18
           };
         } else if (subScope === 'q3') {
           return {
-            startDate: new Date(endYear, 1, 1, 0, 0, 0), // Feb 1
-            endDate: new Date(endYear, 3, 30, 23, 59, 59), // Apr 30
-          };
-        } else if (subScope === 'q4') {
-          return {
-            startDate: new Date(endYear, 4, 1, 0, 0, 0), // May 1
-            endDate: new Date(endYear, 6, 31, 23, 59, 59), // Jul 31
+            startDate: new Date(endYear, 0, 4, 0, 0, 0, 0), // January 4
+            endDate: new Date(endYear, 3, 8, 23, 59, 59, 999), // April 8
           };
         } else {
+          // Full school year: June 8 to April 8
           return {
-            startDate: new Date(startYear, 7, 1, 0, 0, 0), // Aug 1
-            endDate: new Date(endYear, 6, 31, 23, 59, 59), // Jul 31
+            startDate: new Date(startYear, 5, 8, 0, 0, 0, 0), // June 8
+            endDate: new Date(endYear, 3, 8, 23, 59, 59, 999), // April 8
           };
         }
       }
@@ -138,26 +136,21 @@ export function getDateRangeForFilter(period: FilterPeriod): {
 
   // Fallback legacy quarters (assuming current school year)
   const currentSYStartYear = getCurrentSchoolYearStartYear();
-  if (['q1', 'q2', 'q3', 'q4'].includes(period)) {
+  if (['q1', 'q2', 'q3'].includes(period)) {
     if (period === 'q1') {
       return {
-        startDate: new Date(currentSYStartYear, 7, 1, 0, 0, 0),
-        endDate: new Date(currentSYStartYear, 9, 31, 23, 59, 59),
+        startDate: new Date(currentSYStartYear, 5, 8, 0, 0, 0, 0),
+        endDate: new Date(currentSYStartYear, 8, 15, 23, 59, 59, 999),
       };
     } else if (period === 'q2') {
       return {
-        startDate: new Date(currentSYStartYear, 10, 1, 0, 0, 0),
-        endDate: new Date(currentSYStartYear + 1, 0, 31, 23, 59, 59),
+        startDate: new Date(currentSYStartYear, 8, 16, 0, 0, 0, 0),
+        endDate: new Date(currentSYStartYear, 11, 18, 23, 59, 59, 999),
       };
     } else if (period === 'q3') {
       return {
-        startDate: new Date(currentSYStartYear + 1, 1, 1, 0, 0, 0),
-        endDate: new Date(currentSYStartYear + 1, 3, 30, 23, 59, 59),
-      };
-    } else {
-      return {
-        startDate: new Date(currentSYStartYear + 1, 4, 1, 0, 0, 0),
-        endDate: new Date(currentSYStartYear + 1, 6, 31, 23, 59, 59),
+        startDate: new Date(currentSYStartYear + 1, 0, 4, 0, 0, 0, 0),
+        endDate: new Date(currentSYStartYear + 1, 3, 8, 23, 59, 59, 999),
       };
     }
   }

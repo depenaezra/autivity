@@ -251,7 +251,7 @@ export function ParentActivityPerformance({ sessions = [], data: initialData, gl
     <View className="flex-col mt-6 w-full">
       {/* Header and Filter Selector */}
       <View className="mb-4">
-        <View className={`${isTablet ? 'flex-row items-center justify-between' : 'flex-col items-start'} gap-3`}>
+        <View className="flex-col items-start gap-2.5">
           <View className="flex-row items-center gap-2">
             <Text className={`font-fredoka-one text-[#484A4B] ${isTablet ? 'text-[28px]' : 'text-[20px]'}`}>
               {isTl ? 'Pagganap sa Bawat Aktibidad' : 'Activity Performance'}
