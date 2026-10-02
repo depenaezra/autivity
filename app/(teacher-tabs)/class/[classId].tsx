@@ -209,6 +209,15 @@ export default function ClassScreen() {
   };
 
   const handleDeleteClass = () => {
+    if (students && students.length > 0) {
+      Alert.alert(
+        'Cannot Delete Class',
+        `This class still has ${students.length} student${students.length > 1 ? 's' : ''}. Please move or remove all students before deleting this class.`,
+        [{ text: 'OK', style: 'default' }]
+      );
+      return;
+    }
+
     Alert.alert(
       'Delete Class',
       `Are you sure you want to permanently delete "${classDetails.name}"? This cannot be undone.`,
@@ -379,23 +388,31 @@ export default function ClassScreen() {
             onEditPress={() => {
               setLongPressedStudentId(null);
               setLongPressedStudentCoords(null);
-              setIsEditingStudent(true);
-              setAddStudentModalVisible(true);
+              setTimeout(() => {
+                setIsEditingStudent(true);
+                setAddStudentModalVisible(true);
+              }, 100);
             }}
             onAssignPress={() => {
               setLongPressedStudentId(null);
               setLongPressedStudentCoords(null);
-              setAssignModalVisible(true);
+              setTimeout(() => {
+                setAssignModalVisible(true);
+              }, 100);
             }}
             onMovePress={() => {
               setLongPressedStudentId(null);
               setLongPressedStudentCoords(null);
-              handleOpenMoveStudent();
+              setTimeout(() => {
+                handleOpenMoveStudent();
+              }, 100);
             }}
             onDeletePress={() => {
               setLongPressedStudentId(null);
               setLongPressedStudentCoords(null);
-              handleDeleteStudent();
+              setTimeout(() => {
+                handleDeleteStudent();
+              }, 100);
             }}
             onDeselectPress={() => {
               setLongPressedStudentId(null);
@@ -405,7 +422,9 @@ export default function ClassScreen() {
             onStartActivityPress={() => {
               setLongPressedStudentId(null);
               setLongPressedStudentCoords(null);
-              handleStartActivity();
+              setTimeout(() => {
+                handleStartActivity();
+              }, 100);
             }}
             isTablet={isTablet}
             coords={longPressedStudentCoords}

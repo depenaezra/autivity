@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Autivity: In-Session Adaptive Difficulty Flowchart</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #F8FAFC;
+            color: #1E293B;
+            margin: 0;
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        h1 {
+            font-family: 'Quicksand', sans-serif;
+            font-size: 32px;
+            font-weight: 700;
+            color: #1E293B;
+            margin: 0 0 8px 0;
+        }
+        p {
+            font-size: 16px;
+            color: #64748B;
+            margin: 0;
+        }
+        .diagram-card {
+            background: #FFFFFF;
+            border: 1px solid #E2E8F0;
+            border-radius: 20px;
+            padding: 36px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+            max-width: 1000px;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+        }
+        .legend {
+            margin-top: 28px;
+            display: flex;
+            gap: 24px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        .dot-green { background-color: #10B981; }
+        .dot-amber { background-color: #F59E0B; }
+        .dot-red { background-color: #EF4444; }
+        .dot-purple { background-color: #6366F1; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>In-Session Adaptive Difficulty Engine</h1>
+        <p>Autivity Real-Time Scaffolding & 2-Mistake Frustration Bailout Architecture</p>
+    </div>
+
+    <div class="diagram-card">
+        <pre class="mermaid">
+flowchart TD
+    A[Start Session] --> B{Historical Baseline?}
+    B -- Prior 0 Mistakes --> C[Start at Difficulty Tier +1]
+    B -- Prior 1 Mistake --> D[Start at Same Difficulty Tier]
+    B -- Prior >= 2 Mistakes --> E[Start at Difficulty Tier -1]
+    B -- No History --> F[Start at Lowest Tier]
+    
+    C & D & E & F --> G[Student Plays Activity 1]
+    G --> H{Mistakes in Activity 1?}
+    
+    H -- 0 Mistakes --> I[Upshift Difficulty +1]
+    H -- 1 Mistake --> J[Maintain Current Tier]
+    H -- >= 2 Mistakes --> K[Bailout: Downgrade Tier -1]
+    
+    I & J & K --> L[Student Plays Activity 2]
+    L --> M{Mistakes in Activity 2?}
+    
+    M -- 0 Mistakes --> N[Upshift Difficulty +1]
+    M -- 1 Mistake --> O[Maintain Current Tier]
+    M -- >= 2 Mistakes --> P[Bailout: Downgrade Tier -1]
+    
+    N & O & P --> Q[Student Plays Activity 3]
+    Q --> R[Complete 3-Activity Set]
+    R --> S[Grant 15 Stars + Confetti Celebration]
+
+    classDef startEnd fill:#EEF2FF,stroke:#6366F1,stroke-width:2px,color:#3730A3,font-weight:bold;
+    classDef decision fill:#FEF3C7,stroke:#D97706,stroke-width:2px,color:#92400E,font-weight:bold;
+    classDef activity fill:#FFFFFF,stroke:#CBD5E1,stroke-width:2px,color:#1E293B,font-weight:bold;
+    classDef upshift fill:#ECFDF5,stroke:#10B981,stroke-width:2px,color:#065F46,font-weight:bold;
+    classDef maintain fill:#F0FDF4,stroke:#3B82F6,stroke-width:2px,color:#1E40AF,font-weight:bold;
+    classDef bailout fill:#FEF2F2,stroke:#EF4444,stroke-width:2px,color:#991B1B,font-weight:bold;
+
+    class A,R,S startEnd;
+    class B,H,M decision;
+    class G,L,Q activity;
+    class C,I,N upshift;
+    class D,J,O maintain;
+    class E,K,P bailout;
+        </pre>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><span class="dot dot-green"></span> 0 Mistakes: Upshift (+1 Tier)</div>
+        <div class="legend-item"><span class="dot dot-amber"></span> 1 Mistake: Maintain Current Tier</div>
+        <div class="legend-item"><span class="dot dot-red"></span> >= 2 Mistakes: Frustration Bailout (-1 Tier)</div>
+        <div class="legend-item"><span class="dot dot-purple"></span> Session Milestones (Start / Complete / Reward)</div>
+    </div>
+
+    <script>
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'base',
+            themeVariables: {
+                fontFamily: 'Inter, sans-serif',
+                fontSize: '16px',
+                primaryColor: '#EEF2FF',
+                primaryTextColor: '#1E293B',
+                lineColor: '#64748B'
+            }
+        });
+    </script>
+</body>
+</html>

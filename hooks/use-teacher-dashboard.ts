@@ -147,6 +147,18 @@ export function useTeacherDashboard() {
   };
 
   const handleDeleteClass = async (classId: string) => {
+    const targetClass = [...classesData, ...archivedClasses].find((c) => c.id === classId);
+    const studentCount = targetClass ? targetClass.people : 0;
+
+    if (studentCount > 0) {
+      Alert.alert(
+        "Cannot Delete Class",
+        `This class still has ${studentCount} student${studentCount > 1 ? 's' : ''}. Please move or remove all students before deleting this class.`,
+        [{ text: "OK", style: "default" }]
+      );
+      return;
+    }
+
     Alert.alert(
       "Delete Class",
       "Are you sure you want to delete this class? This action cannot be undone.",

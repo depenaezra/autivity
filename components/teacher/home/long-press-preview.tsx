@@ -33,6 +33,9 @@ export function LongPressPreview({
     if (visible) {
       modalOpacity.value = withTiming(1, { duration: 200 });
       modalScale.value = withTiming(1.05, { duration: 200, easing: Easing.out(Easing.ease) });
+    } else {
+      modalOpacity.value = 0;
+      modalScale.value = 1;
     }
   }, [visible, modalOpacity, modalScale]);
 
@@ -41,6 +44,17 @@ export function LongPressPreview({
     modalScale.value = withTiming(1, { duration: 150 }, () => {
       runOnJS(onClose)();
     });
+  };
+
+  const handleAction = (action?: () => void) => {
+    if (!action) return;
+    modalOpacity.value = 0;
+    modalScale.value = 1;
+    onClose();
+    // Allow previous modal to cleanly dismiss before opening new modal or alert
+    setTimeout(() => {
+      action();
+    }, 100);
   };
 
   const backdropAnimatedStyle = useAnimatedStyle(() => {
@@ -112,9 +126,9 @@ export function LongPressPreview({
                 isTablet={isTablet}
                 modalOpacity={modalOpacity}
                 onClose={handleClose}
-                onEdit={onEdit}
-                onArchive={onArchive}
-                onDelete={onDelete}
+                onEdit={onEdit ? () => handleAction(onEdit) : undefined}
+                onArchive={onArchive ? () => handleAction(onArchive) : undefined}
+                onDelete={onDelete ? () => handleAction(onDelete) : undefined}
               />
             )}
           </>

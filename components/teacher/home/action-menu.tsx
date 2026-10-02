@@ -78,10 +78,7 @@ export function ActionMenu({
       {/* EDIT BUTTON */}
       {onEdit && (
         <Pressable
-          onPress={() => {
-            onClose();
-            onEdit();
-          }}
+          onPress={onEdit}
           className="flex-col items-center justify-center flex-1 active:scale-95 transition-transform"
         >
           <EditIcon width={isTablet ? 28 : 20} height={isTablet ? 28 : 20} />
@@ -94,10 +91,7 @@ export function ActionMenu({
       {/* ARCHIVE BUTTON */}
       {onArchive && (
         <Pressable
-          onPress={() => {
-            onClose();
-            onArchive();
-          }}
+          onPress={onArchive}
           className="flex-col items-center justify-center flex-1 active:scale-95 transition-transform"
         >
           <ArchiveIcon width={isTablet ? 28 : 20} height={isTablet ? 28 : 20} />
@@ -110,10 +104,7 @@ export function ActionMenu({
       {/* DELETE BUTTON */}
       {onDelete && (
         <Pressable
-          onPress={() => {
-            onClose();
-            onDelete();
-          }}
+          onPress={onDelete}
           className="flex-col items-center justify-center flex-1 active:scale-95 transition-transform"
         >
           <DeleteIcon width={isTablet ? 28 : 20} height={isTablet ? 28 : 20} />

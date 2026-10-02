@@ -332,7 +332,7 @@ export function ActivitiesSection({
     {
       id: 'turn-taking',
       title: 'Turn-Taking',
-      imageSource: require('@/assets/images/activities/sequencing-header.png'),
+      imageSource: require('@/assets/images/activities/pick-n-choose/pick n choose header.png'),
       headerBgColor: '#E0F2FE',
       themeColor: '#62A9E6',
       themeFontColor: '#3B82F6',
