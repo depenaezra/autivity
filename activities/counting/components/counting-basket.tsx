@@ -50,7 +50,10 @@ export function CountingBasket({
   // Basket dimensions
   const basketWidth = isTablet ? 320 : 250;
   const basketHeight = isTablet ? 210 : 165;
-  const itemSize = isTablet ? 60 : 48;
+  const isHighCount = targetCount > 5;
+  const itemSize = isTablet ? (isHighCount ? 50 : 60) : (isHighCount ? 38 : 48);
+  const badgeSize = isTablet ? (isHighCount ? 22 : 26) : (isHighCount ? 18 : 22);
+  const badgeFontSize = isTablet ? (isHighCount ? 11 : 14) : (isHighCount ? 9 : 12);
 
   // Bounce animation when an item drops in
   const bounceScale = useSharedValue(1);
@@ -99,36 +102,50 @@ export function CountingBasket({
     transform: [{ scale: counterPillScale.value }],
   }));
 
-  const handleLayout = (e: LayoutChangeEvent) => {
-    const layout = e.nativeEvent.layout;
-    if (layout && layout.width > 0 && layout.height > 0) {
-      onBasketLayout?.({
-        x: layout.x,
-        y: layout.y,
-        width: layout.width,
-        height: layout.height,
-        pageX: layout.x,
-        pageY: layout.y,
-      });
-    }
-
-    if (basketRef?.current && typeof (basketRef.current as any).measureInWindow === 'function') {
-      try {
-        (basketRef.current as any).measureInWindow((x: number, y: number, w: number, h: number) => {
-          if (x !== undefined && y !== undefined && !isNaN(x) && !isNaN(y) && w > 0 && h > 0) {
-            onBasketLayout?.({
-              x,
-              y,
-              width: w,
-              height: h,
-              pageX: x,
-              pageY: y,
-            });
-          }
-        });
-      } catch {}
+  const measureBasket = () => {
+    if (basketRef?.current) {
+      const el = basketRef.current as any;
+      if (typeof el.getBoundingClientRect === 'function') {
+        const rect = el.getBoundingClientRect();
+        if (rect && rect.width > 0 && rect.height > 0) {
+          onBasketLayout?.({
+            x: rect.left,
+            y: rect.top,
+            width: rect.width,
+            height: rect.height,
+            pageX: rect.left,
+            pageY: rect.top,
+          });
+          return;
+        }
+      }
+      if (typeof el.measureInWindow === 'function') {
+        try {
+          el.measureInWindow((x: number, y: number, w: number, h: number) => {
+            if (x !== undefined && y !== undefined && !isNaN(x) && !isNaN(y) && w > 0 && h > 0) {
+              onBasketLayout?.({
+                x,
+                y,
+                width: w,
+                height: h,
+                pageX: x,
+                pageY: y,
+              });
+            }
+          });
+        } catch {}
+      }
     }
   };
+
+  const handleLayout = () => {
+    measureBasket();
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(measureBasket, 100);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Fixed coordinates for placed items inside the basket opening
   // Positioned high enough in the opening so fruits and number badges are 100% visible!
@@ -148,12 +165,32 @@ export function CountingBasket({
       if (index === 2) return { x: 16, y: -10 };
       return { x: 48, y: 2 };
     }
-    // 5 items
-    if (index === 0) return { x: -55, y: 2 };
-    if (index === 1) return { x: -28, y: -10 };
-    if (index === 2) return { x: 0, y: 2 };
-    if (index === 3) return { x: 28, y: -10 };
-    return { x: 55, y: 2 };
+    if (total === 5) {
+      if (index === 0) return { x: -55, y: 2 };
+      if (index === 1) return { x: -28, y: -10 };
+      if (index === 2) return { x: 0, y: 2 };
+      if (index === 3) return { x: 28, y: -10 };
+      return { x: 55, y: 2 };
+    }
+
+    // 6 to 10 items: 2 clean staggered rows inside the basket opening
+    const backRowCount = Math.ceil(total / 2);
+    const isBackRow = index < backRowCount;
+
+    if (isBackRow) {
+      const count = backRowCount;
+      const step = count > 1 ? 110 / (count - 1) : 0;
+      const x = count > 1 ? -55 + index * step : 0;
+      const y = -14 + (index % 2 === 1 ? -4 : 0);
+      return { x, y };
+    } else {
+      const frontIndex = index - backRowCount;
+      const count = total - backRowCount;
+      const step = count > 1 ? 95 / (count - 1) : 0;
+      const x = count > 1 ? -47.5 + frontIndex * step : 0;
+      const y = 8 + (frontIndex % 2 === 1 ? 2 : 0);
+      return { x, y };
+    }
   };
 
   return (
@@ -246,8 +283,8 @@ export function CountingBasket({
                 {/* NUMBER BADGE ON THE PLACED ITEM */}
                 <CountBadge
                   number={item.countNumber}
-                  size={isTablet ? 26 : 22}
-                  fontSize={isTablet ? 14 : 12}
+                  size={badgeSize}
+                  fontSize={badgeFontSize}
                   bgColor="#22C55E"
                 />
               </View>
@@ -305,7 +342,14 @@ export function CountingBasket({
           <View style={styles.woodenTag}>
             <View style={styles.tagInner}>
               <Text style={styles.tagLabel}>PUT</Text>
-              <Text style={styles.tagNumber}>{targetCount}</Text>
+              <Text
+                style={[
+                  styles.tagNumber,
+                  targetCount >= 10 && styles.tagNumberDoubleDigit,
+                ]}
+              >
+                {targetCount}
+              </Text>
               <Text style={styles.tagSub}>ITEMS</Text>
             </View>
           </View>
@@ -337,7 +381,7 @@ export function CountingBasket({
           </Text>
 
           {/* Progress dots */}
-          <View style={styles.dotsRow}>
+          <View style={[styles.dotsRow, targetCount >= 7 && { gap: 2.5 }]}>
             {Array.from({ length: targetCount }).map((_, i) => {
               const isFilled = i < currentCount;
               return (
@@ -345,6 +389,7 @@ export function CountingBasket({
                   key={`dot-${i}`}
                   style={[
                     styles.dot,
+                    targetCount >= 7 && styles.dotSmall,
                     isFilled ? styles.dotFilled : styles.dotEmpty,
                   ]}
                 />
@@ -442,6 +487,10 @@ const styles = StyleSheet.create({
     color: '#B45309',
     fontWeight: 'bold',
   },
+  tagNumberDoubleDigit: {
+    fontSize: 24,
+    lineHeight: 28,
+  },
   tagSub: {
     fontFamily: 'FredokaOne_400Regular',
     fontSize: 8,
@@ -490,6 +539,11 @@ const styles = StyleSheet.create({
     width: 9,
     height: 9,
     borderRadius: 4.5,
+  },
+  dotSmall: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
   },
   dotEmpty: {
     backgroundColor: '#FCD34D',

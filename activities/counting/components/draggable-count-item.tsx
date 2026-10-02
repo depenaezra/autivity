@@ -109,51 +109,59 @@ export function DraggableCountItem({
         // 1. Robust touch position extraction across Mobile & Web
         const nativeEv = e?.nativeEvent as any;
         const touchX =
-          (nativeEv && (nativeEv.pageX ?? nativeEv.clientX)) ??
-          (gesture.moveX || 0);
+          nativeEv?.pageX ??
+          nativeEv?.clientX ??
+          (gesture.moveX !== 0 ? gesture.moveX : gesture.x0 + gesture.dx);
 
         const touchY =
-          (nativeEv && (nativeEv.pageY ?? nativeEv.clientY)) ??
-          (gesture.moveY || 0);
+          nativeEv?.pageY ??
+          nativeEv?.clientY ??
+          (gesture.moveY !== 0 ? gesture.moveY : gesture.y0 + gesture.dy);
 
         const dx = gesture.dx;
         const dy = gesture.dy;
         const dist = Math.sqrt(dx * dx + dy * dy);
-        const duration = Date.now() - pressStartTime.current;
 
-        // 2. High-tolerance Basket Collision Check
+        // 2. Strict Drag Requirement:
+        // Must be a deliberate drag (dist >= 40px).
+        // Clicking / tapping on an item will NEVER count!
+        const isDeliberateDrag = dist >= 40;
+
+        // 3. Basket Hitbox Collision Detection:
+        // Only count when the item is physically dragged into the basket!
+        // Dragging out of the shelf box only will NOT reach the basket and will NOT count!
         let isInsideBasket = false;
-        if (curBasketRect) {
-          const bX = curBasketRect.pageX ?? curBasketRect.x ?? 0;
-          const bY = curBasketRect.pageY ?? curBasketRect.y ?? 0;
-          const bW = curBasketRect.width || 280;
-          const bH = curBasketRect.height || 180;
+        if (isDeliberateDrag && curBasketRect) {
+          const bX = curBasketRect.pageX;
+          const bY = curBasketRect.pageY;
+          const bW = curBasketRect.width || 250;
+          const bH = curBasketRect.height || 165;
 
-          // Generous hit box: 110px padding all around
-          const padH = 110;
-          const padV = 130;
+          // Basket boundaries with child-friendly padding:
+          // Horizontal: within basket width + 25px tolerance on each side
+          const minX = bX - 25;
+          const maxX = bX + bW + 25;
+
+          // Vertical: must reach the basket area (opening down to bottom)
+          // The top opening of the basket starts around bY.
+          // Shelf items are high up (touchY < bY - 30), so dragging just out of the box fails!
+          const minY = bY - 15;
+          const maxY = bY + bH + 25;
 
           isInsideBasket =
-            touchX >= bX - padH &&
-            touchX <= bX + bW + padH &&
-            touchY >= bY - padV &&
-            touchY <= bY + bH + padV;
+            touchX >= minX &&
+            touchX <= maxX &&
+            touchY >= minY &&
+            touchY <= maxY;
         }
 
-        // 3. Generous drag detection: dragged downwards from shelf towards basket
-        const isDraggedDownwards = dy > 25;
-        const isDroppedInBasketArea = touchY > 150 && dist > 15;
-
-        // 4. Accessibility tap-to-place
-        const isTap = dist < 20 && duration < 500;
-
-        if (isInsideBasket || isDraggedDownwards || isDroppedInBasketArea || isTap) {
-          // Successful placement!
+        if (isInsideBasket) {
+          // Successfully dragged and dropped into the basket!
           pan.setValue({ x: 0, y: 0 });
           curOnDropSuccess(curItem);
         } else {
-          // Rebounding back to shelf
-          if (dist > 40) {
+          // Did NOT land inside basket: spring back to shelf slot
+          if (dist > 50) {
             curOnDropMiss?.(curItem);
           }
 

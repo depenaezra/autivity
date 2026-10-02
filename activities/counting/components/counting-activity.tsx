@@ -12,11 +12,16 @@ import { useActivityHint } from '@/hooks/use-activity-hint';
 import {
   CountingActivityProps,
   CountingItemDef,
+  CountingItemCategory,
   PlacedCountingItem,
 } from '../types';
 import { CountingBasket } from './counting-basket';
 import { DraggableCountItem } from './draggable-count-item';
 import { CountingGuide } from './counting-guide';
+import {
+  determineAdaptiveNextTarget,
+  getRandomInitialCountingTarget,
+} from '../data/counting-levels';
 
 const NUMBER_WORDS: Record<number, string> = {
   1: 'One',
@@ -26,6 +31,9 @@ const NUMBER_WORDS: Record<number, string> = {
   5: 'Five',
   6: 'Six',
   7: 'Seven',
+  8: 'Eight',
+  9: 'Nine',
+  10: 'Ten',
 };
 
 interface RoundConfig {
@@ -33,16 +41,22 @@ interface RoundConfig {
   itemType: string;
   itemName: string;
   shelfCount: number;
+  category: CountingItemCategory;
 }
 
-const ROUND_FRUITS: Array<{ type: string; name: string }> = [
-  { type: 'apple', name: 'Apples' },
-  { type: 'banana', name: 'Bananas' },
-  { type: 'orange', name: 'Oranges' },
-  { type: 'strawberry', name: 'Strawberries' },
-  { type: 'carrot', name: 'Carrots' },
-  { type: 'tomato', name: 'Tomatoes' },
-  { type: 'grape', name: 'Grapes' },
+const ROUND_ITEMS: Array<{ type: string; name: string; category: CountingItemCategory }> = [
+  { type: 'apple', name: 'Apples', category: 'fruits' },
+  { type: 'banana', name: 'Bananas', category: 'fruits' },
+  { type: 'orange', name: 'Oranges', category: 'fruits' },
+  { type: 'strawberry', name: 'Strawberries', category: 'fruits' },
+  { type: 'carrot', name: 'Carrots', category: 'veggies' },
+  { type: 'tomato', name: 'Tomatoes', category: 'veggies' },
+  { type: 'broccoli', name: 'Broccoli', category: 'veggies' },
+  { type: 'corn', name: 'Corn', category: 'veggies' },
+  { type: 'grape', name: 'Grapes', category: 'fruits' },
+  { type: 'toy', name: 'Toys', category: 'items' },
+  { type: 'crayon', name: 'Crayons', category: 'items' },
+  { type: 'pencil', name: 'Pencils', category: 'items' },
 ];
 
 export default function CountingActivity({
@@ -55,17 +69,24 @@ export default function CountingActivity({
   const { width, height: screenHeight } = useWindowDimensions();
   const isTablet = width >= 768;
 
-  // Session has 3 rounds (3 numbers per session)
+  // Session has 3 rounds (3 random activities per session)
   const TOTAL_ROUNDS = 3;
   const [currentRound, setCurrentRound] = useState(1);
 
-  // Round 1 configuration (defaults to target 3 as specified)
-  const initialTarget = Number(contentData?.target_count) || 3;
+  // Round 1 configuration: "random (2,3,4) on first" per user requirement
+  const initialTarget =
+    contentData?.target_count && [2, 3, 4].includes(Number(contentData.target_count))
+      ? Number(contentData.target_count)
+      : getRandomInitialCountingTarget();
+
+  const initialItem = ROUND_ITEMS[Math.floor(Math.random() * ROUND_ITEMS.length)];
+
   const [roundConfig, setRoundConfig] = useState<RoundConfig>({
     targetCount: initialTarget,
-    itemType: contentData?.item_type || 'apple',
-    itemName: contentData?.item_name || 'Apples',
-    shelfCount: Math.max(initialTarget + 2, 6),
+    itemType: contentData?.item_type || initialItem.type,
+    itemName: contentData?.item_name || initialItem.name,
+    shelfCount: Math.max(initialTarget + 3, 6),
+    category: contentData?.category_type || initialItem.category,
   });
 
   // Keep refs in sync for reliable timer closures
@@ -82,6 +103,12 @@ export default function CountingActivity({
   // Visual Guide State
   const [showGuide, setShowGuide] = useState(true);
   const [startGuidePos, setStartGuidePos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  const defaultBasketWidth = isTablet ? 320 : 250;
+  const defaultBasketHeight = isTablet ? 210 : 165;
+  const defaultBasketX = (width - defaultBasketWidth) / 2;
+  const defaultBasketY = Math.max(180, (screenHeight - defaultBasketHeight) * 0.52);
+
   const [basketRect, setBasketRect] = useState<{
     x: number;
     y: number;
@@ -89,7 +116,14 @@ export default function CountingActivity({
     height: number;
     pageX: number;
     pageY: number;
-  } | null>(null);
+  }>({
+    x: defaultBasketX,
+    y: defaultBasketY,
+    width: defaultBasketWidth,
+    height: defaultBasketHeight,
+    pageX: defaultBasketX,
+    pageY: defaultBasketY,
+  });
 
   // Tracking metrics across rounds
   const roundStartTimeRef = useRef<number>(Date.now());
@@ -104,16 +138,22 @@ export default function CountingActivity({
   const transitionTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Load items for a given round
-  const loadRound = (roundNum: number, target: number, fruitIndex: number) => {
+  const loadRound = (
+    roundNum: number,
+    target: number,
+    itemIndex: number,
+    adaptiveResult?: { aiMessage: string; reasoning: string }
+  ) => {
     currentRoundRef.current = roundNum;
     setCurrentRound(roundNum);
 
-    const fruit = ROUND_FRUITS[fruitIndex % ROUND_FRUITS.length];
+    const item = ROUND_ITEMS[itemIndex % ROUND_ITEMS.length];
     const newConfig: RoundConfig = {
       targetCount: Number(target),
-      itemType: fruit.type,
-      itemName: fruit.name,
-      shelfCount: Math.max(Number(target) + 3, 6),
+      itemType: item.type,
+      itemName: item.name,
+      shelfCount: Math.max(Number(target) + 3, target <= 4 ? 6 : target + 2),
+      category: item.category,
     };
 
     roundConfigRef.current = newConfig;
@@ -121,11 +161,11 @@ export default function CountingActivity({
 
     // Create fresh items for the shelf
     const items: CountingItemDef[] = Array.from({ length: newConfig.shelfCount }).map((_, index) => ({
-      id: `${fruit.type}-r${roundNum}-${index}-${Date.now()}`,
-      name: fruit.type,
-      category: 'fruits',
-      assetKey: fruit.type,
-      label: fruit.name,
+      id: `${item.type}-r${roundNum}-${index}-${Date.now()}`,
+      name: item.type,
+      category: item.category,
+      assetKey: item.type,
+      label: item.name,
     }));
 
     setShelfItems(items);
@@ -136,11 +176,18 @@ export default function CountingActivity({
     roundMistakesRef.current = 0;
     roundStartTimeRef.current = Date.now();
     isTransitioningRef.current = false;
+    resetForNextQuestion();
 
-    // Announce instruction
-    const instruction = `Drag ${target} ${fruit.name.toLowerCase()} into the basket!`;
-    onFeedback?.(instruction);
-    speakInstruction(instruction);
+    // Announce instruction and adaptive feedback
+    const roundInstruction = `Drag ${target} ${item.name.toLowerCase()} into the basket!`;
+    if (adaptiveResult) {
+      const fullSpeech = `${adaptiveResult.aiMessage} ${roundInstruction}`;
+      onFeedback?.(`${adaptiveResult.reasoning}\n${roundInstruction}`);
+      speakInstruction(fullSpeech);
+    } else {
+      onFeedback?.(roundInstruction);
+      speakInstruction(roundInstruction);
+    }
   };
 
   // Initialize on mount
@@ -151,7 +198,8 @@ export default function CountingActivity({
     currentRoundRef.current = 1;
     setCurrentRound(1);
     placedItemsRef.current = [];
-    loadRound(1, initialTarget, 0);
+    const randomFirstItemIndex = Math.floor(Math.random() * ROUND_ITEMS.length);
+    loadRound(1, initialTarget, randomFirstItemIndex);
 
     return () => {
       if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
@@ -240,7 +288,7 @@ export default function CountingActivity({
       speakInstruction(praise);
 
       // AUTOMATIC TRANSITION AFTER 2.2 SECONDS:
-      // The basket empties out, new target number generates, fresh set of fruits appears on shelf
+      // The basket empties out, new target number generates, fresh set of items appears on shelf
       transitionTimerRef.current = setTimeout(() => {
         const roundNum = currentRoundRef.current;
         if (roundNum < TOTAL_ROUNDS) {
@@ -248,30 +296,21 @@ export default function CountingActivity({
           currentRoundRef.current = nextRoundNum;
           setCurrentRound(nextRoundNum);
 
-          // ADAPTIVE DIFFICULTY CALCULATION:
-          // User requirement: "in the first one they cannot put 3 fruits inside the basket faster so the next activity will only be 2"
-          let nextTarget: number;
-          if (nextRoundNum === 2) {
-            // Evaluated based on first round performance
-            const isSlowOrStruggled = roundDuration > 12 || roundMistakesRef.current > 0;
-            if (isSlowOrStruggled) {
-              nextTarget = 2; // Downgrade to 2 if slower or struggled
-            } else {
-              nextTarget = 4; // Upgrade to 4 if fast and accurate
-            }
-          } else {
-            // Round 3 difficulty based on Round 2 performance
-            const prevTarget = Number(roundConfigRef.current.targetCount);
-            const isRound2Slow = roundDuration > 12 || roundMistakesRef.current > 0;
-            if (isRound2Slow) {
-              nextTarget = Math.max(2, prevTarget - 1);
-            } else {
-              nextTarget = Math.min(5, prevTarget + 1);
-            }
-          }
+          // RULE-BASED ADAPTIVE AI:
+          // User requirement: "the performnce on first will be rule based AI to determine whether to give more difficult or easy numbers if kid finished it under 1 minute then harder when 1 min above then easier"
+          const prevTarget = Number(roundConfigRef.current.targetCount);
+          const adaptiveResult = determineAdaptiveNextTarget(
+            nextRoundNum,
+            roundDuration,
+            roundMistakesRef.current,
+            prevTarget
+          );
 
-          // AUTOMATIC RESET: basket empties out, new set of fruits appears on shelf
-          loadRound(nextRoundNum, nextTarget, nextRoundNum);
+          // Pick a different random item from the pool for variety
+          const nextItemIndex = Math.floor(Math.random() * ROUND_ITEMS.length);
+
+          // AUTOMATIC RESET: basket empties out, new set of items appears on shelf
+          loadRound(nextRoundNum, adaptiveResult.nextTarget, nextItemIndex, adaptiveResult);
         } else {
           // ALL 3 ROUNDS COMPLETED!
           const totalSessionDuration = Math.max(1, Math.round((Date.now() - sessionStartTimeRef.current) / 1000));
@@ -311,7 +350,8 @@ export default function CountingActivity({
     setBasketRect(layout);
   };
 
-  const itemSize = isTablet ? 72 : 56;
+  const isHighTarget = roundConfig.targetCount > 5;
+  const itemSize = isTablet ? (isHighTarget ? 58 : 72) : (isHighTarget ? 44 : 56);
   const guideTargetX = basketRect ? basketRect.pageX + basketRect.width / 2 : width / 2;
   const guideTargetY = basketRect ? basketRect.pageY + basketRect.height * 0.45 : screenHeight * 0.55;
 
@@ -323,7 +363,7 @@ export default function CountingActivity({
           <View style={styles.roundBadge}>
             <Text style={styles.roundText}>Round {currentRound} of {TOTAL_ROUNDS}</Text>
           </View>
-          <Text style={styles.shelfSub}>Drag or tap to count</Text>
+          <Text style={styles.shelfSub}>Drag items into the basket</Text>
         </View>
 
         <View style={styles.shelfTray}>
@@ -345,22 +385,7 @@ export default function CountingActivity({
       </View>
 
       {/* 2. CENTER: Woven Basket with Target Badge, Inside Nest, & Counter Below */}
-      <View
-        style={styles.basketSection}
-        onLayout={(e) => {
-          const l = e.nativeEvent.layout;
-          if (l.width > 0 && l.height > 0) {
-            setBasketRect((prev) => prev || {
-              x: l.x,
-              y: l.y,
-              width: l.width,
-              height: l.height,
-              pageX: l.x,
-              pageY: l.y,
-            });
-          }
-        }}
-      >
+      <View style={styles.basketSection}>
         <CountingBasket
           basketRef={basketRef}
           targetCount={roundConfig.targetCount}

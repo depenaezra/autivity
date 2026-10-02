@@ -29,7 +29,12 @@ export default function LessonScreen() {
   activityType === 'turn_taking';
 
 if (isTurnTaking) {
-  return <TurnTakingActivity />;
+  return (
+    <TurnTakingActivity
+      assignedStudentId={studentId}
+      classId={classId || undefined}
+    />
+  );
 }
 
     useEffect(() => {

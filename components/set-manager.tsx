@@ -309,58 +309,62 @@ export default function SetManager({
             const subCategory = initialPool[0]?.sub_category || initialPool[0]?.path || initialPool[0]?.title || undefined;
             let startingActivity: any = null;
 
-            // Step 2: Fetch student's historical baseline
-            const baseline = studentId ? await getStudentHistoricalBaseline(studentId, category, subCategory) : null;
+            const isCounting = initialPool[0]?.category?.toLowerCase().includes('count') || initialPool[0]?.path?.toLowerCase().includes('count');
 
-            if (baseline && baseline.lastPath) {
-                // SCENARIO B (History Exists):
-                // 1. Find historical activity matching lastPath string
-                const historicalActivity = initialPool.find(
-                    (a) => a.path === baseline.lastPath || a.path?.toLowerCase() === baseline.lastPath.toLowerCase()
-                );
+            if (isCounting) {
+                // User requirement: "random (2,3,4) on first"
+                const initialChoices = [2, 3, 4];
+                const randomChoice = initialChoices[Math.floor(Math.random() * initialChoices.length)];
+                const matching = initialPool.filter((a) => a.difficulty_level === randomChoice);
+                startingActivity = matching.length > 0
+                    ? matching[Math.floor(Math.random() * matching.length)]
+                    : initialPool[0];
+            } else {
+                // Step 2: Fetch student's historical baseline
+                const baseline = studentId ? await getStudentHistoricalBaseline(studentId, category, subCategory) : null;
 
-                // SAFETY FALLBACK CHECK: If historicalActivity exists in today's activityPool
-                if (historicalActivity && typeof historicalActivity.difficulty_level === 'number') {
-                    const histDiff = historicalActivity.difficulty_level;
+                if (baseline && baseline.lastPath) {
+                    // SCENARIO B (History Exists):
+                    // 1. Find historical activity matching lastPath string
+                    const historicalActivity = initialPool.find(
+                        (a) => a.path === baseline.lastPath || a.path?.toLowerCase() === baseline.lastPath.toLowerCase()
+                    );
 
-                    // 2. Extract unique difficulty levels and sort in ascending order
-                    const uniqueDiffs = Array.from(
-                        new Set(initialPool.map((a) => a.difficulty_level).filter((d) => typeof d === 'number'))
-                    ).sort((a: number, b: number) => a - b);
+                    // SAFETY FALLBACK CHECK: If historicalActivity exists in today's activityPool
+                    if (historicalActivity && typeof historicalActivity.difficulty_level === 'number') {
+                        const histDiff = historicalActivity.difficulty_level;
 
-                    // 3. Find index of historical difficulty
-                    const histIndex = uniqueDiffs.indexOf(histDiff);
+                        // 2. Extract unique difficulty levels and sort in ascending order
+                        const uniqueDiffs = Array.from(
+                            new Set(initialPool.map((a) => a.difficulty_level).filter((d) => typeof d === 'number'))
+                        ).sort((a: number, b: number) => a - b);
 
-                    if (histIndex !== -1) {
-                        // 4. Calculate today's starting index based on historical mistakes
-                        let targetIndex = histIndex;
-                        if (baseline.previousMistakes === 0) {
-                            targetIndex = histIndex + 1; // Mastery: start harder (+1)
-                        } else if (baseline.previousMistakes === 1) {
-                            targetIndex = histIndex; // Acceptable: maintain tier (0)
-                        } else if (baseline.previousMistakes >= 2) {
-                            targetIndex = histIndex - 1; // Struggle: start easier (-1)
+                        // 3. Find index of historical difficulty
+                        const histIndex = uniqueDiffs.indexOf(histDiff);
+
+                        if (histIndex !== -1) {
+                            // 4. Calculate today's starting index based on historical mistakes
+                            let targetIndex = histIndex;
+                            if (baseline.previousMistakes === 0) {
+                                targetIndex = histIndex + 1; // Mastery: start harder (+1)
+                            } else if (baseline.previousMistakes === 1) {
+                                targetIndex = histIndex; // Acceptable: maintain tier (0)
+                            } else if (baseline.previousMistakes >= 2) {
+                                targetIndex = histIndex - 1; // Struggle: start easier (-1)
+                            }
+
+                            // 5. Securely clamp target index between 0 and (uniqueDiffs.length - 1)
+                            const clampedIndex = Math.max(0, Math.min(uniqueDiffs.length - 1, targetIndex));
+                            const targetDifficulty = uniqueDiffs[clampedIndex];
+
+                            // 6. Find an unplayed activity matching targetDifficulty
+                            startingActivity = initialPool.find((a) => a.difficulty_level === targetDifficulty);
                         }
-
-                        // 5. Securely clamp target index between 0 and (uniqueDiffs.length - 1)
-                        const clampedIndex = Math.max(0, Math.min(uniqueDiffs.length - 1, targetIndex));
-                        const targetDifficulty = uniqueDiffs[clampedIndex];
-
-                        // 6. Find an unplayed activity matching targetDifficulty
-                        startingActivity = initialPool.find((a) => a.difficulty_level === targetDifficulty);
                     }
                 }
-                // SAFETY FALLBACK: If historicalActivity is not found in initialPool, startingActivity remains null
-                // and gracefully falls through to Scenario A below!
-            }
 
-            // SCENARIO A (No History OR Safety Fallback triggered):
-            if (!startingActivity) {
-                const isCounting = initialPool[0]?.category?.toLowerCase().includes('count') || initialPool[0]?.path?.toLowerCase().includes('count');
-                if (isCounting) {
-                    // Start at Level 2 (3 items) as standard starting point for counting
-                    startingActivity = initialPool.find((a) => a.difficulty_level === 3) || initialPool[0];
-                } else {
+                // SCENARIO A (No History OR Safety Fallback triggered):
+                if (!startingActivity) {
                     const levels = initialPool
                         .map((a) => a.difficulty_level)
                         .filter((d) => typeof d === 'number');
@@ -511,8 +515,8 @@ export default function SetManager({
                 currentActivity.category?.toLowerCase().includes('count') ||
                 currentActivity.path?.toLowerCase().includes('count') ||
                 currentTask?.type === 'counting';
-            // User requirement: "in the first one they cannot put 3 fruits inside the basket faster so the next activity will only be 2"
-            const isSlow = isCountingActivity ? timeSpent > 12 : false;
+            // User requirement: "if kid finished it under 1 minute then harder when 1 min above then easier"
+            const isSlow = isCountingActivity ? timeSpent >= 60 : false;
 
             // 3. Shift index based on performance (mistakes & speed)
             let nextIndex = currentIndex;

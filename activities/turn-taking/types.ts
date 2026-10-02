@@ -64,4 +64,17 @@ export type TurnTakingGameState =
   | 'playing'
   | 'waiting'
   | 'result'
-  | 'finished';
+  | 'finished';
+
+import { RubricEvaluation } from '@/src/services/sessions';
+
+export interface TeacherDualEvaluationResult {
+  p1?: {
+    scores: RubricEvaluation;
+    feedback: string;
+  };
+  p2?: {
+    scores: RubricEvaluation;
+    feedback: string;
+  };
+}
