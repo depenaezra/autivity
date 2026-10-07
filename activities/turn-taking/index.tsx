@@ -44,11 +44,13 @@ const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 interface TurnTakingActivityProps {
   assignedStudentId?: string;
   classId?: string;
+  initialTier?: string;
 }
 
 export default function TurnTakingActivity({
   assignedStudentId,
   classId: propClassId,
+  initialTier,
 }: TurnTakingActivityProps = {}) {
   const router = useRouter();
   const { width } = useWindowDimensions();
@@ -442,8 +444,18 @@ export default function TurnTakingActivity({
    * MISTAKE
    * =========================================================
    */
+  const lastMistakeTimeRef = useRef<number>(0);
+  const isSpeakingMistakeRef = useRef<boolean>(false);
+
   const handleMistake = () => {
     if (!currentPlayer) return;
+
+    const now = Date.now();
+    // Guard against rapid duplicate triggers within 3 seconds
+    if (now - lastMistakeTimeRef.current < 3000) {
+      return;
+    }
+    lastMistakeTimeRef.current = now;
 
     setMistakesByPlayer((current) => ({
       ...current,
@@ -452,8 +464,19 @@ export default function TurnTakingActivity({
 
     const mistakeMsg = 'Oops! Follow the line and try again.';
     setBearMessage(mistakeMsg);
-    speakInstruction(mistakeMsg);
     setShowGuide(true);
+
+    if (!isSpeakingMistakeRef.current) {
+      isSpeakingMistakeRef.current = true;
+      speakInstruction(mistakeMsg, {
+        onDone: () => {
+          isSpeakingMistakeRef.current = false;
+        },
+        onError: () => {
+          isSpeakingMistakeRef.current = false;
+        },
+      });
+    }
   };
 
   /*
@@ -993,6 +1016,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 12,
     gap: 16,
+    maxWidth: 720,
+    alignSelf: 'center',
+    width: '100%',
   },
 
   speechBubble: {
@@ -1036,6 +1062,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#EAF5FD',
     flexDirection: 'row',
     alignItems: 'center',
+    maxWidth: 680,
+    alignSelf: 'center',
+    width: '100%',
   },
 
   playerAvatar: {
@@ -1094,6 +1123,9 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 16,
     paddingBottom: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
   },
 
   loadingContainer: {

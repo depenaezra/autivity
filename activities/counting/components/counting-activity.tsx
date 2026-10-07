@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  LayoutChangeEvent,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -103,6 +104,35 @@ export default function CountingActivity({
   // Visual Guide State
   const [showGuide, setShowGuide] = useState(true);
   const [startGuidePos, setStartGuidePos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  const containerRef = useRef<View | null>(null);
+  const [containerLayout, setContainerLayout] = useState<{
+    width: number;
+    height: number;
+    pageX: number;
+    pageY: number;
+  }>({
+    width: 0,
+    height: 0,
+    pageX: 0,
+    pageY: 0,
+  });
+
+  const handleContainerLayout = (e: LayoutChangeEvent) => {
+    const { width: cw, height: ch } = e.nativeEvent.layout;
+    if (containerRef.current) {
+      containerRef.current.measureInWindow((x, y) => {
+        setContainerLayout({
+          width: cw,
+          height: ch,
+          pageX: x || 0,
+          pageY: y || 0,
+        });
+      });
+    } else {
+      setContainerLayout((prev) => ({ ...prev, width: cw, height: ch }));
+    }
+  };
 
   const defaultBasketWidth = isTablet ? 320 : 250;
   const defaultBasketHeight = isTablet ? 210 : 165;
@@ -352,11 +382,42 @@ export default function CountingActivity({
 
   const isHighTarget = roundConfig.targetCount > 5;
   const itemSize = isTablet ? (isHighTarget ? 58 : 72) : (isHighTarget ? 44 : 56);
-  const guideTargetX = basketRect ? basketRect.pageX + basketRect.width / 2 : width / 2;
-  const guideTargetY = basketRect ? basketRect.pageY + basketRect.height * 0.45 : screenHeight * 0.55;
+
+  const containerWidth = containerLayout.width > 0 ? containerLayout.width : width;
+  const containerHeight = containerLayout.height > 0 ? containerLayout.height : screenHeight;
+  const containerCenterX = containerWidth / 2;
+
+  // Horizontal position: On tablet, guide is strictly centered from middle item to basket center!
+  const guideTargetX = isTablet
+    ? containerCenterX
+    : (basketRect.pageX > 0 && containerLayout.pageX > 0
+        ? basketRect.pageX - containerLayout.pageX + basketRect.width / 2
+        : containerCenterX);
+
+  const guideStartX = isTablet
+    ? containerCenterX
+    : (startGuidePos.x > 0 && containerLayout.pageX > 0
+        ? startGuidePos.x - containerLayout.pageX
+        : (startGuidePos.x > 0 ? startGuidePos.x : containerCenterX));
+
+  // Vertical position: container-relative Y coordinates
+  const guideStartY = startGuidePos.y > 0 && containerLayout.pageY > 0
+    ? startGuidePos.y - containerLayout.pageY
+    : (isTablet ? 78 : 65);
+
+  const guideTargetY = basketRect.pageY > 0 && containerLayout.pageY > 0
+    ? (basketRect.pageY - containerLayout.pageY) + basketRect.height * 0.45
+    : (containerHeight * 0.58);
+
+  // Guide points to the middle item on the shelf
+  const guideItemIndex = Math.floor(shelfItems.length / 2);
 
   return (
-    <View style={styles.container}>
+    <View
+      ref={containerRef}
+      onLayout={handleContainerLayout}
+      style={styles.container}
+    >
       {/* 1. TOP SHELF: Tray of Draggable Fruits/Veggies/Items */}
       <View style={styles.shelfSection}>
         <View style={styles.shelfHeader}>
@@ -378,6 +439,7 @@ export default function CountingActivity({
               onDropMiss={handleDropMiss}
               disabled={isRoundCompleted}
               isFirstItem={index === 0}
+              isGuideItem={index === guideItemIndex}
               onLayoutPos={(pos) => setStartGuidePos(pos)}
             />
           ))}
@@ -398,8 +460,8 @@ export default function CountingActivity({
 
       {/* 3. GUIDELINE ON FIRST DRAG (Animated dotted curve + finger) */}
       <CountingGuide
-        startX={startGuidePos.x}
-        startY={startGuidePos.y}
+        startX={guideStartX}
+        startY={guideStartY}
         targetX={guideTargetX}
         targetY={guideTargetY}
         visible={showGuide && !isRoundCompleted && placedItems.length === 0}

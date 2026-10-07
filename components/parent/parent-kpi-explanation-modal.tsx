@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { BaseModal } from '../teacher/home/base-modal';
 
@@ -210,7 +210,7 @@ export function ParentKpiExplanationModal({
   isTablet,
   language = 'en',
 }: ParentKpiExplanationModalProps) {
-  const [selectedMetric, setSelectedMetric] = useState<ParentMetricKey>('performance');
+  const [selectedMetric, setSelectedMetric] = useState<ParentMetricKey>(initialMetric || 'performance');
   const isTl = language === 'tl';
   const metricGuides = isTl ? METRIC_GUIDES_TL : METRIC_GUIDES_EN;
 
@@ -264,35 +264,31 @@ export function ParentKpiExplanationModal({
     >
       <View className="flex-col gap-3 pt-1">
         {/* Metric Selector Tabs */}
-        <View className="flex-row gap-2 bg-[#F5F7FA] p-1.5 rounded-xl">
+        <View style={styles.tabContainer}>
           {metricGuides.map((guide) => {
             const isTabActive = guide.key === activeGuide.key;
             return (
-              <Pressable
+              <TouchableOpacity
                 key={guide.key}
+                activeOpacity={0.75}
                 onPress={() => setSelectedMetric(guide.key)}
-                className={`flex-1 py-2 rounded-lg items-center justify-center ${
-                  isTabActive ? 'bg-white shadow-sm' : 'bg-transparent'
-                }`}
-                style={
+                style={[
+                  styles.tabButton,
                   isTabActive
-                    ? {
-                        borderWidth: 1.5,
-                        borderColor: guide.borderColor,
-                      }
-                    : undefined
-                }
+                    ? [styles.activeTabButton, { borderColor: guide.borderColor }]
+                    : styles.inactiveTabButton,
+                ]}
               >
                 <Text
-                  className={`font-fredoka-one text-xs uppercase ${
-                    isTabActive ? '' : 'text-[#9CA3AF]'
-                  }`}
-                  style={{ color: isTabActive ? guide.accentColor : undefined }}
+                  style={[
+                    styles.tabText,
+                    { color: isTabActive ? guide.accentColor : '#9CA3AF' },
+                  ]}
                   numberOfLines={1}
                 >
                   {guide.tabLabel}
                 </Text>
-              </Pressable>
+              </TouchableOpacity>
             );
           })}
         </View>
@@ -385,3 +381,39 @@ export function ParentKpiExplanationModal({
     </BaseModal>
   );
 }
+
+const styles = StyleSheet.create({
+  tabContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    backgroundColor: '#F5F7FA',
+    padding: 6,
+    borderRadius: 12,
+  },
+  tabButton: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  activeTabButton: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  inactiveTabButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+  },
+  tabText: {
+    fontFamily: 'FredokaOne-Regular',
+    fontSize: 12,
+    textTransform: 'uppercase',
+  },
+});

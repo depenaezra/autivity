@@ -28,6 +28,7 @@ interface DraggableCountItemProps {
   disabled?: boolean;
   onLayoutPos?: (pos: { x: number; y: number }) => void;
   isFirstItem?: boolean;
+  isGuideItem?: boolean;
 }
 
 export function DraggableCountItem({
@@ -40,6 +41,7 @@ export function DraggableCountItem({
   disabled = false,
   onLayoutPos,
   isFirstItem = false,
+  isGuideItem = false,
 }: DraggableCountItemProps) {
   const pan = useRef(new Animated.ValueXY()).current;
   const scale = useRef(new Animated.Value(1)).current;
@@ -183,12 +185,21 @@ export function DraggableCountItem({
   ).current;
 
   const handleLayout = () => {
-    if (itemContainerRef.current && isFirstItem && onLayoutPos) {
+    if (itemContainerRef.current && (isFirstItem || isGuideItem) && onLayoutPos) {
       itemContainerRef.current.measureInWindow((x, y, w, h) => {
         if (x !== undefined && y !== undefined && w > 0 && h > 0) {
           onLayoutPos({ x: x + w / 2, y: y + h / 2 });
         }
       });
+      setTimeout(() => {
+        if (itemContainerRef.current && onLayoutPos) {
+          itemContainerRef.current.measureInWindow((x, y, w, h) => {
+            if (x !== undefined && y !== undefined && w > 0 && h > 0) {
+              onLayoutPos({ x: x + w / 2, y: y + h / 2 });
+            }
+          });
+        }
+      }, 100);
     }
   };
 

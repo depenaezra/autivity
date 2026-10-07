@@ -5,14 +5,14 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View, useWindowD
 import Animated, { FadeInRight } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import AnalyticsCards from '../../../components/teacher/analytics/analytics-cards';
-import StudentPerformanceSection from '../../../components/teacher/analytics/student-performance-section';
-import RecentActivitySection from '../../../components/teacher/analytics/recent-activity-section';
 import { ParentFilterModal } from '../../../components/parent/parent-filter-modal';
-import { FilterPeriod, getFilterLabel } from '../../../src/utils/dashboardFilters';
-import { exportTeacherAnalyticsReportPdf } from '../../../src/services/exportReport';
+import AnalyticsCards from '../../../components/teacher/analytics/analytics-cards';
+import RecentActivitySection from '../../../components/teacher/analytics/recent-activity-section';
+import StudentPerformanceSection from '../../../components/teacher/analytics/student-performance-section';
 import { getClassPerformance, getKpiData, getRecentActivity } from '../../../src/services/analytics';
+import { exportTeacherAnalyticsReportPdf } from '../../../src/services/exportReport';
 import { getUserProfile } from '../../../src/services/profile';
+import { FilterPeriod, getFilterLabel } from '../../../src/utils/dashboardFilters';
 
 export default function AnalyticsDraftScreen() {
   const { width } = useWindowDimensions();
@@ -63,7 +63,7 @@ export default function AnalyticsDraftScreen() {
         showsVerticalScrollIndicator={false}
         bounces={false}
       >
-        <Animated.View 
+        <Animated.View
           key={`header-${focusKey}`}
           entering={FadeInRight.delay(50).duration(300)}
           className={`w-full ${isTablet ? 'px-12 pt-4' : 'px-6 pt-2'}`}

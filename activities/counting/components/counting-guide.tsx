@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, {
@@ -29,6 +29,9 @@ export function CountingGuide({
   visible,
   label = 'Drag into basket!',
 }: CountingGuideProps) {
+  const { width } = useWindowDimensions();
+  const isTablet = width >= 768;
+
   // Shared animation values
   const progress = useSharedValue(0);
   const opacity = useSharedValue(0);
@@ -68,10 +71,9 @@ export function CountingGuide({
 
   const animatedHandStyle = useAnimatedStyle(() => {
     // Interpolate position along quadratic curve
-    // Control point creates a pleasant natural arc
     const t = progress.value;
-    const midX = (startX + targetX) / 2 + 30; // slight arc curve
-    const midY = Math.min(startY, targetY) - 40;
+    const midX = (startX + targetX) / 2 + (isTablet ? 35 : 25); // slight arc curve
+    const midY = Math.min(startY, targetY) - (isTablet ? 45 : 35);
 
     // Bezier quadratic interpolation: B(t) = (1-t)^2 * P0 + 2(1-t)t * P1 + t^2 * P2
     const currentX = (1 - t) * (1 - t) * startX + 2 * (1 - t) * t * midX + t * t * targetX;
@@ -81,10 +83,11 @@ export function CountingGuide({
     const scale = t > 0.85 ? 1 - (t - 0.85) * 1.5 : 1;
     const handOpacity = t > 0.9 ? 1 - (t - 0.9) * 10 : 1;
 
+    const offset = isTablet ? 26 : 22;
     return {
       transform: [
-        { translateX: currentX - 18 },
-        { translateY: currentY - 18 },
+        { translateX: currentX - offset },
+        { translateY: currentY - offset },
         { scale },
       ],
       opacity: Math.max(0, handOpacity),
@@ -94,9 +97,12 @@ export function CountingGuide({
   if (!visible || startX <= 0 || targetX <= 0) return null;
 
   // Bezier curve path string
-  const midX = (startX + targetX) / 2 + 30;
-  const midY = Math.min(startY, targetY) - 40;
+  const midX = (startX + targetX) / 2 + (isTablet ? 35 : 25);
+  const midY = Math.min(startY, targetY) - (isTablet ? 45 : 35);
   const pathD = `M ${startX} ${startY} Q ${midX} ${midY} ${targetX} ${targetY}`;
+
+  const handSize = isTablet ? 52 : 44;
+  const iconSize = isTablet ? 32 : 28;
 
   return (
     <Animated.View
@@ -109,7 +115,7 @@ export function CountingGuide({
         <Path
           d={pathD}
           stroke="#BAE6FD"
-          strokeWidth="6"
+          strokeWidth={isTablet ? 8 : 6}
           strokeLinecap="round"
           strokeDasharray="8, 8"
           fill="none"
@@ -119,26 +125,35 @@ export function CountingGuide({
         <Path
           d={pathD}
           stroke="#0284C7"
-          strokeWidth="3.5"
+          strokeWidth={isTablet ? 4.5 : 3.5}
           strokeLinecap="round"
           strokeDasharray="8, 8"
           fill="none"
         />
         {/* Start item pulsing highlight indicator */}
-        <Circle cx={startX} cy={startY} r="8" fill="#0284C7" />
-        <Circle cx={startX} cy={startY} r="16" stroke="#38BDF8" strokeWidth="2.5" fill="none" opacity={0.6} />
+        <Circle cx={startX} cy={startY} r={isTablet ? 10 : 8} fill="#0284C7" />
+        <Circle cx={startX} cy={startY} r={isTablet ? 20 : 16} stroke="#38BDF8" strokeWidth={2.5} fill="none" opacity={0.6} />
         {/* Basket destination target indicator */}
-        <Circle cx={targetX} cy={targetY} r="10" fill="#22C55E" />
-        <Circle cx={targetX} cy={targetY} r="20" stroke="#86EFAC" strokeWidth="2.5" fill="none" opacity={0.7} />
+        <Circle cx={targetX} cy={targetY} r={isTablet ? 12 : 10} fill="#22C55E" />
+        <Circle cx={targetX} cy={targetY} r={isTablet ? 24 : 20} stroke="#86EFAC" strokeWidth={2.5} fill="none" opacity={0.7} />
       </Svg>
 
       {/* Floating Animated Hand Pointer */}
       <Animated.View style={[styles.handContainer, animatedHandStyle]}>
-        <View style={styles.handCircle}>
-          <Ionicons name="hand-right" size={28} color="#0284C7" />
+        <View
+          style={[
+            styles.handCircle,
+            {
+              width: handSize,
+              height: handSize,
+              borderRadius: handSize / 2,
+            },
+          ]}
+        >
+          <Ionicons name="hand-right" size={iconSize} color="#0284C7" />
         </View>
         <View style={styles.hintPill}>
-          <Text style={styles.hintText}>{label}</Text>
+          <Text style={[styles.hintText, isTablet && { fontSize: 13 }]}>{label}</Text>
         </View>
       </Animated.View>
     </Animated.View>

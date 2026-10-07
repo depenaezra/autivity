@@ -60,7 +60,7 @@ export const speakElevenLabs = async (
     onDone?: () => void,
     onError?: (err: any) => void
 ): Promise<boolean> => {
-    // Enabled for testing
+    // Enabled
     const ENABLE_ELEVEN_LABS = true;
     if (!ENABLE_ELEVEN_LABS) {
         return false;

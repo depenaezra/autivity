@@ -78,6 +78,11 @@ export const getActivitiesBySubcategories = async (subcategories: string[]) => {
             expandedSubcategories.add('Basket Counting');
             return;
         }
+        if (lower.includes('turn') || lower.includes('taking')) {
+            expandedSubcategories.add('Turn-Taking');
+            expandedSubcategories.add('Turn Taking');
+            return;
+        }
         expandedSubcategories.add(s);
     });
 
