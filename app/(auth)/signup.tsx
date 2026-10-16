@@ -152,9 +152,9 @@ export default function Signup() {
           .eq('id', signUpResult.user.id);
       }
       router.replace({
-        pathname: (role === 'parent' ? '/(parent-tabs)' : '/(teacher-tabs)') as any,
-        params: { firstName: firstName }
-      });
+        pathname: '/(auth)/welcome-tour',
+        params: { role: 'parent', userId: signUpResult.user?.id }
+      } as any);
     } catch (error: any) {
       Alert.alert('Registration Failed', error.message);
     } finally {

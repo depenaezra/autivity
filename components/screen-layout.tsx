@@ -42,13 +42,17 @@ export function ScreenLayout({
       {/* Navigation Bar Row */}
       <View className="flex-row justify-between items-center w-full min-h-[44px]">
         {/* Left action button container */}
-        <View className="w-11 items-start justify-center">
+        <View className="min-w-[44px] items-start justify-center">
           {leftHeaderButton}
         </View>
 
         {/* Center Title */}
         {title ? (
-          <Text className={`font-fredoka-one text-[#484A4B] text-center flex-1 mx-2 ${isTablet ? 'text-[28px]' : 'text-[22px]'}`}>
+          <Text
+            numberOfLines={1}
+            ellipsizeMode="tail"
+            className={`font-fredoka-one text-[#484A4B] text-center flex-1 mx-2 ${isTablet ? 'text-[28px]' : 'text-[22px]'}`}
+          >
             {title}
           </Text>
         ) : (
@@ -56,7 +60,7 @@ export function ScreenLayout({
         )}
 
         {/* Right action button container */}
-        <View className="w-11 items-end justify-center">
+        <View className="min-w-[44px] items-end justify-center">
           {rightHeaderButton}
         </View>
       </View>

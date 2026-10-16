@@ -1,6 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
-import { Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
+import { Pressable, Text, View, useWindowDimensions } from 'react-native';
 import Animated, {
   FadeInUp,
   FadeOutUp,
@@ -91,47 +91,40 @@ const CARDS: CardConfig[] = [
     label: 'Avg Session',
     iconName: 'clock',
     accentColor: '#62A9E6',
-    bgColor: '#E0F2FE',
+    bgColor: '#F0F9FF',
     borderColor: '#BBE8FB',
   },
   {
     key: 'mistakes',
     label: 'Avg Mistakes',
     iconName: 'alert-circle',
-    accentColor: '#F43F5E',
-    bgColor: '#FFF1F2',
-    borderColor: '#FECDD3',
+    accentColor: '#FF8870',
+    bgColor: '#FFF7ED',
+    borderColor: '#FFDBD4',
   },
   {
     key: 'hints',
     label: 'Avg Hints',
     iconName: 'help-circle',
     accentColor: '#FFAE02',
-    bgColor: '#FEF3C7',
-    borderColor: '#FDE68A',
+    bgColor: '#FFFBEB',
+    borderColor: '#FFF3C4',
   },
 ];
 
 export default function StudentPerformanceCards({
   studentId,
-  filter: externalFilter,
+  filter = 'overall',
   refreshTrigger,
   activityType = 'all',
 }: StudentPerformanceCardsProps) {
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
 
-  const [filter, setFilter] = useState<FilterType>((externalFilter as any) || 'overall');
   const [stats, setStats] = useState<StudentSessionStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedCardForModal, setSelectedCardForModal] = useState<MetricKey | null>(null);
-
-  useEffect(() => {
-    if (externalFilter) {
-      setFilter(externalFilter as any);
-    }
-  }, [externalFilter]);
 
   useEffect(() => {
     let active = true;
@@ -264,50 +257,11 @@ export default function StudentPerformanceCards({
 
   return (
     <View className="flex-col mt-4">
-      {/* Header and Filter Controls */}
+      {/* Header */}
       <View className="mb-4">
-        <View className="flex-col items-start gap-3">
-          <Text className={`font-fredoka-one text-[#484A4B] ${isTablet ? 'text-[32px]' : 'text-[22px]'}`}>
-            Student Performance
-          </Text>
-
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            className="w-full"
-            contentContainerStyle={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 2 }}
-          >
-            {filterButtons.map((btn) => {
-              const isActive = filter === btn.value;
-              return (
-                <Pressable
-                  key={btn.value}
-                  onPress={() => setFilter(btn.value)}
-                  className="active:scale-95 transition-transform"
-                  style={{
-                    borderWidth: 2,
-                    borderRadius: 8,
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    paddingHorizontal: isTablet ? 16 : 12,
-                    paddingVertical: isTablet ? 8 : 6,
-                    backgroundColor: isActive ? '#BBE8FB' : '#FFFFFF',
-                    borderColor: isActive ? '#62A9E6' : '#BBE8FB',
-                    shadowColor: isActive ? '#62A9E6' : '#BBE8FB',
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 1,
-                    shadowRadius: 0,
-                    elevation: 2,
-                  }}
-                >
-                  <Text className={`font-fredoka-one text-[#62A9E6] uppercase ${isTablet ? 'text-sm' : 'text-[11px]'}`}>
-                    {btn.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        </View>
+        <Text className={`font-fredoka-one text-[#484A4B] ${isTablet ? 'text-[32px]' : 'text-[22px]'}`}>
+          Student Performance
+        </Text>
       </View>
 
       {error ? (
@@ -336,7 +290,7 @@ export default function StudentPerformanceCards({
                 key={card.key}
                 onPress={() => setSelectedCardForModal(card.key)}
                 className={`border-[4px] bg-white justify-between items-center flex-1 active:scale-95 transition-transform ${
-                  isTablet ? 'rounded-[32px] p-4 min-h-[175px]' : 'rounded-[20px] p-2 min-h-[155px]'
+                  isTablet ? 'rounded-[32px] p-4 min-h-[175px]' : 'rounded-[20px] p-2.5 min-h-[155px]'
                 }`}
                 style={{
                   borderColor: card.borderColor,
@@ -350,7 +304,7 @@ export default function StudentPerformanceCards({
                 {/* Label */}
                 <Text
                   className={`font-fredoka-one tracking-[0.06em] text-center ${
-                    isTablet ? 'text-sm mt-1' : 'text-[10px] mt-0.5'
+                    isTablet ? 'text-xs mt-1' : 'text-[11px] mt-0.5'
                   }`}
                   style={{ color: card.accentColor, letterSpacing: isTablet ? 1.2 : 0.6 }}
                   numberOfLines={1}
@@ -378,7 +332,7 @@ export default function StudentPerformanceCards({
                   {!hasNoSessions && (
                     <Text
                       className={`font-quicksand-bold text-[#9CA3AF] text-center ${
-                        isTablet ? 'text-xs mt-0.5' : 'text-[9px] mt-0.5'
+                        isTablet ? 'text-xs mt-0.5' : 'text-[10px] mt-0.5'
                       }`}
                     >
                       per session
@@ -389,28 +343,19 @@ export default function StudentPerformanceCards({
                 {/* Universal Benchmark Status Pill */}
                 <View
                   className={`w-full items-center justify-center mt-1 border-[1.5px] ${
-                    isTablet ? 'rounded-full px-3 py-1' : 'rounded-xl px-1 py-1'
+                    isTablet ? 'rounded-full px-2.5 py-1' : 'rounded-xl px-1.5 py-1'
                   }`}
                   style={{ backgroundColor: badge.bgColor, borderColor: badge.borderColor }}
                 >
                   <Text
-                    className={`font-quicksand-bold text-center ${
-                      isTablet ? 'text-xs' : 'text-[9px] leading-[11px]'
+                    className={`font-fredoka-one text-center uppercase ${
+                      isTablet ? 'text-xs' : 'text-[10px]'
                     }`}
                     style={{ color: badge.color }}
+                    numberOfLines={1}
                   >
                     ● {badge.title}
                   </Text>
-                  {badge.range ? (
-                    <Text
-                      className={`font-quicksand-bold text-center ${
-                        isTablet ? 'text-[10px] mt-0.5' : 'text-[8px] leading-[10px]'
-                      } opacity-80`}
-                      style={{ color: badge.color }}
-                    >
-                      {badge.range}
-                    </Text>
-                  ) : null}
                 </View>
               </Pressable>
             );

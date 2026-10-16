@@ -7,6 +7,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { HeaderButton } from "../../components/header-button";
 import { supabase } from "../../src/lib/supabase";
 import { login } from '../../src/services/auth';
+import { hasSeenTour } from '../../hooks/use-walkthrough';
 
 export default function Login() {
   const router = useRouter();
@@ -180,7 +181,13 @@ export default function Login() {
         await AsyncStorage.setItem("remember_me", "false");
       }
 
-      if (userRole === 'parent') {
+      const seenTour = await hasSeenTour(user?.id);
+      if (!seenTour && user?.id) {
+        router.replace({
+          pathname: '/(auth)/welcome-tour',
+          params: { role: userRole || 'teacher', userId: user.id },
+        } as any);
+      } else if (userRole === 'parent') {
         router.replace('/(parent-tabs)' as any);
       } else {
         router.replace('/(teacher-tabs)' as any);

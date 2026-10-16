@@ -460,6 +460,7 @@ export const getStudentValidatedSessionsEvaluations = async (
 export interface Milestone {
   id: string;
   studentId: string;
+  templateId?: string;
   title: string;
   description?: string;
   status: 'Achieved' | 'In Progress' | 'Target Set';
@@ -503,6 +504,7 @@ export const getStudentMilestones = async (studentId: string): Promise<Milestone
   return (data || []).map((m: any) => ({
     id: m.id,
     studentId: m.student_id,
+    templateId: m.template_id || undefined,
     title: m.title,
     description: m.description || '',
     status: m.status as any,
@@ -515,21 +517,27 @@ export const createStudentMilestone = async (
   studentId: string,
   title: string,
   description: string,
-  targetDate: string
+  targetDate: string,
+  templateId?: string
 ): Promise<Milestone> => {
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) throw new Error('User not logged in');
 
+  const insertPayload: any = {
+    student_id: studentId,
+    teacher_id: user.id,
+    title,
+    description: description || null,
+    target_date: toISODate(targetDate),
+    status: 'Target Set',
+  };
+  if (templateId) {
+    insertPayload.template_id = templateId;
+  }
+
   const { data, error } = await supabase
     .from('student_milestones')
-    .insert([{
-      student_id: studentId,
-      teacher_id: user.id,
-      title,
-      description: description || null,
-      target_date: toISODate(targetDate),
-      status: 'Target Set'
-    }])
+    .insert([insertPayload])
     .select()
     .single();
 
@@ -561,6 +569,7 @@ export const createStudentMilestone = async (
   return {
     id: data.id,
     studentId: data.student_id,
+    templateId: data.template_id || undefined,
     title: data.title,
     description: data.description || '',
     status: data.status,

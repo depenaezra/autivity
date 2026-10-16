@@ -5,6 +5,7 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View, useWindowD
 import Animated, { FadeInRight } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { HeaderButton } from '../../../components/header-button';
 import { ParentFilterModal } from '../../../components/parent/parent-filter-modal';
 import AnalyticsCards from '../../../components/teacher/analytics/analytics-cards';
 import RecentActivitySection from '../../../components/teacher/analytics/recent-activity-section';
@@ -68,17 +69,17 @@ export default function AnalyticsDraftScreen() {
           entering={FadeInRight.delay(50).duration(300)}
           className={`w-full ${isTablet ? 'px-12 pt-4' : 'px-6 pt-2'}`}
         >
-          <View className="flex-col items-start gap-3 mb-4">
+          <View className="flex-row items-center justify-between mb-4 flex-wrap gap-2.5">
             <Text className={`font-fredoka-one text-[#484A4B] ${isTablet ? 'text-[44px]' : 'text-[28px]'}`}>
               Analytics
             </Text>
 
-            {/* CONTROL BUTTONS: RANGE FILTER & DOWNLOAD REPORT */}
-            <View className="flex-row items-center gap-2 flex-wrap sm:flex-nowrap">
-              {/* Range Filter Selector */}
+            {/* CONTROL BUTTONS: TIMEFRAME FILTER & DOWNLOAD REPORT */}
+            <View className="flex-row items-center gap-2.5 flex-wrap">
+              {/* Timeframe Filter Selector */}
               <Pressable
                 onPress={() => setFilterModalVisible(true)}
-                className="flex-row items-center justify-center gap-1.5 bg-white border-[2px] border-[#BBE8FB] px-3 h-[36px] rounded-xl active:scale-95 transition-transform"
+                className="flex-row items-center justify-center gap-2 bg-white border-[2px] border-[#BBE8FB] px-4 h-[44px] rounded-xl active:scale-95 transition-transform"
                 style={{
                   borderColor: '#BBE8FB',
                   shadowColor: '#BBE8FB',
@@ -88,43 +89,25 @@ export default function AnalyticsDraftScreen() {
                   elevation: 2,
                 }}
               >
-                <Feather name="calendar" size={13} color="#62A9E6" />
-                <Text className="font-fredoka-one text-[#62A9E6] text-[11px] uppercase" numberOfLines={1}>
-                  RANGE: {getFilterLabel(globalFilter).toUpperCase()}
+                <Feather name="calendar" size={15} color="#62A9E6" />
+                <Text className="font-fredoka-one text-[#62A9E6] text-xs sm:text-sm uppercase" numberOfLines={1}>
+                  {getFilterLabel(globalFilter).toUpperCase()}
                 </Text>
-                <Feather name="chevron-down" size={13} color="#62A9E6" />
+                <Feather name="chevron-down" size={15} color="#62A9E6" />
               </Pressable>
 
-              {/* Master Download Report Button */}
-              <Pressable
+              {/* Master Download Report Button (Using standard HeaderButton) */}
+              <HeaderButton
                 onPress={handleExportPdf}
                 disabled={isExporting}
-                className="flex-row items-center justify-center gap-1.5 bg-white border-[2px] border-[#BBE8FB] px-3 h-[36px] rounded-xl active:scale-95 transition-transform"
-                style={{
-                  borderColor: '#BBE8FB',
-                  shadowColor: '#BBE8FB',
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 1,
-                  shadowRadius: 0,
-                  elevation: 2,
-                }}
-              >
-                {isExporting ? (
-                  <>
-                    <ActivityIndicator size="small" color="#62A9E6" style={{ height: 16 }} />
-                    <Text className="font-fredoka-one text-[#62A9E6] text-[11px] uppercase" numberOfLines={1}>
-                      EXPORTING...
-                    </Text>
-                  </>
-                ) : (
-                  <>
-                    <Feather name="download" size={13} color="#62A9E6" />
-                    <Text className="font-fredoka-one text-[#62A9E6] text-[11px] uppercase" numberOfLines={1}>
-                      DOWNLOAD REPORT
-                    </Text>
-                  </>
-                )}
-              </Pressable>
+                icon={
+                  isExporting ? (
+                    <ActivityIndicator size="small" color="#62A9E6" />
+                  ) : (
+                    <Feather name="download" size={isTablet ? 24 : 20} color="#62A9E6" />
+                  )
+                }
+              />
             </View>
           </View>
         </Animated.View>

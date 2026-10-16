@@ -260,7 +260,7 @@ export function ParentFilterModal({
                       style={{
                         paddingHorizontal: 12,
                         paddingVertical: 9,
-                        borderRadius: 10,
+                        borderRadius: 8,
                         flexDirection: 'row',
                         alignItems: 'center',
                         justifyContent: 'space-between',

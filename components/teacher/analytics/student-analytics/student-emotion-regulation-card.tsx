@@ -22,7 +22,9 @@ import {
   EmotionRegulationAnalytics,
   SchoolWeekDayEmotion,
 } from '../../../../src/services/studentAnalyticsEngine';
+import { FilterPeriod, getDateRangeForFilter, getFilterLabel } from '../../../../src/utils/dashboardFilters';
 import { EMOTIONS_METADATA, REGULATION_ZONES } from '../../../../src/utils/emotionZones';
+import { ParentFilterModal } from '../../../parent/parent-filter-modal';
 
 interface StudentEmotionRegulationCardProps {
   studentId: string;
@@ -37,7 +39,7 @@ const TOTAL_PAST_WEEKS = 12; // Pre-cache up to 12 past weeks for instant scroll
 export default function StudentEmotionRegulationCard({
   studentId,
   studentName = 'Learner',
-  filter = 'overall',
+  filter: externalFilter,
   refreshTrigger = 0,
   activityType,
 }: StudentEmotionRegulationCardProps) {
@@ -47,6 +49,8 @@ export default function StudentEmotionRegulationCard({
   const [showInfo, setShowInfo] = useState(false);
   const [isInsightCollapsed, setIsInsightCollapsed] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
+  const [filter, setFilter] = useState<FilterPeriod>((externalFilter as any) || 'week');
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [rawCheckIns, setRawCheckIns] = useState<{ student_id: string; emotion: string; check_in_date: string }[]>([]);
   const [evaluations, setEvaluations] = useState<any[]>([]);
   const [selectedDay, setSelectedDay] = useState<SchoolWeekDayEmotion | null>(null);
@@ -55,6 +59,12 @@ export default function StudentEmotionRegulationCard({
   const [activeWeekIndex, setActiveWeekIndex] = useState<number>(TOTAL_PAST_WEEKS);
   const [containerWidth, setContainerWidth] = useState<number>(0);
   const scrollViewRef = useRef<ScrollView>(null);
+
+  useEffect(() => {
+    if (externalFilter) {
+      setFilter(externalFilter as any);
+    }
+  }, [externalFilter]);
 
   useEffect(() => {
     setSelectedDay(null);
@@ -138,12 +148,30 @@ export default function StudentEmotionRegulationCard({
     return calculateStudentEmotionRegulationAnalytics(rawCheckIns, evaluations, studentName, 0);
   }, [rawCheckIns, evaluations, studentName]);
 
+  const getTargetWeekIndexForFilter = (f: FilterPeriod): number => {
+    if (f === 'today' || f === 'week' || f === 'overall') {
+      return TOTAL_PAST_WEEKS;
+    }
+    if (f === 'last_week') {
+      return Math.max(0, TOTAL_PAST_WEEKS - 1);
+    }
+    const { startDate, endDate } = getDateRangeForFilter(f);
+    if (startDate) {
+      const startStr = startDate.toISOString().split('T')[0];
+      const endStr = (endDate || new Date()).toISOString().split('T')[0];
+      for (let i = cachedWeeks.length - 1; i >= 0; i--) {
+        const days = cachedWeeks[i].schoolWeekDays;
+        if (days.some((d) => d.fullDateStr >= startStr && d.fullDateStr <= endStr)) {
+          return i;
+        }
+      }
+    }
+    return TOTAL_PAST_WEEKS;
+  };
+
   // Scroll to target week when filter changes or when container width is determined
   useEffect(() => {
-    let targetIndex = TOTAL_PAST_WEEKS;
-    if (filter === 'last_week') {
-      targetIndex = TOTAL_PAST_WEEKS - 1;
-    }
+    const targetIndex = getTargetWeekIndexForFilter(filter);
     setActiveWeekIndex(targetIndex);
     if (containerWidth > 0) {
       scrollViewRef.current?.scrollTo({
@@ -151,14 +179,14 @@ export default function StudentEmotionRegulationCard({
         animated: true,
       });
     }
-  }, [filter, containerWidth]);
+  }, [filter, containerWidth, cachedWeeks]);
 
   const hasInitiallyScrolled = useRef(false);
   const onContainerLayout = (e: LayoutChangeEvent) => {
     const w = e.nativeEvent.layout.width;
     if (w > 0 && w !== containerWidth) {
       setContainerWidth(w);
-      const targetIndex = filter === 'last_week' ? TOTAL_PAST_WEEKS - 1 : TOTAL_PAST_WEEKS;
+      const targetIndex = getTargetWeekIndexForFilter(filter);
       if (!hasInitiallyScrolled.current) {
         hasInitiallyScrolled.current = true;
         setTimeout(() => {
@@ -220,6 +248,26 @@ export default function StudentEmotionRegulationCard({
               <Feather name="info" size={isTablet ? 20 : 16} color="#62A9E6" />
             </Pressable>
           </View>
+
+          {/* Compact Tactile Filter Dropdown Trigger */}
+          <Pressable
+            onPress={() => setIsFilterModalOpen(true)}
+            className="flex-row items-center justify-center gap-1.5 bg-white border-[2px] border-[#BBE8FB] px-3 h-[34px] rounded-xl active:scale-95 transition-transform"
+            style={{
+              borderColor: '#BBE8FB',
+              shadowColor: '#BBE8FB',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 1,
+              shadowRadius: 0,
+              elevation: 2,
+            }}
+          >
+            <Feather name="calendar" size={13} color="#62A9E6" />
+            <Text className="font-fredoka-one text-[#62A9E6] text-[11px] uppercase" numberOfLines={1}>
+              {getFilterLabel(filter).toUpperCase()}
+            </Text>
+            <Feather name="chevron-down" size={13} color="#62A9E6" />
+          </Pressable>
         </View>
 
         {/* Full-width Info Banner Row below Title */}
@@ -285,25 +333,22 @@ export default function StudentEmotionRegulationCard({
       {/* 4. Main Analytics Card */}
       {!isLoading && rawCheckIns.length > 0 && activeAnalytics && (
         <View
+          className={`w-full bg-white border-[4px] border-[#F1F1F1] ${
+            isTablet ? 'rounded-[32px] p-6' : 'rounded-[20px] p-4'
+          }`}
           style={{
-            width: '100%',
-            backgroundColor: '#FFFFFF',
-            borderWidth: 1,
-            borderColor: '#E5E7EB',
-            borderRadius: isTablet ? 32 : 24,
-            padding: isTablet ? 24 : 20,
-            shadowColor: '#000000',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.03,
-            shadowRadius: 10,
-            elevation: 1,
+            shadowColor: '#F1F1F1',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 1,
+            shadowRadius: 0,
+            elevation: 2,
           }}
         >
           {/* Top Metric Header (100% Synced with Active Swiped Week) */}
           <View className="flex-row items-center justify-between mb-4 px-1 flex-wrap gap-2">
             <View className="flex-col">
               <View className="flex-row items-center gap-3">
-                <Text className="font-fredoka-one text-[32px] sm:text-[36px] text-[#484A4B] leading-tight">
+                <Text className="font-fredoka-one text-[26px] sm:text-[32px] text-[#484A4B] leading-tight">
                   {predominantEmotion}
                 </Text>
                 {predominantMeta && (
@@ -332,17 +377,17 @@ export default function StudentEmotionRegulationCard({
                 <Text className="font-fredoka-one text-[10px] text-[#FF8870] uppercase tracking-wide">
                   MISSED LOGS
                 </Text>
-                <Text className="font-fredoka-one text-xs sm:text-sm text-[#C2410C] mt-0.5">
+                <Text className="font-fredoka-one text-xs sm:text-sm text-[#FF8870] mt-0.5">
                   {activeWeek?.weekMissedLogs ?? 0} {(activeWeek?.weekMissedLogs ?? 0) === 1 ? 'Day' : 'Days'}
                 </Text>
               </View>
 
               {/* Total Logged for this Week Pill */}
               <View className="bg-[#F0FDF4] border border-[#CBFAC4] rounded-xl px-3 py-1.5 items-end">
-                <Text className="font-fredoka-one text-[10px] text-[#16A34A] uppercase tracking-wide">
+                <Text className="font-fredoka-one text-[10px] text-[#179D33] uppercase tracking-wide">
                   TOTAL LOGGED
                 </Text>
-                <Text className="font-fredoka-one text-xs sm:text-sm text-[#15803D] mt-0.5">
+                <Text className="font-fredoka-one text-xs sm:text-sm text-[#179D33] mt-0.5">
                   {activeWeek?.weekLoggedCount ?? 0} {activeWeek?.weekLoggedCount === 1 ? 'Day' : 'Days'}
                 </Text>
               </View>
@@ -403,13 +448,13 @@ export default function StudentEmotionRegulationCard({
                           {/* Day Name & Date */}
                           <View className="items-center">
                             <Text
-                              className={`font-fredoka-one text-[11px] sm:text-xs ${
-                                day.isToday ? 'text-[#62A9E6]' : 'text-[#6B7280]'
+                              className={`font-fredoka-one text-xs ${
+                                day.isToday ? 'text-[#62A9E6]' : 'text-[#484A4B]'
                               }`}
                             >
                               {day.dayName}
                             </Text>
-                            <Text className="font-quicksand-medium text-[9px] sm:text-[10px] text-[#9CA3AF]">
+                            <Text className="font-quicksand-bold text-[10px] text-[#9CA3AF]">
                               {day.monthDayStr}
                             </Text>
                           </View>
@@ -434,7 +479,7 @@ export default function StudentEmotionRegulationCard({
                           ) : (
                             <View className="items-center justify-center my-1.5 opacity-40">
                               <Ionicons name="remove-outline" size={isTablet ? 24 : 18} color="#9CA3AF" />
-                              <Text className="font-quicksand-medium text-[8px] sm:text-[9px] text-[#9CA3AF] text-center">
+                              <Text className="font-quicksand-medium text-[9px] text-[#9CA3AF] text-center">
                                 {day.isFuture ? 'UPCOMING' : 'NO ENTRY'}
                               </Text>
                             </View>
@@ -460,7 +505,7 @@ export default function StudentEmotionRegulationCard({
                               }}
                             >
                               <Text
-                                className="font-fredoka-one text-[8px] sm:text-[9px] text-center uppercase"
+                                className="font-fredoka-one text-[9px] text-center uppercase"
                                 style={{
                                   color:
                                     day.checkIn.zone === 'optimal'
@@ -623,7 +668,7 @@ export default function StudentEmotionRegulationCard({
           </View>
 
           {/* Collapsible Behavioral Insight Card (100% Synced with Active Swiped Week) */}
-          <View className="mt-5 rounded-2xl bg-[#F0F9FF] border border-[#BBE8FB] overflow-hidden">
+          <View className="mt-5 rounded-2xl bg-[#F0F9FF] border-[2px] border-[#BBE8FB] overflow-hidden">
             <Pressable
               onPress={() => setIsInsightCollapsed(!isInsightCollapsed)}
               className="p-3.5 sm:p-4 flex-row items-center justify-between active:opacity-80"
@@ -632,20 +677,20 @@ export default function StudentEmotionRegulationCard({
                 <View className="w-7 h-7 rounded-xl bg-white border border-[#BBE8FB] items-center justify-center shrink-0">
                   <Feather name="info" size={14} color="#62A9E6" />
                 </View>
-                <Text className="font-fredoka-one text-xs sm:text-sm text-[#0369A1]">
+                <Text className="font-fredoka-one text-xs sm:text-sm text-[#62A9E6]">
                   Behavioral Insight ({weekScopeSubtitle})
                 </Text>
               </View>
               <Feather
                 name={isInsightCollapsed ? 'chevron-down' : 'chevron-up'}
                 size={16}
-                color="#0369A1"
+                color="#62A9E6"
               />
             </Pressable>
 
             {!isInsightCollapsed && (
               <View className="px-4 pb-4 pt-0">
-                <Text className="font-quicksand-medium text-xs sm:text-sm text-[#334155] leading-relaxed">
+                <Text className="font-quicksand-medium text-xs sm:text-sm text-[#484A4B] leading-relaxed">
                   {activeAnalytics.insightSummary}
                 </Text>
               </View>
@@ -653,6 +698,15 @@ export default function StudentEmotionRegulationCard({
           </View>
         </View>
       )}
+
+      {/* PER-CHART FILTER MODAL */}
+      <ParentFilterModal
+        visible={isFilterModalOpen}
+        onClose={() => setIsFilterModalOpen(false)}
+        isTablet={isTablet}
+        selectedFilter={filter}
+        onSelectFilter={(newFilter) => setFilter(newFilter)}
+      />
     </View>
   );
 }

@@ -1,6 +1,7 @@
 import { MasterDomainExposure, SessionEvaluation } from './class-analytics';
 import { calculateLinearRegression, calculateRubricScore, TARGET_MASTERY_SCORE } from './classAnalyticsEngine';
 import { FilterPeriod, getDateRangeForFilter } from '../utils/dashboardFilters';
+import { getEmotionMeta, getEmotionZone } from '../utils/emotionZones';
 
 export interface StudentForecastPoint {
   date: string;
@@ -199,11 +200,11 @@ export function generateStudentRecommendations(
         type: 'action',
         title: `Suggested Activity: ${lowestSkill}`,
         description: `Recommendation: Assign exercises focusing on "${lowestSkill}" to boost proficiency in ${focusDomain.masterDomain}.`,
-        badgeLabel: 'NEEDS ATTENTION',
-        accentColor: '#A78BFA',
-        bgColor: '#FAF5FF',
-        borderColor: '#DDD6FE',
-        textColor: '#7C3AED',
+        badgeLabel: 'SUGGESTED ACTIVITY',
+        accentColor: '#62A9E6',
+        bgColor: '#EFF8FF',
+        borderColor: '#BBE8FB',
+        textColor: '#62A9E6',
       });
     }
     // Score-based domain performance analysis
@@ -256,7 +257,7 @@ export function generateStudentRecommendations(
       if (avgScore >= 3.0) {
         recommendations.push({
           id: 'student_action_mastery',
-          type: 'action',
+          type: 'strength',
           title: 'Great Progress',
           description: `Average evaluation score is strong at ${avgScore.toFixed(1)} / 4.0. Introduce higher complexity tracing or multi-step sorting tasks.`,
           badgeLabel: 'TOP PERFORMANCE',
@@ -387,41 +388,12 @@ export function generateSchoolWeekDays(
     let checkInData: SchoolWeekDayEmotion['checkIn'] = null;
 
     if (loggedEmotion) {
-      let zone: 'optimal' | 'heightened' | 'low_energy' = 'optimal';
-      let label = loggedEmotion.toUpperCase();
-      let tagalogLabel = '';
-
-      if (loggedEmotion === 'happy') {
-        zone = 'optimal';
-        label = 'HAPPY';
-        tagalogLabel = 'Masaya';
-      } else if (loggedEmotion === 'calm') {
-        zone = 'optimal';
-        label = 'CALM';
-        tagalogLabel = 'Kalmado';
-      } else if (loggedEmotion === 'excited') {
-        zone = 'heightened';
-        label = 'EXCITED';
-        tagalogLabel = 'Masigla';
-      } else if (loggedEmotion === 'nervous') {
-        zone = 'heightened';
-        label = 'NERVOUS';
-        tagalogLabel = 'Kinakabahan';
-      } else if (loggedEmotion === 'tired') {
-        zone = 'low_energy';
-        label = 'TIRED';
-        tagalogLabel = 'Pagod';
-      } else if (loggedEmotion === 'sad') {
-        zone = 'low_energy';
-        label = 'SAD';
-        tagalogLabel = 'Malungkot';
-      }
-
+      const meta = getEmotionMeta(loggedEmotion);
       checkInData = {
         emotion: loggedEmotion,
-        label,
-        tagalogLabel,
-        zone,
+        label: meta ? meta.label : loggedEmotion.toUpperCase(),
+        tagalogLabel: meta ? meta.tagalogLabel : '',
+        zone: meta ? meta.zone : 'optimal',
       };
     }
 
@@ -497,13 +469,14 @@ export function calculateStudentEmotionRegulationAnalytics(
     const dayScores = evalScoreByDate[c.check_in_date];
     const dayAvg = dayScores && dayScores.length > 0 ? dayScores.reduce((a, b) => a + b, 0) / dayScores.length : null;
 
-    if (e === 'happy' || e === 'calm') {
+    const zone = getEmotionZone(e);
+    if (zone === 'optimal') {
       optimalCount++;
       if (dayAvg !== null) optimalScores.push(dayAvg);
-    } else if (e === 'excited' || e === 'nervous') {
+    } else if (zone === 'heightened') {
       heightenedCount++;
       if (dayAvg !== null) heightenedScores.push(dayAvg);
-    } else if (e === 'tired' || e === 'sad') {
+    } else if (zone === 'low_energy') {
       lowEnergyCount++;
       if (dayAvg !== null) lowEnergyScores.push(dayAvg);
     }
@@ -598,6 +571,12 @@ export function calculateStudentEmotionRegulationAnalytics(
   let pedagogicalTip = `Encourage daily self-reporting to foster emotional recognition and autonomous communication.`;
   if (dominantEmotion === 'nervous') {
     pedagogicalTip = `When ${firstName} checks in as Nervous, begin the class with low-stress warm-ups like Bubble Pop before structured tracing.`;
+  } else if (dominantEmotion === 'angry') {
+    pedagogicalTip = `When ${firstName} checks in as Angry, allow a quiet sensory decompression break or soothing calming visual before starting tasks.`;
+  } else if (dominantEmotion === 'sick') {
+    pedagogicalTip = `When ${firstName} checks in as Sick, prioritize rest and low-demand comfort tasks; notify guardian if symptoms persist.`;
+  } else if (dominantEmotion === 'surprised') {
+    pedagogicalTip = `When ${firstName} checks in as Surprised, walk through the day's visual schedule to restore predictability and calmness.`;
   } else if (dominantEmotion === 'tired') {
     pedagogicalTip = `When ${firstName} checks in as Tired, reduce task duration or increase positive verbal prompts to maintain motivation.`;
   } else if (dominantEmotion === 'excited') {

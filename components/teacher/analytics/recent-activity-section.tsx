@@ -12,7 +12,8 @@ import { getRecentActivity, RecentActivityData, ActivityTypeFilter } from '../..
 import EvaluationReviewModal from './evaluation-review-modal';
 import FeedbackModal from '../../feedback-modal';
 import RecentIcon from '../../../assets/images/teacher/analytics/icon-recent.svg';
-import { FilterPeriod } from '../../../src/utils/dashboardFilters';
+import { FilterPeriod, getFilterLabel } from '../../../src/utils/dashboardFilters';
+import { ParentFilterModal } from '../../parent/parent-filter-modal';
 
 type FilterType = FilterPeriod;
 
@@ -70,6 +71,7 @@ export function RecentActivitySection({ onEvaluationValidated, activityType = 'a
   const isTablet = width >= 768;
 
   const [filter, setFilter] = useState<FilterType>('today');
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [activities, setActivities] = useState<RecentActivityData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -121,38 +123,12 @@ export function RecentActivitySection({ onEvaluationValidated, activityType = 'a
     onEvaluationValidated?.();
   };
 
-  const renderFilterButton = (type: FilterType, label: string) => {
-    const isActive = filter === type;
-    return (
-      <Pressable
-        key={type}
-        onPress={() => setFilter(type)}
-        className={`border-[2px] rounded-[8px] justify-center items-center active:scale-95 transition-transform ${
-          isTablet ? 'px-4 py-2' : 'px-3 py-1.5'
-        }`}
-        style={{
-          backgroundColor: isActive ? '#BBE8FB' : '#FFFFFF',
-          borderColor: isActive ? '#62A9E6' : '#BBE8FB',
-          shadowColor: isActive ? '#62A9E6' : '#BBE8FB',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 1,
-          shadowRadius: 0,
-          elevation: 2,
-        }}
-      >
-        <Text className={`font-fredoka-one text-[#62A9E6] uppercase ${isTablet ? 'text-sm' : 'text-[11px]'}`}>
-          {label}
-        </Text>
-      </Pressable>
-    );
-  };
-
   const visibleActivities = isExpanded ? activities : activities.slice(0, 4);
 
   return (
     <View className={`w-full ${isTablet ? 'mt-10' : 'mt-6'}`}>
-      {/* Header section with Title & Filter Buttons */}
-      <View className={`flex-col items-start ${isTablet ? 'px-12 mb-6' : 'px-6 mb-4'} gap-3`}>
+      {/* Header section with Title & Filter Dropdown */}
+      <View className={`flex-row items-center justify-between ${isTablet ? 'px-12 mb-6' : 'px-6 mb-4'} flex-wrap gap-2`}>
         <View className="flex-row items-center gap-2">
           <RecentIcon
             width={isTablet ? 32 : 22}
@@ -163,19 +139,25 @@ export function RecentActivitySection({ onEvaluationValidated, activityType = 'a
           </Text>
         </View>
 
-        {/* Filters styled like StudentsScreenLayout */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          className="w-full"
-          contentContainerStyle={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 2 }}
+        {/* Compact Tactile Filter Dropdown Trigger */}
+        <Pressable
+          onPress={() => setIsFilterModalOpen(true)}
+          className="flex-row items-center justify-center gap-1.5 bg-white border-[2px] border-[#BBE8FB] px-3 h-[34px] rounded-xl active:scale-95 transition-transform"
+          style={{
+            borderColor: '#BBE8FB',
+            shadowColor: '#BBE8FB',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 1,
+            shadowRadius: 0,
+            elevation: 2,
+          }}
         >
-          {renderFilterButton('today', 'TODAY')}
-          {renderFilterButton('week', 'THIS WEEK')}
-          {renderFilterButton('last_week', 'LAST WEEK')}
-          {renderFilterButton('month', 'THIS MONTH')}
-          {renderFilterButton('last_month', 'LAST MONTH')}
-        </ScrollView>
+          <Feather name="calendar" size={13} color="#62A9E6" />
+          <Text className="font-fredoka-one text-[#62A9E6] text-[11px] uppercase" numberOfLines={1}>
+            {getFilterLabel(filter).toUpperCase()}
+          </Text>
+          <Feather name="chevron-down" size={13} color="#62A9E6" />
+        </Pressable>
       </View>
 
       {/* Activity Timeline List */}
@@ -353,6 +335,15 @@ export function RecentActivitySection({ onEvaluationValidated, activityType = 'a
         initialScores={activeFeedbackSession?.rubricEvaluation}
         initialFeedback={activeFeedbackSession?.teacherFeedback}
         validatedAt={activeFeedbackSession?.validatedAt || undefined}
+      />
+
+      {/* FILTER MODAL */}
+      <ParentFilterModal
+        visible={isFilterModalOpen}
+        onClose={() => setIsFilterModalOpen(false)}
+        isTablet={isTablet}
+        selectedFilter={filter}
+        onSelectFilter={(newFilter) => setFilter(newFilter)}
       />
     </View>
   );

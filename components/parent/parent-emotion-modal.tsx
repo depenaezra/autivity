@@ -73,6 +73,30 @@ const SUPPORT_TIPS: Record<string, { summary: string; tips: string[] }> = {
       'Engage in favorite comforting activities (favorite toy, music, drawing).',
     ],
   },
+  angry: {
+    summary: 'Your learner reported feeling angry or frustrated today.',
+    tips: [
+      'Give them a quiet sensory space to decompress before asking about their day.',
+      'Validate their feelings without reprimanding strong reactions.',
+      'Offer calming sensory activities like squeezing a stress ball or deep breathing.',
+    ],
+  },
+  surprised: {
+    summary: 'Your learner experienced an unexpected or surprising event today.',
+    tips: [
+      'Talk through any unexpected changes in routine that may have startled them.',
+      'Re-establish a clear, predictable visual routine at home for bedtime.',
+      'Reassure them that surprises can be navigated safely one step at a time.',
+    ],
+  },
+  sick: {
+    summary: 'Your learner reported feeling physically unwell or under the weather.',
+    tips: [
+      'Check in on physical symptoms (temperature, tummy, headache, or tiredness).',
+      'Provide extra hydration, soothing rest, and low-stimulation quiet time.',
+      'Consider keeping them well-rested and notify their teacher if rest is needed.',
+    ],
+  },
 };
 
 export function ParentEmotionModal({

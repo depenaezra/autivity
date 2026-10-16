@@ -1,4 +1,5 @@
 import { Feather } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import React, { useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, Text, TextInput, View } from 'react-native';
 import Animated, { FadeInUp, FadeOutUp } from 'react-native-reanimated';
@@ -78,9 +79,10 @@ export function ParentProfileMenuSection({
   };
 
   return (
-    <View
-      className={`w-full bg-white ${isTablet ? 'rounded-[32px]' : 'rounded-[24px]'
-        } border-[4px] border-[#F1F1F1] overflow-hidden mb-6`}
+    <>
+      <View
+        className={`w-full bg-white ${isTablet ? 'rounded-[32px]' : 'rounded-[24px]'
+          } border-[4px] border-[#F1F1F1] overflow-hidden mb-6`}
       style={{
         shadowColor: '#F1F1F1',
         shadowOffset: { width: 0, height: 4 },
@@ -508,5 +510,64 @@ export function ParentProfileMenuSection({
         </Pressable>
       </View>
     </View>
-  );
+
+    {/* SEPARATE SECTION: HOW TO USE */}
+    <View className="mb-6">
+      <Text
+        className={`font-fredoka-one text-[#9CA3AF] uppercase mb-2 px-1 ${
+          isTablet ? 'text-sm' : 'text-xs'
+        }`}
+      >
+        Help & Guide
+      </Text>
+      <View
+        className={`w-full bg-white ${
+          isTablet ? 'rounded-[32px]' : 'rounded-[24px]'
+        } border-[4px] border-[#F1F1F1] overflow-hidden`}
+        style={{
+          shadowColor: '#F1F1F1',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 1,
+          shadowRadius: 0,
+          elevation: 3,
+        }}
+      >
+        <Pressable
+          onPress={() =>
+            router.push({
+              pathname: '/(auth)/welcome-tour',
+              params: { role: 'parent', isReplay: 'true' },
+            } as any)
+          }
+          className={`flex-row items-center justify-between active:bg-[#F9FAFB] ${
+            isTablet ? 'px-8 py-5' : 'px-5 py-4'
+          }`}
+        >
+          <View className="flex-row items-center gap-3.5 flex-1">
+            <View className="w-9 h-9 rounded-full bg-[#FFF3C4] items-center justify-center">
+              <Feather name="help-circle" size={isTablet ? 20 : 18} color="#FFAE02" />
+            </View>
+            <View className="flex-1">
+              <Text
+                className={`font-fredoka-one text-[#4B5563] ${
+                  isTablet ? 'text-xl' : 'text-base'
+                }`}
+              >
+                How to Use
+              </Text>
+              <Text className="font-quicksand-medium text-[#9CA3AF] text-xs mt-0.5">
+                Interactive app guide & tips
+              </Text>
+            </View>
+          </View>
+          <Feather
+            name="chevron-right"
+            size={isTablet ? 22 : 18}
+            color="#FFAE02"
+          />
+        </Pressable>
+      </View>
+    </View>
+  </>
+);
 }

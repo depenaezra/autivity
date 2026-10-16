@@ -18,6 +18,7 @@ import { filterSessionsByPeriod } from '../../../../src/utils/dashboardFilters';
 import FeedbackModal from '../../../feedback-modal';
 import EvaluationReviewModal from '../evaluation-review-modal';
 import EditIcon from '../../../../assets/images/teacher/class/icon-button-edit.svg';
+import { BaseModal } from '../../home/base-modal';
 
 interface SessionsProps {
   studentId: string;
@@ -28,7 +29,21 @@ interface SessionsProps {
   onEvaluationValidated?: () => void;
 }
 
-type SessionFilterType = 'all' | 'unvalidated' | 'validated';
+type StatusFilter = 'all' | 'unvalidated' | 'validated';
+type SourceFilter = 'all' | 'app' | 'classroom';
+type PromptFilter = 'all' | 'independent' | 'assisted';
+
+interface SessionFiltersState {
+  status: StatusFilter;
+  source: SourceFilter;
+  prompt: PromptFilter;
+}
+
+const DEFAULT_FILTERS: SessionFiltersState = {
+  status: 'all',
+  source: 'all',
+  prompt: 'all',
+};
 
 function SessionSkeletonItem({ isTablet }: { isTablet: boolean }) {
   const opacity = useSharedValue(0.4);
@@ -88,7 +103,8 @@ export default function Sessions({
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [sessionFilter, setSessionFilter] = useState<SessionFilterType>('all');
+  const [sessionFilters, setSessionFilters] = useState<SessionFiltersState>(DEFAULT_FILTERS);
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
 
   // Active open Swipeable ref
@@ -153,6 +169,15 @@ export default function Sessions({
     onEvaluationValidated?.();
   };
 
+  const activeFilterCount =
+    (sessionFilters.status !== 'all' ? 1 : 0) +
+    (sessionFilters.source !== 'all' ? 1 : 0) +
+    (sessionFilters.prompt !== 'all' ? 1 : 0);
+
+  const handleResetFilters = () => {
+    setSessionFilters(DEFAULT_FILTERS);
+  };
+
   const filteredSessions = useMemo(() => {
     let list = sessions;
     if (filter) {
@@ -163,17 +188,56 @@ export default function Sessions({
         date: r.rawDate || (r.date instanceof Date ? r.date.toLocaleDateString() : String(r.date || '')),
       }));
     }
+
     return list.filter((s) => {
-      if (sessionFilter === 'unvalidated') return s.status === 'pending';
-      if (sessionFilter === 'validated') return s.status === 'validated';
+      // 1. Status Filter
+      if (sessionFilters.status === 'unvalidated' && s.status !== 'pending') return false;
+      if (sessionFilters.status === 'validated' && s.status !== 'validated') return false;
+
+      // 2. Activity Source Filter (App vs Classroom)
+      if (sessionFilters.source === 'app' && s.activityType !== 'app') return false;
+      if (sessionFilters.source === 'classroom' && s.activityType !== 'classroom') return false;
+
+      // 3. Prompt / Independence Filter
+      const isIndep = !s.hints_used || s.hints_used === 0;
+      if (sessionFilters.prompt === 'independent' && !isIndep) return false;
+      if (sessionFilters.prompt === 'assisted' && isIndep) return false;
+
       return true;
     });
-  }, [sessions, sessionFilter, filter]);
+  }, [sessions, sessionFilters, filter]);
 
-  const filterOptions: { label: string; value: SessionFilterType; count: number }[] = [
-    { label: 'ALL', value: 'all', count: sessions.length },
-    { label: 'PENDING', value: 'unvalidated', count: sessions.filter((s) => s.status === 'pending').length },
-    { label: 'EVALUATED', value: 'validated', count: sessions.filter((s) => s.status === 'validated').length },
+  const getTriggerLabel = () => {
+    if (activeFilterCount === 0) {
+      return `ALL SESSIONS (${filteredSessions.length})`;
+    }
+    if (activeFilterCount === 1) {
+      if (sessionFilters.status === 'unvalidated') return `PENDING (${filteredSessions.length})`;
+      if (sessionFilters.status === 'validated') return `EVALUATED (${filteredSessions.length})`;
+      if (sessionFilters.source === 'app') return `APP (${filteredSessions.length})`;
+      if (sessionFilters.source === 'classroom') return `CLASSROOM (${filteredSessions.length})`;
+      if (sessionFilters.prompt === 'independent') return `INDEPENDENT (${filteredSessions.length})`;
+      if (sessionFilters.prompt === 'assisted') return `ASSISTED (${filteredSessions.length})`;
+    }
+    return `FILTERS (${activeFilterCount}) • ${filteredSessions.length}`;
+  };
+
+  const statusOptions: { label: string; value: StatusFilter; icon: keyof typeof Feather.glyphMap; count: number }[] = [
+    { label: 'All', value: 'all', icon: 'layers', count: sessions.length },
+    { label: 'Pending', value: 'unvalidated', icon: 'clock', count: sessions.filter((s) => s.status === 'pending').length },
+    { label: 'Evaluated', value: 'validated', icon: 'check-circle', count: sessions.filter((s) => s.status === 'validated').length },
+  ];
+
+  const sourceOptions: { label: string; value: SourceFilter; icon: keyof typeof Feather.glyphMap; count: number }[] = [
+    { label: 'All', value: 'all', icon: 'grid', count: sessions.length },
+    { label: 'App', value: 'app', icon: 'tablet', count: sessions.filter((s) => s.activityType === 'app').length },
+    { label: 'Classroom', value: 'classroom', icon: 'book-open', count: sessions.filter((s) => s.activityType === 'classroom').length },
+  ];
+
+  const promptOptions: { label: string; value: PromptFilter; icon: keyof typeof Feather.glyphMap; count: number }[] = [
+    { label: 'All', value: 'all', icon: 'list', count: sessions.length },
+    { label: 'Independent', value: 'independent', icon: 'award', count: sessions.filter((s) => !s.hints_used || s.hints_used === 0).length },
+    { label: 'Assisted', value: 'assisted', icon: 'help-circle', count: sessions.filter((s) => typeof s.hints_used === 'number' && s.hints_used > 0).length },
   ];
 
   const renderRightActions = (
@@ -234,9 +298,9 @@ export default function Sessions({
 
   return (
     <View className="w-full mt-6 mb-12 pb-6">
-      {/* Header and Filter Buttons */}
+      {/* Header and Filter Selector */}
       <View className="mb-4">
-        <View className="flex-col items-start gap-3">
+        <View className="flex-row items-center justify-between flex-wrap gap-2">
           <View className="flex-row items-center gap-2">
             <Text className={`font-fredoka-one text-[#484A4B] ${isTablet ? 'text-[32px]' : 'text-[22px]'}`}>
               Completed Sessions
@@ -249,35 +313,46 @@ export default function Sessions({
             </Pressable>
           </View>
 
-          <View className="flex-row items-center gap-1.5 flex-wrap">
-            {filterOptions.map((btn) => {
-              const isActive = sessionFilter === btn.value;
-              return (
-                <Pressable
-                  key={btn.value}
-                  onPress={() => setSessionFilter(btn.value)}
-                  style={{
-                    borderWidth: 2,
-                    borderRadius: 8,
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    paddingHorizontal: isTablet ? 16 : 12,
-                    paddingVertical: isTablet ? 8 : 6,
-                    backgroundColor: isActive ? '#BBE8FB' : '#FFFFFF',
-                    borderColor: isActive ? '#62A9E6' : '#BBE8FB',
-                    shadowColor: isActive ? '#62A9E6' : '#BBE8FB',
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 1,
-                    shadowRadius: 0,
-                    elevation: 2,
-                  }}
-                >
-                  <Text className={`font-fredoka-one text-[#62A9E6] uppercase ${isTablet ? 'text-sm' : 'text-[11px]'}`}>
-                    {btn.label} ({btn.count})
-                  </Text>
-                </Pressable>
-              );
-            })}
+          {/* Compact Tactile Filter Dropdown Trigger + Quick Reset */}
+          <View className="flex-row items-center gap-2">
+            <Pressable
+              onPress={() => setIsFilterModalOpen(true)}
+              className="flex-row items-center justify-center gap-1.5 border-[2px] px-3 h-[34px] rounded-xl active:scale-95 transition-transform"
+              style={{
+                backgroundColor: activeFilterCount > 0 ? '#F0F9FF' : '#FFFFFF',
+                borderColor: activeFilterCount > 0 ? '#62A9E6' : '#BBE8FB',
+                shadowColor: activeFilterCount > 0 ? '#62A9E6' : '#BBE8FB',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 1,
+                shadowRadius: 0,
+                elevation: 2,
+              }}
+            >
+              <Feather name="filter" size={13} color="#62A9E6" />
+              <Text className="font-fredoka-one text-[#62A9E6] text-[11px] uppercase" numberOfLines={1}>
+                {getTriggerLabel()}
+              </Text>
+              <Feather name="chevron-down" size={13} color="#62A9E6" />
+            </Pressable>
+
+            {activeFilterCount > 0 && (
+              <Pressable
+                onPress={handleResetFilters}
+                className="h-[34px] px-3 rounded-[8px] border-[2px] border-[#FFDBD4] bg-white flex-row items-center justify-center gap-1.5 active:scale-95 transition-transform"
+                style={{
+                  shadowColor: '#FFDBD4',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 1,
+                  shadowRadius: 0,
+                  elevation: 2,
+                }}
+              >
+                <Feather name="rotate-ccw" size={12} color="#FF3B3F" />
+                <Text className="font-fredoka-one text-[11px] text-[#FF3B3F] uppercase">
+                  Reset
+                </Text>
+              </Pressable>
+            )}
           </View>
         </View>
 
@@ -326,17 +401,34 @@ export default function Sessions({
             No Session Records
           </Text>
           <Text className="font-quicksand-medium text-sm text-[#9CA3AF] mt-1 text-center">
-            {sessionFilter === 'unvalidated'
-              ? 'No unvalidated sessions for this learner.'
-              : sessionFilter === 'validated'
-              ? 'No validated sessions for this learner.'
+            {activeFilterCount > 0
+              ? 'No sessions match the selected filter criteria.'
               : 'No recorded sessions for this learner yet.'}
           </Text>
+          {activeFilterCount > 0 && (
+            <Pressable
+              onPress={handleResetFilters}
+              className="mt-4 py-2.5 px-4 rounded-[8px] border-[2px] border-[#FFDBD4] bg-white flex-row items-center justify-center gap-2 active:scale-95 transition-transform"
+              style={{
+                shadowColor: '#FFDBD4',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 1,
+                shadowRadius: 0,
+                elevation: 2,
+              }}
+            >
+              <Feather name="rotate-ccw" size={13} color="#FF3B3F" />
+              <Text className="font-fredoka-one text-xs text-[#FF3B3F] uppercase">
+                Reset Filters
+              </Text>
+            </Pressable>
+          )}
         </View>
       ) : (
         <View className="gap-3">
           {filteredSessions.map((session) => {
             const isPending = session.status === 'pending';
+            const isIndependent = !session.hints_used || session.hints_used === 0;
             const accentColor = isPending ? '#FF8870' : '#179D33';
             let currentSwipeableRef: any = null;
 
@@ -365,53 +457,51 @@ export default function Sessions({
 
                   {/* Session Details */}
                   <View className="flex-1 pr-2">
+                    {/* Domain Category Eyebrow */}
+                    <View className="flex-row items-center gap-1.5 mb-1 flex-wrap">
+                      <Text className={`font-fredoka-one text-[#9CA3AF] uppercase tracking-wider ${isTablet ? 'text-xs' : 'text-[10px]'}`}>
+                        {session.category}
+                      </Text>
+                      {session.is_timed_out && (
+                        <>
+                          <Text className="text-[#D1D5DB] text-[10px]">•</Text>
+                          <Text className={`font-quicksand-bold text-[#FF8870] ${isTablet ? 'text-xs' : 'text-[10px]'}`}>
+                            Timed Out ({session.completed_count || 1}/3)
+                          </Text>
+                        </>
+                      )}
+                    </View>
+
+                    {/* Activity Title + Colored App/Classroom Pill */}
                     <View className="flex-row items-center gap-2 flex-wrap">
                       <Text className={`font-fredoka-one text-[#484A4B] ${isTablet ? 'text-lg' : 'text-base'}`}>
                         {session.activityName}
                       </Text>
 
-                      {/* Activity Source Badge */}
+                      {/* Colored Activity Source Pill */}
                       <View
-                        className="px-2 py-0.5 rounded-[6px] border flex-row items-center gap-1"
+                        className="px-2.5 py-0.5 rounded-full border flex-row items-center gap-1"
                         style={{
-                          backgroundColor: session.activityType === 'classroom' ? '#FAF5FF' : '#EFF6FF',
-                          borderColor: session.activityType === 'classroom' ? '#E9D5FF' : '#BBE8FB',
+                          backgroundColor: session.activityType === 'classroom' ? '#FAF5FF' : '#F0F9FF',
+                          borderColor: session.activityType === 'classroom' ? '#DDD6FE' : '#BBE8FB',
                         }}
                       >
                         <Feather
                           name={session.activityType === 'classroom' ? 'book-open' : 'tablet'}
                           size={isTablet ? 11 : 9}
-                          color={session.activityType === 'classroom' ? '#A855F7' : '#3B82F6'}
+                          color={session.activityType === 'classroom' ? '#8B5CF6' : '#62A9E6'}
                         />
                         <Text
                           className={`font-fredoka-one uppercase ${isTablet ? 'text-xs' : 'text-[9px]'}`}
-                          style={{ color: session.activityType === 'classroom' ? '#A855F7' : '#3B82F6' }}
+                          style={{ color: session.activityType === 'classroom' ? '#8B5CF6' : '#62A9E6' }}
                         >
                           {session.activityType === 'classroom' ? 'CLASSROOM' : 'APP'}
                         </Text>
                       </View>
-
-                      {/* Timed Out Badge */}
-                      {session.is_timed_out && (
-                        <View
-                          className="px-2 py-0.5 rounded-[6px] border flex-row items-center gap-1 bg-[#FFF7ED] border-[#FFDBD4]"
-                        >
-                          <Feather
-                            name="clock"
-                            size={isTablet ? 11 : 9}
-                            color="#EA580C"
-                          />
-                          <Text
-                            className={`font-fredoka-one uppercase ${isTablet ? 'text-xs' : 'text-[9px]'} text-[#EA580C]`}
-                          >
-                            TIMED OUT ({session.completed_count || 1}/3)
-                          </Text>
-                        </View>
-                      )}
                     </View>
 
-                    {/* Optically-aligned Date & Duration Row */}
-                    <View className="flex-row items-center gap-2.5 mt-1 flex-wrap">
+                    {/* Optically-aligned Date & Duration Row + Independent Achievement Badge */}
+                    <View className="flex-row items-center gap-2 mt-1.5 flex-wrap">
                       {session.date ? (
                         <View className="flex-row items-center gap-1">
                           <View className="justify-center items-center">
@@ -440,23 +530,57 @@ export default function Sessions({
                         </View>
                       ) : null}
 
-                      {/* Hints Requested Badge */}
                       <Text className="text-[#D1D5DB] text-xs">•</Text>
-                      <View className="flex-row items-center gap-1">
-                        <Feather name="help-circle" size={isTablet ? 12 : 10} color={session.hints_used && session.hints_used > 0 ? '#D97706' : '#10B981'} />
-                        <Text className={`font-quicksand-bold ${isTablet ? 'text-sm' : 'text-xs'} ${session.hints_used && session.hints_used > 0 ? 'text-[#D97706]' : 'text-[#10B981]'}`}>
-                          {session.hints_used && session.hints_used > 0
-                            ? `${session.hints_used} hint${session.hints_used === 1 ? '' : 's'}`
-                            : 'Independent'}
-                        </Text>
-                      </View>
+
+                      {/* Prompts / Noticeable Independent Achievement Badge */}
+                      {isIndependent ? (
+                        <View
+                          className="px-2.5 py-0.5 rounded-full flex-row items-center gap-1"
+                          style={{
+                            backgroundColor: '#E8F8ED',
+                            borderWidth: 1.5,
+                            borderColor: '#86EFAC',
+                            shadowColor: '#86EFAC',
+                            shadowOffset: { width: 0, height: 1 },
+                            shadowOpacity: 0.6,
+                            shadowRadius: 1,
+                            elevation: 1,
+                          }}
+                        >
+                          <Feather name="award" size={isTablet ? 12 : 10} color="#15803D" />
+                          <Text className={`font-fredoka-one uppercase text-[#15803D] tracking-wide ${isTablet ? 'text-xs' : 'text-[10px]'}`}>
+                            INDEPENDENT
+                          </Text>
+                        </View>
+                      ) : (
+                        <View className="flex-row items-center gap-1">
+                          <Feather name="help-circle" size={isTablet ? 12 : 10} color="#9CA3AF" />
+                          <Text className={`font-quicksand-medium text-[#9CA3AF] ${isTablet ? 'text-sm' : 'text-xs'}`}>
+                            {session.hints_used} {session.hints_used === 1 ? 'hint' : 'hints'}
+                          </Text>
+                        </View>
+                      )}
                     </View>
                   </View>
 
-                  {/* Category Pill on Top Right */}
-                  <View className="bg-[#F1F1F1] px-2.5 py-1 rounded-[6px] ml-2 self-start">
-                    <Text className={`font-fredoka-one text-[#62A9E6] uppercase ${isTablet ? 'text-xs' : 'text-[10px]'}`}>
-                      {session.category}
+                  {/* Clean Single Status Badge on Right */}
+                  <View
+                    className="px-2.5 py-1 rounded-xl border flex-row items-center gap-1 shrink-0 self-center ml-2"
+                    style={{
+                      backgroundColor: isPending ? '#FFF7ED' : '#F8FAFC',
+                      borderColor: isPending ? '#FFDBD4' : '#E2E8F0',
+                    }}
+                  >
+                    <Feather
+                      name={isPending ? 'clock' : 'check-circle'}
+                      size={isTablet ? 12 : 10}
+                      color={isPending ? '#FF8870' : '#179D33'}
+                    />
+                    <Text
+                      className={`font-fredoka-one uppercase ${isTablet ? 'text-xs' : 'text-[10px]'}`}
+                      style={{ color: isPending ? '#FF8870' : '#64748B' }}
+                    >
+                      {isPending ? 'PENDING' : 'EVALUATED'}
                     </Text>
                   </View>
                 </View>
@@ -539,6 +663,189 @@ export default function Sessions({
         }}
         isTablet={isTablet}
       />
+
+      {/* Filter Selection Modal */}
+      <BaseModal
+        visible={isFilterModalOpen}
+        onClose={() => setIsFilterModalOpen(false)}
+        title="Filter Sessions"
+        isTablet={isTablet}
+        cancelLabel="CLOSE"
+        onSubmit={() => setIsFilterModalOpen(false)}
+        submitLabel={`SHOW ${filteredSessions.length} SESSIONS`}
+        heightClassName={isTablet ? 'h-[46%]' : 'h-[52%]'}
+      >
+        <View className="flex-col gap-3.5">
+          {/* Top Bar with Clear High-Contrast Reset Action */}
+          <View className="flex-row items-center justify-between pb-2 border-b border-[#F1F1F1]">
+            <Text className="font-fredoka-one text-xs text-[#9CA3AF] uppercase tracking-wider">
+              {activeFilterCount > 0 ? `${activeFilterCount} Active Filter${activeFilterCount > 1 ? 's' : ''}` : 'No Filters Applied'}
+            </Text>
+            {activeFilterCount > 0 ? (
+              <Pressable
+                onPress={handleResetFilters}
+                className="py-1.5 px-3 rounded-[8px] border-[2px] border-[#FFDBD4] bg-white flex-row items-center justify-center gap-1.5 active:scale-95 transition-transform"
+                style={{
+                  shadowColor: '#FFDBD4',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 1,
+                  shadowRadius: 0,
+                  elevation: 2,
+                }}
+              >
+                <Feather name="rotate-ccw" size={12} color="#FF3B3F" />
+                <Text className="font-fredoka-one text-xs text-[#FF3B3F] uppercase">
+                  Reset All
+                </Text>
+              </Pressable>
+            ) : (
+              <View
+                className="py-1.5 px-3 rounded-[8px] border-[2px] border-[#F1F1F1] bg-white flex-row items-center justify-center gap-1.5 opacity-40"
+              >
+                <Feather name="rotate-ccw" size={12} color="#9CA3AF" />
+                <Text className="font-fredoka-one text-xs text-[#9CA3AF] uppercase">
+                  Reset All
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* Section 1: Evaluation Status */}
+          <View>
+            <Text className="font-fredoka-one text-[11px] text-[#9CA3AF] uppercase tracking-wider mb-1.5">
+              Evaluation Status
+            </Text>
+            <View className="flex-row gap-2">
+              {statusOptions.map((opt) => {
+                const isSelected = sessionFilters.status === opt.value;
+                return (
+                  <Pressable
+                    key={opt.value}
+                    onPress={() => setSessionFilters((prev) => ({ ...prev, status: opt.value }))}
+                    className="flex-1 active:scale-95 transition-transform"
+                    style={{
+                      paddingVertical: isTablet ? 9 : 8,
+                      paddingHorizontal: isTablet ? 8 : 4,
+                      borderRadius: 8,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: isSelected ? '#BBE8FB' : '#FFFFFF',
+                      borderWidth: 2,
+                      borderColor: isSelected ? '#62A9E6' : '#BBE8FB',
+                      shadowColor: isSelected ? '#62A9E6' : '#BBE8FB',
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 1,
+                      shadowRadius: 0,
+                      elevation: 2,
+                    }}
+                  >
+                    <View className="flex-row items-center gap-1.5">
+                      <Feather name={opt.icon} size={13} color="#62A9E6" />
+                      <Text
+                        className="font-fredoka-one text-[#62A9E6] text-xs uppercase"
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
+                      >
+                        {opt.label} ({opt.count})
+                      </Text>
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+
+          {/* Section 2: Activity Source */}
+          <View>
+            <Text className="font-fredoka-one text-[11px] text-[#9CA3AF] uppercase tracking-wider mb-1.5">
+              Activity Source
+            </Text>
+            <View className="flex-row gap-2">
+              {sourceOptions.map((opt) => {
+                const isSelected = sessionFilters.source === opt.value;
+                return (
+                  <Pressable
+                    key={opt.value}
+                    onPress={() => setSessionFilters((prev) => ({ ...prev, source: opt.value }))}
+                    className="flex-1 active:scale-95 transition-transform"
+                    style={{
+                      paddingVertical: isTablet ? 9 : 8,
+                      paddingHorizontal: isTablet ? 8 : 4,
+                      borderRadius: 8,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: isSelected ? '#BBE8FB' : '#FFFFFF',
+                      borderWidth: 2,
+                      borderColor: isSelected ? '#62A9E6' : '#BBE8FB',
+                      shadowColor: isSelected ? '#62A9E6' : '#BBE8FB',
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 1,
+                      shadowRadius: 0,
+                      elevation: 2,
+                    }}
+                  >
+                    <View className="flex-row items-center gap-1.5">
+                      <Feather name={opt.icon} size={13} color="#62A9E6" />
+                      <Text
+                        className="font-fredoka-one text-[#62A9E6] text-xs uppercase"
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
+                      >
+                        {opt.label} ({opt.count})
+                      </Text>
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+
+          {/* Section 3: Prompts & Independence */}
+          <View>
+            <Text className="font-fredoka-one text-[11px] text-[#9CA3AF] uppercase tracking-wider mb-1.5">
+              Assistance & Milestone
+            </Text>
+            <View className="flex-row gap-2">
+              {promptOptions.map((opt) => {
+                const isSelected = sessionFilters.prompt === opt.value;
+                return (
+                  <Pressable
+                    key={opt.value}
+                    onPress={() => setSessionFilters((prev) => ({ ...prev, prompt: opt.value }))}
+                    className="flex-1 active:scale-95 transition-transform"
+                    style={{
+                      paddingVertical: isTablet ? 9 : 8,
+                      paddingHorizontal: isTablet ? 8 : 4,
+                      borderRadius: 8,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: isSelected ? '#BBE8FB' : '#FFFFFF',
+                      borderWidth: 2,
+                      borderColor: isSelected ? '#62A9E6' : '#BBE8FB',
+                      shadowColor: isSelected ? '#62A9E6' : '#BBE8FB',
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 1,
+                      shadowRadius: 0,
+                      elevation: 2,
+                    }}
+                  >
+                    <View className="flex-row items-center gap-1.5">
+                      <Feather name={opt.icon} size={13} color="#62A9E6" />
+                      <Text
+                        className="font-fredoka-one text-[#62A9E6] text-xs uppercase"
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
+                      >
+                        {opt.label} ({opt.count})
+                      </Text>
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        </View>
+      </BaseModal>
     </View>
   );
 }

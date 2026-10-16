@@ -96,6 +96,7 @@ export default function Milestones({ studentId }: MilestonesProps) {
   const [newTitle, setNewTitle] = useState('');
   const [newDescription, setNewDescription] = useState('');
   const [newDate, setNewDate] = useState('');
+  const [newTemplateId, setNewTemplateId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   const fetchMilestones = async () => {
@@ -140,6 +141,7 @@ export default function Milestones({ studentId }: MilestonesProps) {
     setNewTitle(milestone.title);
     setNewDescription(milestone.description || '');
     setNewDate(milestone.targetDate);
+    setNewTemplateId(milestone.templateId || null);
     setIsModalVisible(true);
   };
 
@@ -188,7 +190,8 @@ export default function Milestones({ studentId }: MilestonesProps) {
           studentId,
           newTitle.trim(),
           newDescription.trim(),
-          newDate.trim()
+          newDate.trim(),
+          newTemplateId || undefined
         );
         setMilestones((prev) => [added, ...prev]);
       }
@@ -197,6 +200,7 @@ export default function Milestones({ studentId }: MilestonesProps) {
       setNewTitle('');
       setNewDescription('');
       setNewDate('');
+      setNewTemplateId(null);
     } catch (err: any) {
       Alert.alert('Error', err.message || 'Failed to save milestone.');
     } finally {
@@ -321,9 +325,7 @@ export default function Milestones({ studentId }: MilestonesProps) {
             setNewDate('');
             setIsModalVisible(true);
           }}
-          className={`bg-white border-[2px] rounded-[8px] justify-center items-center active:scale-95 transition-transform ${
-            isTablet ? 'px-4 py-2' : 'px-3 py-1.5'
-          }`}
+          className="flex-row items-center justify-center gap-1.5 bg-white border-[2px] border-[#BBE8FB] px-3.5 h-[34px] rounded-xl active:scale-95 transition-transform"
           style={{
             borderColor: '#BBE8FB',
             shadowColor: '#BBE8FB',
@@ -333,6 +335,7 @@ export default function Milestones({ studentId }: MilestonesProps) {
             elevation: 2,
           }}
         >
+          <Feather name="plus" size={13} color="#62A9E6" />
           <Text className={`font-fredoka-one text-[#62A9E6] uppercase ${isTablet ? 'text-sm' : 'text-[11px]'}`}>
             ADD
           </Text>
@@ -370,9 +373,9 @@ export default function Milestones({ studentId }: MilestonesProps) {
             const isInProgress = milestone.status === 'In Progress';
 
             const accentColor = isAchieved ? '#179D33' : isInProgress ? '#FFAE02' : '#62A9E6';
-            const statusBg = isAchieved ? '#CBFAC4' : isInProgress ? '#FFF3C4' : '#E0F2FE';
-            const statusBorder = isAchieved ? '#179D33' : isInProgress ? '#FFAE02' : '#62A9E6';
-            const statusText = isAchieved ? '#179D33' : isInProgress ? '#D97706' : '#62A9E6';
+            const statusBg = isAchieved ? '#CBFAC4' : isInProgress ? '#FFF3C4' : '#F0F9FF';
+            const statusBorder = isAchieved ? '#CBFAC4' : isInProgress ? '#FFF3C4' : '#BBE8FB';
+            const statusText = isAchieved ? '#179D33' : isInProgress ? '#FFAE02' : '#62A9E6';
 
             let currentSwipeableRef: any = null;
 
@@ -430,7 +433,7 @@ export default function Milestones({ studentId }: MilestonesProps) {
                     </Text>
                     {milestone.description ? (
                       <Text
-                        className={`font-quicksand-medium text-[#64748B] mt-0.5 ${
+                        className={`font-quicksand-medium text-[#484A4B] mt-0.5 leading-relaxed ${
                           isTablet ? 'text-sm' : 'text-xs'
                         }`}
                         numberOfLines={2}
@@ -506,6 +509,7 @@ export default function Milestones({ studentId }: MilestonesProps) {
           setNewTitle('');
           setNewDescription('');
           setNewDate('');
+          setNewTemplateId(null);
         }}
         isTablet={isTablet}
         isSaving={isSaving}
@@ -515,6 +519,8 @@ export default function Milestones({ studentId }: MilestonesProps) {
         setDescription={setNewDescription}
         targetDate={newDate}
         setTargetDate={setNewDate}
+        templateId={newTemplateId}
+        setTemplateId={setNewTemplateId}
         onSubmit={handleSaveMilestone}
         isEditing={!!editingMilestoneId}
       />

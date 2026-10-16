@@ -316,25 +316,21 @@ export default function ParentAnalyticsScreen() {
                   <Pressable
                     key={st.id}
                     onPress={() => handleSelectStudentMode(st.id)}
-                    className={`flex-row items-center gap-2 px-3 py-1.5 rounded-full border-[2px] active:scale-95 transition-transform ${
-                      isSelected ? 'bg-[#EBF5FF] border-[#62A9E6]' : 'bg-white border-[#E5E7EB]'
+                    className={`flex-row items-center gap-2 px-3 py-1.5 rounded-[8px] border-[2px] active:scale-95 transition-transform ${
+                      isSelected ? 'bg-[#EBF5FF] border-[#62A9E6]' : 'bg-white border-[#BBE8FB]'
                     }`}
-                    style={
-                      isSelected
-                        ? {
-                            shadowColor: '#BBE8FB',
-                            shadowOffset: { width: 0, height: 2 },
-                            shadowOpacity: 1,
-                            shadowRadius: 0,
-                            elevation: 2,
-                          }
-                        : undefined
-                    }
+                    style={{
+                      shadowColor: isSelected ? '#62A9E6' : '#BBE8FB',
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 1,
+                      shadowRadius: 0,
+                      elevation: 2,
+                    }}
                   >
                     <Text style={{ fontSize: 16 }}>{st.avatar || '🙂'}</Text>
                     <Text
                       className={`font-fredoka-one text-xs ${
-                        isSelected ? 'text-[#62A9E6]' : 'text-[#6B7280]'
+                        isSelected ? 'text-[#62A9E6]' : 'text-[#62A9E6]'
                       }`}
                     >
                       {st.name}
@@ -346,29 +342,25 @@ export default function ParentAnalyticsScreen() {
               {/* Compare Both / Dual View Button */}
               <Pressable
                 onPress={() => handleSelectStudentMode('all')}
-                className={`flex-row items-center gap-1.5 px-3 py-1.5 rounded-full border-[2px] active:scale-95 transition-transform ${
-                  isCompareMode ? 'bg-[#CBFAC4] border-[#179D33]' : 'bg-white border-[#E5E7EB]'
+                className={`flex-row items-center gap-1.5 px-3 py-1.5 rounded-[8px] border-[2px] active:scale-95 transition-transform ${
+                  isCompareMode ? 'bg-[#CBFAC4] border-[#179D33]' : 'bg-white border-[#CBFAC4]'
                 }`}
-                style={
-                  isCompareMode
-                    ? {
-                        shadowColor: '#CBFAC4',
-                        shadowOffset: { width: 0, height: 2 },
-                        shadowOpacity: 1,
-                        shadowRadius: 0,
-                        elevation: 2,
-                      }
-                    : undefined
-                }
+                style={{
+                  shadowColor: isCompareMode ? '#179D33' : '#CBFAC4',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 1,
+                  shadowRadius: 0,
+                  elevation: 2,
+                }}
               >
                 <Ionicons
                   name="stats-chart"
                   size={14}
-                  color={isCompareMode ? '#179D33' : '#6B7280'}
+                  color={isCompareMode ? '#179D33' : '#179D33'}
                 />
                 <Text
                   className={`font-fredoka-one text-xs ${
-                    isCompareMode ? 'text-[#179D33]' : 'text-[#6B7280]'
+                    isCompareMode ? 'text-[#179D33]' : 'text-[#179D33]'
                   }`}
                 >
                   Compare Both
@@ -377,12 +369,11 @@ export default function ParentAnalyticsScreen() {
             </View>
           )}
 
-          {/* COMBINED CONTROLS BAR: RANGE FILTER (LEFT) & ACTIVITY SOURCE CAPSULE (RIGHT) */}
-          <View className="flex-row items-center justify-between gap-2 mt-1 mb-3">
-            {/* Range Filter Selector */}
+          {/* RANGE FILTER SELECTOR ROW */}
+          <View className="flex-row items-center justify-start gap-2 mt-1 mb-2">
             <Pressable
               onPress={() => setFilterModalVisible(true)}
-              className="flex-row items-center justify-center gap-1.5 bg-white border-[2px] border-[#BBE8FB] px-3 h-[40px] rounded-xl active:scale-95 transition-transform"
+              className="flex-row items-center justify-center gap-1.5 bg-white border-[2px] border-[#BBE8FB] px-3 h-[36px] rounded-[8px] active:scale-95 transition-transform"
               style={{
                 borderColor: '#BBE8FB',
                 shadowColor: '#BBE8FB',
@@ -398,16 +389,23 @@ export default function ParentAnalyticsScreen() {
               </Text>
               <Feather name="chevron-down" size={13} color="#62A9E6" />
             </Pressable>
+          </View>
 
-            {/* Activity Source Capsule Switcher */}
-            <View className="flex-row items-center bg-[#ECEFF3] p-1 rounded-full border border-[#E2E8F0] h-[40px]">
+          {/* ACTIVITY SOURCE SWITCHER ROW (Matches Teacher Side: Label on Left, Capsule on Right) */}
+          <View className="flex-row items-center justify-between px-1 pt-1 pb-0.5 mb-3">
+            <Text className="font-fredoka-one text-base text-[#484A4B]">
+              {currentActivityOption.label}
+            </Text>
+
+            {/* Capsule Container with 3 Icons */}
+            <View className="flex-row items-center bg-[#ECEFF3] p-1 rounded-full border border-[#E2E8F0]">
               {activityTypeOptions.map((opt) => {
                 const isActive = activityType === opt.value;
                 return (
                   <Pressable
                     key={opt.value}
                     onPress={() => setActivityType(opt.value)}
-                    className={`w-9 h-7 sm:w-10 sm:h-8 items-center justify-center rounded-full transition-all active:scale-90 ${
+                    className={`w-9 h-8 sm:w-10 sm:h-9 items-center justify-center rounded-full transition-all active:scale-90 ${
                       isActive ? 'bg-[#62A9E6]' : 'bg-transparent'
                     }`}
                     style={
@@ -426,8 +424,8 @@ export default function ParentAnalyticsScreen() {
                   >
                     <Feather
                       name={opt.icon}
-                      size={isTablet ? 18 : 15}
-                      color={isActive ? '#FFFFFF' : '#64748B'}
+                      size={isTablet ? 18 : 16}
+                      color={isActive ? '#FFFFFF' : '#8E9DAE'}
                     />
                   </Pressable>
                 );

@@ -6,7 +6,8 @@ import Svg, { Circle, Defs, Line, LinearGradient, Path, Stop, Text as SvgText } 
 import { ActivityTypeFilter } from '../../../../src/services/analytics';
 import { getStudentValidatedSessionsEvaluations, SessionEvaluation } from '../../../../src/services/student-analytics';
 import { calculateStudentProgressForecast } from '../../../../src/services/studentAnalyticsEngine';
-import { FilterPeriod, getDateRangeForFilter } from '../../../../src/utils/dashboardFilters';
+import { FilterPeriod, getDateRangeForFilter, getFilterLabel } from '../../../../src/utils/dashboardFilters';
+import { ParentFilterModal } from '../../../parent/parent-filter-modal';
 
 interface StudentEvaluationTrendProps {
   studentId: string;
@@ -28,6 +29,7 @@ export default function StudentEvaluationTrend({ studentId, filter: externalFilt
   const [showInfo, setShowInfo] = useState(false);
   const [selectedPointIdx, setSelectedPointIdx] = useState<number | null>(null);
   const [showForecast, setShowForecast] = useState(true);
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
 
   useEffect(() => {
     if (externalFilter) {
@@ -278,7 +280,7 @@ export default function StudentEvaluationTrend({ studentId, filter: externalFilt
     <View className="flex-col mt-6">
       {/* Header and Filter Selector */}
       <View className="mb-4">
-        <View className="flex-col items-start gap-3">
+        <View className="flex-row items-center justify-between flex-wrap gap-2">
           <View className="flex-row items-center gap-2">
             <Text className={`font-fredoka-one text-[#484A4B] ${isTablet ? 'text-[32px]' : 'text-[22px]'}`}>
               Evaluation Trend
@@ -291,24 +293,15 @@ export default function StudentEvaluationTrend({ studentId, filter: externalFilt
             </Pressable>
           </View>
 
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            className="w-full"
-            contentContainerStyle={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 2 }}
-          >
+          <View className="flex-row items-center gap-2 flex-wrap">
+            {/* Forecast Toggle Tactile Button */}
             <Pressable
               onPress={() => setShowForecast(!showForecast)}
+              className="flex-row items-center justify-center px-3 h-[34px] rounded-xl active:scale-95 transition-transform border-[2px]"
               style={{
-                borderWidth: 2,
-                borderRadius: 8,
-                justifyContent: 'center',
-                alignItems: 'center',
-                paddingHorizontal: isTablet ? 14 : 10,
-                paddingVertical: isTablet ? 8 : 6,
-                backgroundColor: showForecast ? '#ECFDF5' : '#FFFFFF',
-                borderColor: showForecast ? '#34D399' : '#E5E7EB',
-                shadowColor: showForecast ? '#34D399' : '#E5E7EB',
+                backgroundColor: showForecast ? '#CBFAC4' : '#FFFFFF',
+                borderColor: showForecast ? '#179D33' : '#F1F1F1',
+                shadowColor: showForecast ? '#179D33' : '#F1F1F1',
                 shadowOffset: { width: 0, height: 2 },
                 shadowOpacity: 1,
                 shadowRadius: 0,
@@ -317,42 +310,33 @@ export default function StudentEvaluationTrend({ studentId, filter: externalFilt
             >
               <Text
                 className={`font-fredoka-one uppercase ${
-                  showForecast ? 'text-[#059669]' : 'text-[#9CA3AF]'
-                } ${isTablet ? 'text-sm' : 'text-[11px]'}`}
+                  showForecast ? 'text-[#179D33]' : 'text-[#9CA3AF]'
+                } text-[11px]`}
               >
                 FORECAST: {showForecast ? 'ON' : 'OFF'}
               </Text>
             </Pressable>
 
-            {filters.map((f) => {
-              const isActive = filter === f.value;
-              return (
-                <Pressable
-                  key={f.value}
-                  onPress={() => setFilter(f.value)}
-                  style={{
-                    borderWidth: 2,
-                    borderRadius: 8,
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    paddingHorizontal: isTablet ? 16 : 12,
-                    paddingVertical: isTablet ? 8 : 6,
-                    backgroundColor: isActive ? '#BBE8FB' : '#FFFFFF',
-                    borderColor: isActive ? '#62A9E6' : '#BBE8FB',
-                    shadowColor: isActive ? '#62A9E6' : '#BBE8FB',
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 1,
-                    shadowRadius: 0,
-                    elevation: 2,
-                  }}
-                >
-                  <Text className={`font-fredoka-one text-[#62A9E6] uppercase ${isTablet ? 'text-sm' : 'text-[11px]'}`}>
-                    {f.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
+            {/* Compact Tactile Filter Dropdown Trigger */}
+            <Pressable
+              onPress={() => setIsFilterModalOpen(true)}
+              className="flex-row items-center justify-center gap-1.5 bg-white border-[2px] border-[#BBE8FB] px-3 h-[34px] rounded-xl active:scale-95 transition-transform"
+              style={{
+                borderColor: '#BBE8FB',
+                shadowColor: '#BBE8FB',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 1,
+                shadowRadius: 0,
+                elevation: 2,
+              }}
+            >
+              <Feather name="calendar" size={13} color="#62A9E6" />
+              <Text className="font-fredoka-one text-[#62A9E6] text-[11px] uppercase" numberOfLines={1}>
+                {getFilterLabel(filter).toUpperCase()}
+              </Text>
+              <Feather name="chevron-down" size={13} color="#62A9E6" />
+            </Pressable>
+          </View>
         </View>
 
         {/* Full-width Info Banner Row below Title & Filters */}
@@ -360,7 +344,7 @@ export default function StudentEvaluationTrend({ studentId, filter: externalFilt
           <Animated.View
             entering={FadeInUp.duration(200)}
             exiting={FadeOutUp.duration(150)}
-            className="w-full bg-[#F0F9FF] border border-[#BBE8FB] rounded-2xl p-3.5 mt-3 flex-row items-start gap-2.5 overflow-hidden"
+            className="w-full bg-[#F0F9FF] border-[2px] border-[#BBE8FB] rounded-2xl p-3.5 mt-3 flex-row items-start gap-2.5 overflow-hidden"
           >
             <Feather name="info" size={isTablet ? 20 : 16} color="#62A9E6" style={{ marginTop: 2 }} />
             <View className="flex-1 flex-col gap-1.5">
@@ -371,7 +355,7 @@ export default function StudentEvaluationTrend({ studentId, filter: externalFilt
                 • <Text className="font-quicksand-bold text-[#62A9E6]">Dual-Axis Trend:</Text> The blue line tracks the 5-criterion rubric evaluation score (1.0–4.0 scale), while the amber line tracks hints used per session.
               </Text>
               <Text className={`font-quicksand-medium text-[#484A4B] leading-relaxed ${isTablet ? 'text-xs' : 'text-[11px]'}`}>
-                • <Text className="font-quicksand-bold text-[#62A9E6]">Mastery Target (3.2 • 80%):</Text> Scores at or above 3.2 signify stimulus acquisition and autonomous task performance.
+                • <Text className="font-quicksand-bold text-[#8B5CF6]">Mastery Target (3.2 • 80%):</Text> Scores at or above 3.2 signify stimulus acquisition and autonomous task performance.
               </Text>
               <Text className={`font-quicksand-medium text-[#484A4B] leading-relaxed ${isTablet ? 'text-xs' : 'text-[11px]'}`}>
                 • <Text className="font-quicksand-bold text-[#62A9E6]">Prompt Fading:</Text> A decreasing amber line alongside an increasing blue line indicates successful fading of teacher prompts.
@@ -430,39 +414,33 @@ export default function StudentEvaluationTrend({ studentId, filter: externalFilt
       {/* Modern Line Chart Card — Dual Y-Axis */}
       {!isLoading && !error && chartData.length > 0 && (
         <View
-          style={[
-            {
-              width: '100%',
-              backgroundColor: '#FFFFFF',
-              borderWidth: 1,
-              borderColor: '#E5E7EB',
-              borderRadius: isTablet ? 32 : 24,
-              padding: isTablet ? 24 : 20,
-              shadowColor: '#000000',
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.03,
-              shadowRadius: 10,
-              elevation: 1,
-            },
-            (isLoading || error || chartData.length === 0) && { display: 'none' },
-          ]}
+          className={`w-full bg-white border-[4px] border-[#F1F1F1] ${
+            isTablet ? 'rounded-[32px] p-6' : 'rounded-[20px] p-4'
+          }`}
+          style={{
+            shadowColor: '#F1F1F1',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 1,
+            shadowRadius: 0,
+            elevation: 2,
+          }}
         >
-          {/* Metric Header (Big Score + Trend Badge + 2-Week Outlook Green Card) */}
-          <View className="flex-row items-center justify-between mb-2 px-2 flex-wrap gap-2">
+          {/* Metric Header (Big Score + Trend Badge + 2-Week Outlook Card) */}
+          <View className="flex-row items-center justify-between mb-2 px-1 flex-wrap gap-2">
             <View className="flex-col">
               <View className="flex-row items-center gap-3">
-                <Text className="font-fredoka-one text-[36px] text-[#484A4B] leading-tight">
+                <Text className="font-fredoka-one text-[32px] sm:text-[36px] text-[#484A4B] leading-tight">
                   {averageScore}
                 </Text>
                 {trendPercentage !== null && (
-                  <View className={`px-3 py-1 rounded-full flex-row items-center gap-1.5 ${trendPercentage >= 0 ? 'bg-[#E0F2FE]' : 'bg-[#FEE2E2]'}`}>
+                  <View className={`px-2.5 py-1 rounded-full flex-row items-center gap-1 ${trendPercentage >= 0 ? 'bg-[#BBE8FB]' : 'bg-[#FFDBD4]'}`}>
                     <Feather
                       name={trendPercentage >= 0 ? 'trending-up' : 'trending-down'}
-                      size={16}
-                      color={trendPercentage >= 0 ? '#62A9E6' : '#EF4444'}
+                      size={14}
+                      color={trendPercentage >= 0 ? '#62A9E6' : '#FF8870'}
                       strokeWidth={2.5}
                     />
-                    <Text className={`font-quicksand-bold text-sm ${trendPercentage >= 0 ? 'text-[#62A9E6]' : 'text-[#EF4444]'}`}>
+                    <Text className={`font-fredoka-one text-xs ${trendPercentage >= 0 ? 'text-[#62A9E6]' : 'text-[#FF8870]'}`}>
                       {`${Math.abs(trendPercentage).toFixed(1)}%`}
                     </Text>
                   </View>
@@ -473,50 +451,50 @@ export default function StudentEvaluationTrend({ studentId, filter: externalFilt
               </Text>
             </View>
 
-            {/* Green 2-Week Outlook Forecast Badge Card when Forecast is ON */}
+            {/* 2-Week Outlook Forecast Badge Card when Forecast is ON */}
             {showForecast && forecastResult.projected14DayScore !== null && (
-              <View className="bg-[#ECFDF5] border border-[#86EFAC] rounded-xl px-3 py-2 items-end">
-                <Text className="font-fredoka-one text-[10px] text-[#059669] uppercase tracking-wide">
+              <View className="bg-[#F0FDF4] border border-[#CBFAC4] rounded-xl px-3 py-1.5 items-end">
+                <Text className="font-fredoka-one text-[10px] text-[#179D33] uppercase tracking-wide">
                   2-WEEK OUTLOOK
                 </Text>
-                <Text className="font-fredoka-one text-sm text-[#065F46] mt-0.5">
+                <Text className="font-fredoka-one text-sm text-[#179D33] mt-0.5">
                   ~{forecastResult.projected14DayScore} / 4.0 Predicted
                 </Text>
-                <Text className="font-quicksand-bold text-[10px] text-[#059669] mt-0.5">
+                <Text className="font-quicksand-bold text-[10px] text-[#179D33] mt-0.5">
                   {forecastResult.estimatedDaysToMastery
-                    ? `~${forecastResult.estimatedDaysToMastery} days to ${forecastResult.targetBenchmark} benchmark`
-                    : 'Based on current trajectory'}
+                    ? `~${forecastResult.estimatedDaysToMastery} days to ${forecastResult.targetBenchmark}`
+                    : 'Current trajectory'}
                 </Text>
               </View>
             )}
           </View>
 
           {/* Dual-Axis Visual Legend */}
-          <View className="flex-row items-center justify-between mb-3 px-2 flex-wrap gap-2">
-            <View className="flex-row items-center gap-3.5 flex-wrap">
+          <View className="flex-row items-center justify-between mb-3 px-1 flex-wrap gap-2">
+            <View className="flex-row items-center gap-3 flex-wrap">
               <View className="flex-row items-center gap-1.5">
                 <View className="w-2.5 h-2.5 rounded-full bg-[#62A9E6]" />
-                <Text className="font-quicksand-bold text-[11px] text-[#64748B]">
+                <Text className="font-quicksand-bold text-[11px] text-[#484A4B]">
                   Score (0 - 4.0)
                 </Text>
               </View>
               <View className="flex-row items-center gap-1.5">
                 <View className="w-3 h-0.5 bg-[#8B5CF6]" style={{ borderRadius: 1 }} />
-                <Text className="font-quicksand-bold text-[11px] text-[#7C3AED]">
-                  Mastery Target (3.2 / 80%)
+                <Text className="font-quicksand-bold text-[11px] text-[#484A4B]">
+                  Mastery Target (3.2)
                 </Text>
               </View>
               <View className="flex-row items-center gap-1.5">
                 <View className="w-2.5 h-2.5 rounded-full bg-[#FFAE02]" />
-                <Text className="font-quicksand-bold text-[11px] text-[#D97706]">
+                <Text className="font-quicksand-bold text-[11px] text-[#484A4B]">
                   Hints (Right Axis)
                 </Text>
               </View>
             </View>
             {showForecast && (
               <View className="flex-row items-center gap-1.5">
-                <View className="w-2.5 h-1 rounded-sm bg-[#34D399]" />
-                <Text className="font-quicksand-bold text-[11px] text-[#059669]">
+                <View className="w-2.5 h-1 rounded-sm bg-[#179D33]" />
+                <Text className="font-quicksand-bold text-[11px] text-[#179D33]">
                   Forecast
                 </Text>
               </View>
@@ -580,7 +558,7 @@ export default function StudentEvaluationTrend({ studentId, filter: externalFilt
                     <SvgText
                       x={paddingLeft + graphWidth - 4}
                       y={masteryY - 4}
-                      fill="#7C3AED"
+                      fill="#8B5CF6"
                       fontSize="9"
                       fontFamily="Quicksand-Bold"
                       textAnchor="end"
@@ -601,7 +579,7 @@ export default function StudentEvaluationTrend({ studentId, filter: externalFilt
                     key={`hint-axis-${stepIdx}`}
                     x={paddingLeft + graphWidth + 8}
                     y={y + 3}
-                    fill="#D97706"
+                    fill="#FFAE02"
                     fontSize="10"
                     fontFamily="Quicksand-Bold"
                     textAnchor="start"
@@ -835,10 +813,10 @@ export default function StudentEvaluationTrend({ studentId, filter: externalFilt
                     top: topPos,
                     width: tooltipWidth,
                     zIndex: 30,
-                    shadowColor: '#000000',
-                    shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: 0.12,
-                    shadowRadius: 6,
+                    shadowColor: '#62A9E6',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.15,
+                    shadowRadius: 4,
                     elevation: 4,
                   }}
                   className={`border rounded-2xl py-1.5 px-3 items-center justify-center pointer-events-none ${
@@ -869,6 +847,15 @@ export default function StudentEvaluationTrend({ studentId, filter: externalFilt
           </View>
         </View>
       )}
+
+      {/* PER-CHART FILTER MODAL */}
+      <ParentFilterModal
+        visible={isFilterModalOpen}
+        onClose={() => setIsFilterModalOpen(false)}
+        isTablet={isTablet}
+        selectedFilter={filter}
+        onSelectFilter={(newFilter) => setFilter(newFilter)}
+      />
     </View>
   );
 }

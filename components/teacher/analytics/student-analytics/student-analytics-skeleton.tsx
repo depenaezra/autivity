@@ -61,27 +61,38 @@ export function StudentAnalyticsSkeleton({ isTablet }: SkeletonProps) {
 
   return (
     <Animated.View style={animatedStyle} className="flex-col gap-4 w-full">
-      {/* Control Row Skeleton (Range Filter & Download Report) */}
+      {/* Control Row Skeleton (Range Filter & Log Activity) */}
       <View className="flex-row items-center justify-end gap-2 mb-1">
         <View className="bg-[#E5E7EB] rounded-xl h-[36px] w-28" />
-        <View className="bg-[#E5E7EB] rounded-xl h-[36px] w-36" />
+        <View className="bg-[#E5E7EB] rounded-xl h-[36px] w-40" />
       </View>
 
       {/* 1. Student Details Card Skeleton */}
-      <View className="bg-[#F9FAFB] border border-[#F3F4F6] rounded-2xl p-4 sm:p-5">
+      <View
+        className={`bg-white border-[4px] border-[#F1F1F1] ${
+          isTablet ? 'rounded-[32px] p-6' : 'rounded-[20px] p-4'
+        }`}
+        style={{
+          shadowColor: '#F1F1F1',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 1,
+          shadowRadius: 0,
+          elevation: 2,
+        }}
+      >
         <View className="flex-row items-center justify-between flex-wrap gap-2">
           <View className={`bg-[#E5E7EB] rounded-[6px] ${isTablet ? 'h-6 w-36' : 'h-5 w-28'}`} />
           <View className={`bg-[#E5E7EB] rounded-[6px] ${isTablet ? 'h-6 w-28' : 'h-5 w-20'}`} />
         </View>
-        <View className="flex-row items-center gap-2 mt-3 pt-3 border-t border-[#E5E7EB]">
-          <View className="bg-[#E5E7EB] rounded-[6px] h-6 w-20" />
-          <View className="bg-[#E5E7EB] rounded-[6px] h-6 w-16" />
+        <View className="flex-row items-center gap-2 mt-3 pt-3 border-t border-[#F1F1F1]">
+          <View className="bg-[#E5E7EB] rounded-xl h-6 w-20" />
+          <View className="bg-[#E5E7EB] rounded-xl h-6 w-16" />
         </View>
       </View>
 
       {/* 2. Student Performance KPI Cards Skeleton */}
       <View className="flex-col mt-2">
-        <View className="flex-row justify-between items-center mb-4">
+        <View className="mb-4">
           <View className={`bg-[#E5E7EB] rounded-[6px] ${isTablet ? 'h-6 w-56' : 'h-5 w-40'}`} />
         </View>
         <View className="flex-row gap-2.5 sm:gap-4">
@@ -112,14 +123,25 @@ export function StudentAnalyticsSkeleton({ isTablet }: SkeletonProps) {
       </View>
 
       {/* 3. Actionable Recommendations Skeleton */}
-      <View className="bg-[#F9FAFB] border border-[#F3F4F6] rounded-2xl p-4 sm:p-5 flex-col gap-3 mt-2">
+      <View
+        className={`bg-white border-[4px] border-[#F1F1F1] ${
+          isTablet ? 'rounded-[32px] p-6' : 'rounded-[20px] p-4'
+        } flex-col gap-3 mt-2`}
+        style={{
+          shadowColor: '#F1F1F1',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 1,
+          shadowRadius: 0,
+          elevation: 2,
+        }}
+      >
         <View className="flex-row items-center justify-between">
           <View className={`bg-[#E5E7EB] rounded-[6px] ${isTablet ? 'h-6 w-56' : 'h-5 w-44'}`} />
           <View className="w-5 h-5 rounded-full bg-[#E5E7EB]" />
         </View>
         <View className="flex-col gap-2.5 mt-1">
           {[1, 2].map((i) => (
-            <View key={i} className="bg-white border border-[#E5E7EB] rounded-xl p-3.5 flex-col gap-2">
+            <View key={i} className="bg-[#F8FAFC] border-[2px] border-[#F1F1F1] rounded-2xl p-4 flex-col gap-2">
               <View className="flex-row items-center justify-between">
                 <View className="flex-row items-center gap-2">
                   <View className="w-2.5 h-2.5 rounded-full bg-[#E5E7EB]" />
@@ -141,10 +163,20 @@ export function StudentAnalyticsSkeleton({ isTablet }: SkeletonProps) {
             <View className={`bg-[#E5E7EB] rounded-[6px] ${isTablet ? 'h-7 w-64' : 'h-6 w-48'}`} />
             <View className="w-5 h-5 rounded-full bg-[#E5E7EB]" />
           </View>
+          <View className="bg-[#E5E7EB] rounded-xl h-[34px] w-28" />
         </View>
 
         {/* Main Card Skeleton */}
-        <View className={`bg-white border border-[#E5E7EB] ${isTablet ? 'rounded-[32px] p-6' : 'rounded-[24px] p-5'} flex-col gap-4`}>
+        <View
+          className={`bg-white border-[4px] border-[#F1F1F1] ${isTablet ? 'rounded-[32px] p-6' : 'rounded-[20px] p-4'} flex-col gap-4`}
+          style={{
+            shadowColor: '#F1F1F1',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 1,
+            shadowRadius: 0,
+            elevation: 2,
+          }}
+        >
           {/* Top Metric & Badges */}
           <View className="flex-row items-center justify-between flex-wrap gap-2">
             <View className="flex-col gap-1.5">
@@ -194,7 +226,7 @@ export function StudentAnalyticsSkeleton({ isTablet }: SkeletonProps) {
           </View>
 
           {/* Behavioral Insight Box Skeleton */}
-          <View className="bg-[#F0F9FF] border border-[#BBE8FB] rounded-2xl p-3.5 flex-row items-center justify-between">
+          <View className="bg-[#F0F9FF] border-[2px] border-[#BBE8FB] rounded-2xl p-3.5 flex-row items-center justify-between">
             <View className="flex-row items-center gap-2">
               <View className="w-7 h-7 rounded-xl bg-white border border-[#BBE8FB]" />
               <View className="bg-[#E5E7EB] rounded-[4px] h-4 w-36" />
@@ -209,32 +241,44 @@ export function StudentAnalyticsSkeleton({ isTablet }: SkeletonProps) {
         <View className="flex-row justify-between items-center mb-4 flex-wrap gap-2">
           <View className={`bg-[#E5E7EB] rounded-[6px] ${isTablet ? 'h-6 w-52' : 'h-5 w-36'}`} />
           <View className="flex-row items-center gap-1.5">
-            <View className="bg-[#E5E7EB] rounded-lg h-7 w-24" />
-            {[1, 2, 3, 4].map((i) => (
-              <View key={i} className={`bg-[#E5E7EB] rounded-[8px] ${isTablet ? 'h-8 w-16' : 'h-7 w-12'}`} />
-            ))}
+            <View className="bg-[#E5E7EB] rounded-xl h-[34px] w-24" />
+            <View className="bg-[#E5E7EB] rounded-xl h-[34px] w-28" />
           </View>
         </View>
-        <View className={`bg-[#F9FAFB] border border-[#E5E7EB] rounded-2xl w-full justify-center items-center ${isTablet ? 'h-56' : 'h-44'}`}>
+        <View
+          className={`bg-white border-[4px] border-[#F1F1F1] ${isTablet ? 'rounded-[32px] p-6 h-56' : 'rounded-[20px] p-4 h-44'} w-full justify-center items-center`}
+          style={{
+            shadowColor: '#F1F1F1',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 1,
+            shadowRadius: 0,
+            elevation: 2,
+          }}
+        >
           <View className="w-5/6 h-0.5 bg-[#E5E7EB] my-3" />
           <View className="w-5/6 h-0.5 bg-[#E5E7EB] my-3" />
           <View className="w-5/6 h-0.5 bg-[#E5E7EB] my-3" />
         </View>
       </View>
 
-      {/* 5. Developmental Domain Practice Skeleton */}
+      {/* 6. Developmental Domain Practice Skeleton */}
       <View className="flex-col mt-4">
         <View className="flex-row justify-between items-center mb-4 flex-wrap gap-2">
           <View className={`bg-[#E5E7EB] rounded-[6px] ${isTablet ? 'h-6 w-64' : 'h-5 w-48'}`} />
-          <View className="flex-row gap-1.5">
-            {[1, 2, 3, 4].map((i) => (
-              <View key={i} className={`bg-[#E5E7EB] rounded-[8px] ${isTablet ? 'h-8 w-16' : 'h-7 w-12'}`} />
-            ))}
-          </View>
+          <View className="bg-[#E5E7EB] rounded-xl h-[34px] w-28" />
         </View>
-        <View className="flex-col gap-3">
+        <View
+          className={`w-full bg-white border-[4px] border-[#F1F1F1] ${isTablet ? 'rounded-[32px] p-6' : 'rounded-[20px] p-4'} flex-col gap-3`}
+          style={{
+            shadowColor: '#F1F1F1',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 1,
+            shadowRadius: 0,
+            elevation: 2,
+          }}
+        >
           {[1, 2, 3].map((domainIdx) => (
-            <View key={domainIdx} className="bg-[#F9FAFB] border border-[#F3F4F6] rounded-2xl p-4 flex-col gap-3">
+            <View key={domainIdx} className="bg-[#F8FAFC] border-[2px] border-[#F1F1F1] rounded-2xl p-4 flex-col gap-3">
               <View className="flex-row items-center justify-between">
                 <View className="flex-row items-center gap-2">
                   <View className="w-3.5 h-3.5 rounded-full bg-[#E5E7EB]" />

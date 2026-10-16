@@ -14,6 +14,7 @@ export default function AuthLayout() {
       <Stack.Screen name="signup" />
       <Stack.Screen name="teacher-verification" />
       <Stack.Screen name="pending-verification" />
+      <Stack.Screen name="welcome-tour" />
     </Stack>
   );
 }

@@ -223,7 +223,7 @@ export function ParentTeacherFeedback({
             >
               <Feather name="calendar" size={13} color="#62A9E6" />
               <Text className="font-fredoka-one text-[#62A9E6] text-[11px] uppercase" numberOfLines={1}>
-                RANGE: {getFilterLabel(globalFilter || 'overall').toUpperCase()}
+                {getFilterLabel(globalFilter || 'overall').toUpperCase()}
               </Text>
               <Feather name="chevron-down" size={13} color="#62A9E6" />
             </Pressable>

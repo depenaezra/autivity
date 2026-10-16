@@ -186,10 +186,23 @@ export default function StudentView({ studentId, onBack }: StudentViewProps) {
         />
       }
       rightHeaderButton={
-        <HeaderButton
-          onPress={() => setLegendModalVisible(true)}
-          icon={<Ionicons name="help-circle-outline" size={isTablet ? 28 : 24} color="#62A9E6" />}
-        />
+        <View className="flex-row items-center gap-2">
+          <HeaderButton
+            onPress={() => setExportModalVisible(true)}
+            disabled={isExporting}
+            icon={
+              isExporting ? (
+                <ActivityIndicator size="small" color="#62A9E6" />
+              ) : (
+                <Feather name="download" size={isTablet ? 24 : 20} color="#62A9E6" />
+              )
+            }
+          />
+          <HeaderButton
+            onPress={() => setLegendModalVisible(true)}
+            icon={<Ionicons name="help-circle-outline" size={isTablet ? 28 : 24} color="#62A9E6" />}
+          />
+        </View>
       }
       headerContent={renderHeaderContent()}
       scrollable={true}
@@ -210,7 +223,7 @@ export default function StudentView({ studentId, onBack }: StudentViewProps) {
           </View>
         ) : (
           <View className="flex-col gap-4">
-            {/* CONTROL ROW: RANGE FILTER, LOG CLASSROOM ACTIVITY & DOWNLOAD REPORT */}
+            {/* CONTROL ROW: RANGE FILTER & LOG CLASSROOM ACTIVITY */}
             <View className={`flex-row items-center gap-2 flex-wrap ${isTablet ? 'justify-end' : 'justify-start'} mb-1`}>
               {/* Range Filter Selector */}
               <Pressable
@@ -227,7 +240,7 @@ export default function StudentView({ studentId, onBack }: StudentViewProps) {
               >
                 <Feather name="calendar" size={13} color="#62A9E6" />
                 <Text className="font-fredoka-one text-[#62A9E6] text-[11px] uppercase" numberOfLines={1}>
-                  RANGE: {getFilterLabel(globalFilter).toUpperCase()}
+                  {getFilterLabel(globalFilter).toUpperCase()}
                 </Text>
                 <Feather name="chevron-down" size={13} color="#62A9E6" />
               </Pressable>
@@ -250,50 +263,19 @@ export default function StudentView({ studentId, onBack }: StudentViewProps) {
                   + LOG CLASSROOM ACTIVITY
                 </Text>
               </Pressable>
-
-              {/* Master Download Report Button */}
-              <Pressable
-                onPress={() => setExportModalVisible(true)}
-                disabled={isExporting}
-                className="flex-row items-center justify-center gap-1.5 bg-white border-[2px] border-[#BBE8FB] px-3 h-[36px] rounded-xl active:scale-95 transition-transform"
-                style={{
-                  borderColor: '#BBE8FB',
-                  shadowColor: '#BBE8FB',
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 1,
-                  shadowRadius: 0,
-                  elevation: 2,
-                }}
-              >
-                {isExporting ? (
-                  <>
-                    <ActivityIndicator size="small" color="#62A9E6" style={{ height: 16 }} />
-                    <Text className="font-fredoka-one text-[#62A9E6] text-[11px] uppercase" numberOfLines={1}>
-                      EXPORTING...
-                    </Text>
-                  </>
-                ) : (
-                  <>
-                    <Feather name="download" size={13} color="#62A9E6" />
-                    <Text className="font-fredoka-one text-[#62A9E6] text-[11px] uppercase" numberOfLines={1}>
-                      DOWNLOAD REPORT
-                    </Text>
-                  </>
-                )}
-              </Pressable>
             </View>
 
             {/* Learner Intervention Banner */}
             {needsIntervention && (
-              <View className="bg-[#FFF7ED] border border-[#FFDBD4] rounded-2xl p-4 flex-row items-center gap-3">
+              <View className="bg-[#FFF7ED] border-[2px] border-[#FFDBD4] rounded-2xl p-4 flex-row items-center gap-3">
                 <View className="w-10 h-10 rounded-full bg-[#FF8870]/20 items-center justify-center shrink-0">
                   <Feather name="alert-circle" size={22} color="#FF8870" />
                 </View>
                 <View className="flex-col flex-1">
-                  <Text className="font-fredoka-one text-base text-[#C2410C]">
+                  <Text className="font-fredoka-one text-base text-[#FF8870]">
                     Attention Required
                   </Text>
-                  <Text className="font-quicksand-medium text-xs sm:text-sm text-[#7C2D12] mt-0.5 leading-relaxed">
+                  <Text className="font-quicksand-medium text-xs sm:text-sm text-[#484A4B] mt-0.5 leading-relaxed">
                     Learner is currently performing below target mastery (3.0 / 4.0). Review recommendations below and provide guided prompts during practice.
                   </Text>
                 </View>
@@ -305,7 +287,7 @@ export default function StudentView({ studentId, onBack }: StudentViewProps) {
 
             {/* ACTIVITY SOURCE SWITCHER (Icon Capsule Bar) */}
             <View className="flex-row items-center justify-between px-1 pt-1 pb-0.5 mt-1">
-              <Text className="font-fredoka-one text-[15px] sm:text-[17px] text-[#484A4B]">
+              <Text className="font-fredoka-one text-base text-[#484A4B]">
                 {currentActivityOption.label}
               </Text>
 

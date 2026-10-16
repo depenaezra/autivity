@@ -41,6 +41,24 @@ export const EMOTION_OPTIONS: EmotionOption[] = [
     image: require('@/assets/images/student/emotions/excited.gif'),
   },
   {
+    id: 'surprised',
+    label: 'SURPRISED',
+    tagalogLabel: 'Nagulat',
+    image: require('@/assets/images/student/emotions/surprised.gif'),
+  },
+  {
+    id: 'nervous',
+    label: 'NERVOUS',
+    tagalogLabel: 'Kinakabahan',
+    image: require('@/assets/images/student/emotions/nervous.gif'),
+  },
+  {
+    id: 'angry',
+    label: 'ANGRY',
+    tagalogLabel: 'Galit',
+    image: require('@/assets/images/student/emotions/angry.gif'),
+  },
+  {
     id: 'tired',
     label: 'TIRED',
     tagalogLabel: 'Pagod',
@@ -53,10 +71,10 @@ export const EMOTION_OPTIONS: EmotionOption[] = [
     image: require('@/assets/images/student/emotions/sad.gif'),
   },
   {
-    id: 'nervous',
-    label: 'NERVOUS',
-    tagalogLabel: 'Kinakabahan',
-    image: require('@/assets/images/student/emotions/nervous.gif'),
+    id: 'sick',
+    label: 'SICK',
+    tagalogLabel: 'May Sakit',
+    image: require('@/assets/images/student/emotions/sick.gif'),
   },
 ];
 
