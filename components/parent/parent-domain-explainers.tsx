@@ -32,20 +32,16 @@ export function ParentDomainExplainers({ isTablet, language = 'en' }: ParentDoma
         </Text>
       </View>
 
-      {/* Main Outer Box wrapping all domain cards - matching ParentNarrativeSummary */}
+      {/* Main Outer Box wrapping all domain cards - matching Design System tactile card */}
       <View
         style={{
-          backgroundColor: '#FFFFFF',
-          borderWidth: 1,
-          borderColor: '#E5E7EB',
-          borderRadius: isTablet ? 32 : 24,
-          padding: isTablet ? 24 : 20,
-          shadowColor: '#000000',
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.03,
-          shadowRadius: 10,
-          elevation: 1,
+          shadowColor: '#F1F1F1',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 1,
+          shadowRadius: 0,
+          elevation: 2,
         }}
+        className="w-full bg-white border-[4px] border-[#F1F1F1] rounded-[20px] sm:rounded-[32px] p-4 sm:p-6"
       >
         <View className="flex-col gap-4">
           {domainExplainers.map((d) => {
@@ -98,7 +94,7 @@ export function ParentDomainExplainers({ isTablet, language = 'en' }: ParentDoma
                     className="flex-col mt-3 pt-3 border-t border-[#E5E7EB] gap-3"
                   >
                     <View className="flex-col">
-                      <Text className="font-fredoka-one text-[10px] text-[#9CA3AF] uppercase tracking-wide">
+                      <Text className="font-fredoka-one text-[11px] text-[#9CA3AF] uppercase tracking-wide">
                         {isTl ? 'ANO ANG SINUSURI DITO' : 'WHAT THIS EVALUATES'}
                       </Text>
                       <Text
@@ -111,7 +107,7 @@ export function ParentDomainExplainers({ isTablet, language = 'en' }: ParentDoma
                     </View>
 
                     <View className="bg-[#F0F9FF] border border-[#BBE8FB] rounded-xl p-3 flex-col">
-                      <Text className="font-fredoka-one text-[10px] text-[#0284C7] uppercase tracking-wide">
+                      <Text className="font-fredoka-one text-[11px] text-[#0284C7] uppercase tracking-wide">
                         {isTl ? 'ANO ANG DAPAT OBSERBAHAN SA BAHAY' : 'WHAT TO OBSERVE AT HOME'}
                       </Text>
                       <Text

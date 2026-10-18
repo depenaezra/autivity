@@ -322,7 +322,7 @@ export function ParentProfileMenuSection({
                             CODE:
                           </Text>
                           <View className="bg-[#BBE8FB] px-2 py-0.5 rounded-[5px]">
-                            <Text className="font-fredoka-one text-[#62A9E6] uppercase text-[10px]">
+                            <Text className="font-fredoka-one text-[#62A9E6] uppercase text-[11px]">
                               # {st.learner_code || 'AUT-000'}
                             </Text>
                           </View>

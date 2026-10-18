@@ -454,13 +454,13 @@ export default function StudentEvaluationTrend({ studentId, filter: externalFilt
             {/* 2-Week Outlook Forecast Badge Card when Forecast is ON */}
             {showForecast && forecastResult.projected14DayScore !== null && (
               <View className="bg-[#F0FDF4] border border-[#CBFAC4] rounded-xl px-3 py-1.5 items-end">
-                <Text className="font-fredoka-one text-[10px] text-[#179D33] uppercase tracking-wide">
+                <Text className="font-fredoka-one text-[11px] text-[#179D33] uppercase tracking-wide">
                   2-WEEK OUTLOOK
                 </Text>
                 <Text className="font-fredoka-one text-sm text-[#179D33] mt-0.5">
                   ~{forecastResult.projected14DayScore} / 4.0 Predicted
                 </Text>
-                <Text className="font-quicksand-bold text-[10px] text-[#179D33] mt-0.5">
+                <Text className="font-quicksand-bold text-[11px] text-[#179D33] mt-0.5">
                   {forecastResult.estimatedDaysToMastery
                     ? `~${forecastResult.estimatedDaysToMastery} days to ${forecastResult.targetBenchmark}`
                     : 'Current trajectory'}

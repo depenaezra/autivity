@@ -332,7 +332,7 @@ export default function StudentPerformanceCards({
                   {!hasNoSessions && (
                     <Text
                       className={`font-quicksand-bold text-[#9CA3AF] text-center ${
-                        isTablet ? 'text-xs mt-0.5' : 'text-[10px] mt-0.5'
+                        isTablet ? 'text-xs mt-0.5' : 'text-[11px] mt-0.5'
                       }`}
                     >
                       per session
@@ -349,7 +349,7 @@ export default function StudentPerformanceCards({
                 >
                   <Text
                     className={`font-fredoka-one text-center uppercase ${
-                      isTablet ? 'text-xs' : 'text-[10px]'
+                      isTablet ? 'text-xs' : 'text-[11px]'
                     }`}
                     style={{ color: badge.color }}
                     numberOfLines={1}

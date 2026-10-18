@@ -113,7 +113,7 @@ export function ParentNarrativeSummary({ highlights, isTablet, language = 'en' }
                 >
                   <Text
                     className={`font-fredoka-one uppercase ${
-                      isTablet ? 'text-xs' : 'text-[10px]'
+                      isTablet ? 'text-xs' : 'text-[11px]'
                     }`}
                     style={{ color: meta.tagColor }}
                   >

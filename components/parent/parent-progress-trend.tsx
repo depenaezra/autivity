@@ -179,7 +179,7 @@ export function ParentProgressTrend({ sessions, globalFilter, activityType = 'al
       <View className="mb-4">
         <View className="flex-row items-center justify-between flex-wrap gap-2">
           <View className="flex-row items-center gap-2">
-            <Text className={`font-fredoka-one text-[#484A4B] ${isTablet ? 'text-[28px]' : 'text-[20px]'}`}>
+            <Text className={`font-fredoka-one text-[#484A4B] ${isTablet ? 'text-[32px]' : 'text-[22px]'}`}>
               {isTl ? 'Takbo ng Pag-unlad' : 'Progress Over Time'}
             </Text>
             <Pressable
@@ -217,7 +217,7 @@ export function ParentProgressTrend({ sessions, globalFilter, activityType = 'al
           <Animated.View
             entering={FadeInUp.duration(200)}
             exiting={FadeOutUp.duration(150)}
-            className="w-full bg-[#F0F9FF] border border-[#BBE8FB] rounded-2xl p-3.5 mt-3 flex-row items-start gap-2.5 overflow-hidden"
+            className="w-full bg-[#F0F9FF] border-[2px] border-[#BBE8FB] rounded-2xl p-3.5 mt-3 flex-row items-start gap-2.5 overflow-hidden"
           >
             <Feather name="info" size={isTablet ? 20 : 16} color="#62A9E6" style={{ marginTop: 2 }} />
             <View className="flex-1 flex-col gap-1.5">
@@ -259,21 +259,16 @@ export function ParentProgressTrend({ sessions, globalFilter, activityType = 'al
           </Text>
         </View>
       ) : (
-        /* Line Chart Card — matching class-evaluation-trend design */
+        /* Line Chart Card — matching Design System tactile card standard */
         <View
           style={{
-            width: '100%',
-            backgroundColor: '#FFFFFF',
-            borderWidth: 1,
-            borderColor: '#E5E7EB',
-            borderRadius: isTablet ? 32 : 24,
-            padding: isTablet ? 24 : 20,
-            shadowColor: '#000000',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.03,
-            shadowRadius: 10,
-            elevation: 1,
+            shadowColor: '#F1F1F1',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 1,
+            shadowRadius: 0,
+            elevation: 2,
           }}
+          className="w-full bg-white border-[4px] border-[#F1F1F1] rounded-[20px] sm:rounded-[32px] p-4 sm:p-6"
         >
           {/* Metric Header */}
           <View className="flex-row items-start justify-between gap-4 px-2 mb-4 relative z-20">
@@ -292,7 +287,9 @@ export function ParentProgressTrend({ sessions, globalFilter, activityType = 'al
                           ? 'trending-up'
                           : trendDifference < 0
                             ? 'trending-down'
-                            : 'minus'
+                            : averageScore >= 80
+                              ? 'check-circle'
+                              : 'minus'
                       }
                       size={16}
                       color={
@@ -300,19 +297,28 @@ export function ParentProgressTrend({ sessions, globalFilter, activityType = 'al
                           ? '#179D33'
                           : trendDifference < 0
                             ? '#EF4444'
-                            : '#6B7280'
+                            : averageScore >= 80
+                              ? '#179D33'
+                              : '#62A9E6'
                       }
                       strokeWidth={2.5}
                     />
                     <Text
-                      className={`font-quicksand-bold text-base ${trendDifference > 0
+                      className={`font-quicksand-bold text-base ${
+                        trendDifference > 0
                           ? 'text-[#179D33]'
                           : trendDifference < 0
                             ? 'text-[#EF4444]'
-                            : 'text-[#6B7280]'
-                        }`}
+                            : averageScore >= 80
+                              ? 'text-[#179D33]'
+                              : 'text-[#62A9E6]'
+                      }`}
                     >
-                      {`${trendDifference > 0 ? '+' : ''}${trendDifference}%`}
+                      {trendDifference === 0
+                        ? averageScore >= 80
+                          ? isTl ? 'Kabisado' : 'Mastered'
+                          : isTl ? 'Matatag' : 'Steady'
+                        : `${trendDifference > 0 ? '+' : ''}${trendDifference}%`}
                     </Text>
                   </View>
                 )}
@@ -320,13 +326,27 @@ export function ParentProgressTrend({ sessions, globalFilter, activityType = 'al
 
               {/* Row 2: Average Progress Score Label */}
               <Text className="font-fredoka-one text-[11px] text-[#9CA3AF] uppercase tracking-[0.06em] mt-0.5">
-                AVERAGE PROGRESS SCORE
+                {isTl ? 'KATAMTAMANG MARKA NG PAG-UNLAD' : 'AVERAGE PROGRESS SCORE'}
               </Text>
 
               {/* Row 3: Explanation / vs baseline */}
               {trendDifference !== null && (
                 <Text className="font-quicksand-medium text-[11px] text-[#64748B] mt-1">
-                  {trendDifference > 0 ? 'Increased' : trendDifference < 0 ? 'Decreased' : 'No change'} by {Math.abs(trendDifference)}% vs start of {getTimeframePeriodName(filter)}
+                  {trendDifference === 0 ? (
+                    averageScore >= 80 ? (
+                      isTl
+                        ? `Tuloy-tuloy na mataas na antas (${averageScore}%) sa buong ${getTimeframePeriodName(filter)}`
+                        : `Consistently maintained high mastery (${averageScore}%) across ${getTimeframePeriodName(filter)}`
+                    ) : (
+                      isTl
+                        ? `Matatag na pagganap sa ${averageScore}% sa buong ${getTimeframePeriodName(filter)}`
+                        : `Steady performance maintained at ${averageScore}% across ${getTimeframePeriodName(filter)}`
+                    )
+                  ) : (
+                    isTl
+                      ? `${trendDifference > 0 ? 'Tumaas' : 'Bumaba'} nang ${Math.abs(trendDifference)}% kumpara sa simula ng ${getTimeframePeriodName(filter)}`
+                      : `${trendDifference > 0 ? 'Increased' : 'Decreased'} by ${Math.abs(trendDifference)}% vs start of ${getTimeframePeriodName(filter)}`
+                  )}
                 </Text>
               )}
             </View>

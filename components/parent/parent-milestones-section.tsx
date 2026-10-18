@@ -159,7 +159,7 @@ function MilestoneGridItem({
         style={{ backgroundColor: config.pillBg, borderColor: config.borderColor }}
       >
         <Text
-          className={`font-fredoka-one uppercase ${isTablet ? 'text-[10px]' : 'text-[8px]'}`}
+          className={`font-fredoka-one uppercase ${isTablet ? 'text-xs' : 'text-[11px]'}`}
           style={{ color: config.textColor }}
         >
           {config.label}
@@ -240,7 +240,7 @@ export function ParentMilestonesSection({ milestones, isTablet }: ParentMileston
       {/* Section Header with Title, Navigation Arrows, and Completed Pill */}
       <View className="mb-3 flex-row items-center justify-between flex-wrap gap-2">
         <View className="flex-row items-center gap-2">
-          <Text className={`font-fredoka-one text-[#484A4B] ${isTablet ? 'text-[28px]' : 'text-[20px]'}`}>
+          <Text className={`font-fredoka-one text-[#484A4B] ${isTablet ? 'text-[32px]' : 'text-[22px]'}`}>
             Learner Milestones
           </Text>
         </View>

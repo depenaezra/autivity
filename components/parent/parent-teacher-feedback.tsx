@@ -135,7 +135,7 @@ function FeedbackRowItem({
             {/* Category Pill below Feedback + Teacher Name */}
             <View className="flex-row items-center gap-2 mt-0.5 flex-wrap">
               <View className="bg-[#F1F1F1] px-2 py-0.5 rounded-[6px]">
-                <Text className={`font-fredoka-one text-[#62A9E6] uppercase ${isTablet ? 'text-xs' : 'text-[10px]'}`}>
+                <Text className={`font-fredoka-one text-[#62A9E6] uppercase ${isTablet ? 'text-xs' : 'text-[11px]'}`}>
                   {item.category}
                 </Text>
               </View>
@@ -202,7 +202,7 @@ export function ParentTeacherFeedback({
     <View className="flex-col mt-6 mb-12 pb-6">
       {/* Header with Title & Action Buttons (Range Filter + Download All) */}
       <View className="mb-4 flex-col items-start gap-2.5">
-        <Text className={`font-fredoka-one text-[#484A4B] ${isTablet ? 'text-[28px]' : 'text-[20px]'}`}>
+        <Text className={`font-fredoka-one text-[#484A4B] ${isTablet ? 'text-[32px]' : 'text-[22px]'}`}>
           Teacher Feedbacks
         </Text>
 

@@ -267,7 +267,7 @@ export default function ParentAnalyticsScreen() {
         >
           {/* TITLE & UTILITY ACTIONS ROW */}
           <View className="flex-row items-center justify-between mb-3">
-            <Text className={`font-fredoka-one text-[#484A4B] ${isTablet ? 'text-[40px]' : 'text-[28px]'}`}>
+            <Text className={`font-fredoka-one text-[#484A4B] ${isTablet ? 'text-[32px]' : 'text-[22px]'}`}>
               Analytics
             </Text>
 
@@ -306,74 +306,77 @@ export default function ParentAnalyticsScreen() {
             </View>
           </View>
 
-          {/* MULTI-CHILD VIEW SELECTOR BAR (Shown when parent has 2+ children linked) */}
-          {linkedStudents.length > 1 && (
-            <View className="flex-row items-center gap-2 mb-3 mt-1 flex-wrap">
-              {linkedStudents.map((st) => {
-                const isSelected =
-                  selectedStudentId === st.id || (!selectedStudentId && st.id === linkedStudents[0]?.id);
-                return (
-                  <Pressable
-                    key={st.id}
-                    onPress={() => handleSelectStudentMode(st.id)}
-                    className={`flex-row items-center gap-2 px-3 py-1.5 rounded-[8px] border-[2px] active:scale-95 transition-transform ${
-                      isSelected ? 'bg-[#EBF5FF] border-[#62A9E6]' : 'bg-white border-[#BBE8FB]'
-                    }`}
-                    style={{
-                      shadowColor: isSelected ? '#62A9E6' : '#BBE8FB',
-                      shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: 1,
-                      shadowRadius: 0,
-                      elevation: 2,
-                    }}
-                  >
-                    <Text style={{ fontSize: 16 }}>{st.avatar || '🙂'}</Text>
-                    <Text
-                      className={`font-fredoka-one text-xs ${
-                        isSelected ? 'text-[#62A9E6]' : 'text-[#62A9E6]'
+          {/* CHILD SELECTOR & RANGE FILTER ROW */}
+          <View className="flex-row items-center justify-between gap-2 mb-4 mt-1 flex-wrap">
+            {/* Left Side: Child Switching Pills (Shown when parent has 2+ children linked) */}
+            {linkedStudents.length > 1 ? (
+              <View className="flex-row items-center gap-2 flex-wrap flex-1">
+                {linkedStudents.map((st) => {
+                  const isSelected =
+                    selectedStudentId === st.id || (!selectedStudentId && st.id === linkedStudents[0]?.id);
+                  return (
+                    <Pressable
+                      key={st.id}
+                      onPress={() => handleSelectStudentMode(st.id)}
+                      className={`flex-row items-center gap-2 px-3 py-1.5 rounded-[8px] border-[2px] active:scale-95 transition-transform ${
+                        isSelected ? 'bg-[#EBF5FF] border-[#62A9E6]' : 'bg-white border-[#BBE8FB]'
                       }`}
+                      style={{
+                        shadowColor: isSelected ? '#62A9E6' : '#BBE8FB',
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 1,
+                        shadowRadius: 0,
+                        elevation: 2,
+                      }}
                     >
-                      {st.name}
-                    </Text>
-                  </Pressable>
-                );
-              })}
+                      <Text style={{ fontSize: 16 }}>{st.avatar || '🙂'}</Text>
+                      <Text
+                        className={`font-fredoka-one text-xs ${
+                          isSelected ? 'text-[#62A9E6]' : 'text-[#62A9E6]'
+                        }`}
+                      >
+                        {st.name}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
 
-              {/* Compare Both / Dual View Button */}
-              <Pressable
-                onPress={() => handleSelectStudentMode('all')}
-                className={`flex-row items-center gap-1.5 px-3 py-1.5 rounded-[8px] border-[2px] active:scale-95 transition-transform ${
-                  isCompareMode ? 'bg-[#CBFAC4] border-[#179D33]' : 'bg-white border-[#CBFAC4]'
-                }`}
-                style={{
-                  shadowColor: isCompareMode ? '#179D33' : '#CBFAC4',
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 1,
-                  shadowRadius: 0,
-                  elevation: 2,
-                }}
-              >
-                <Ionicons
-                  name="stats-chart"
-                  size={14}
-                  color={isCompareMode ? '#179D33' : '#179D33'}
-                />
-                <Text
-                  className={`font-fredoka-one text-xs ${
-                    isCompareMode ? 'text-[#179D33]' : 'text-[#179D33]'
+                {/* Compare Both / Dual View Button */}
+                <Pressable
+                  onPress={() => handleSelectStudentMode('all')}
+                  className={`flex-row items-center gap-1.5 px-3 py-1.5 rounded-[8px] border-[2px] active:scale-95 transition-transform ${
+                    isCompareMode ? 'bg-[#CBFAC4] border-[#179D33]' : 'bg-white border-[#CBFAC4]'
                   }`}
+                  style={{
+                    shadowColor: isCompareMode ? '#179D33' : '#CBFAC4',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 1,
+                    shadowRadius: 0,
+                    elevation: 2,
+                  }}
                 >
-                  Compare Both
-                </Text>
-              </Pressable>
-            </View>
-          )}
+                  <Ionicons
+                    name="stats-chart"
+                    size={14}
+                    color={isCompareMode ? '#179D33' : '#179D33'}
+                  />
+                  <Text
+                    className={`font-fredoka-one text-xs ${
+                      isCompareMode ? 'text-[#179D33]' : 'text-[#179D33]'
+                    }`}
+                  >
+                    Compare Both
+                  </Text>
+                </Pressable>
+              </View>
+            ) : (
+              <View className="flex-1" />
+            )}
 
-          {/* RANGE FILTER SELECTOR ROW */}
-          <View className="flex-row items-center justify-start gap-2 mt-1 mb-2">
+            {/* Right Side: Range Filter Selector Button */}
             <Pressable
               onPress={() => setFilterModalVisible(true)}
-              className="flex-row items-center justify-center gap-1.5 bg-white border-[2px] border-[#BBE8FB] px-3 h-[36px] rounded-[8px] active:scale-95 transition-transform"
+              className="flex-row items-center justify-center gap-1.5 bg-white border-[2px] border-[#BBE8FB] px-3 h-[34px] rounded-xl active:scale-95 transition-transform shrink-0"
               style={{
                 borderColor: '#BBE8FB',
                 shadowColor: '#BBE8FB',
@@ -392,7 +395,7 @@ export default function ParentAnalyticsScreen() {
           </View>
 
           {/* ACTIVITY SOURCE SWITCHER ROW (Matches Teacher Side: Label on Left, Capsule on Right) */}
-          <View className="flex-row items-center justify-between px-1 pt-1 pb-0.5 mb-3">
+          <View className="flex-row items-center justify-between px-1 pt-1.5 mt-2 pb-1 mb-3">
             <Text className="font-fredoka-one text-base text-[#484A4B]">
               {currentActivityOption.label}
             </Text>

@@ -2,7 +2,7 @@ import { Feather } from '@expo/vector-icons';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, Text, useWindowDimensions, View } from 'react-native';
 import Animated, { FadeInUp, FadeOutUp } from 'react-native-reanimated';
-import Svg, { Circle, Defs, Line, LinearGradient, Polygon, Stop, Text as SvgText } from 'react-native-svg';
+import Svg, { Circle, Defs, Line, LinearGradient, Polygon, Stop, Text as SvgText, TSpan } from 'react-native-svg';
 import { ActivityTypeFilter } from '../../src/services/analytics';
 import { ParentSessionRecord } from '../../src/services/parentDashboard';
 import { filterSessionsByPeriod, FilterPeriod, getFilterLabel } from '../../src/utils/dashboardFilters';
@@ -98,13 +98,14 @@ export function ParentSkillPerformance({
   }, [activeData, activityType, language]);
 
   // Radar Chart Layout Metrics
-  const chartSize = isTablet ? 240 : Math.min(windowWidth - 70, 220);
-  const svgPadding = 28;
+  // Provide ample padding (48px) and responsive radius so full domain labels never truncate or clip
+  const chartSize = isTablet ? 260 : Math.min(windowWidth - 60, 220);
+  const svgPadding = isTablet ? 54 : 44;
   const svgWidth = chartSize + svgPadding * 2;
   const svgHeight = chartSize + svgPadding * 2;
   const cx = svgWidth / 2;
   const cy = svgHeight / 2;
-  const radius = chartSize / 2 - 20;
+  const radius = chartSize / 2 - (isTablet ? 28 : 22);
 
   const sides = Math.max(activeData.length, 3);
   const angleFor = (i: number) => (Math.PI * 2 * i) / sides - Math.PI / 2;
@@ -130,13 +131,28 @@ export function ParentSkillPerformance({
     return activeData.some((item) => item.value > 0);
   }, [activeData]);
 
+  // Helper to split long domain labels into 2 lines for clear display without cutting off words
+  const formatRadarLabelLines = (label: string): string[] => {
+    const words = label.trim().split(/\s+/);
+    if (words.length <= 1 || label.length <= 12) {
+      return [label];
+    }
+    // For 2 words: [Word 1, Word 2]
+    if (words.length === 2) {
+      return [words[0], words[1]];
+    }
+    // For 3+ words: split in half
+    const mid = Math.ceil(words.length / 2);
+    return [words.slice(0, mid).join(' '), words.slice(mid).join(' ')];
+  };
+
   return (
     <View className="flex-col mt-6 w-full">
       {/* Header and Filter Selector */}
       <View className="mb-4">
         <View className="flex-row items-center justify-between flex-wrap gap-2">
           <View className="flex-row items-center gap-2">
-            <Text className={`font-fredoka-one text-[#484A4B] ${isTablet ? 'text-[28px]' : 'text-[20px]'}`}>
+            <Text className={`font-fredoka-one text-[#484A4B] ${isTablet ? 'text-[32px]' : 'text-[22px]'}`}>
               {isTl ? 'Pagganap sa mga Kasanayan' : 'Skill Performance'}
             </Text>
             <Pressable
@@ -173,7 +189,7 @@ export function ParentSkillPerformance({
           <Animated.View
             entering={FadeInUp.duration(200)}
             exiting={FadeOutUp.duration(150)}
-            className="w-full bg-[#F0F9FF] border border-[#BBE8FB] rounded-2xl p-3.5 mt-3 flex-row items-start gap-2.5 overflow-hidden"
+            className="w-full bg-[#F0F9FF] border-[2px] border-[#BBE8FB] rounded-2xl p-3.5 mt-3 flex-row items-start gap-2.5 overflow-hidden"
           >
             <Feather name="info" size={isTablet ? 20 : 16} color="#62A9E6" style={{ marginTop: 2 }} />
             <View className="flex-1 flex-col gap-1.5">
@@ -215,27 +231,21 @@ export function ParentSkillPerformance({
           </Text>
         </View>
       ) : (
-        /* Styled Analytics Card - matching class-analytics format */
+        /* Styled Analytics Card - matching Design System tactile card standard */
         <View
           style={{
-            width: '100%',
-            backgroundColor: '#FFFFFF',
-            borderWidth: 1,
-            borderColor: '#E5E7EB',
-            borderRadius: isTablet ? 32 : 24,
-            padding: isTablet ? 24 : 20,
-            alignItems: 'center',
-            shadowColor: '#000000',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.03,
-            shadowRadius: 10,
-            elevation: 1,
+            shadowColor: '#F1F1F1',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 1,
+            shadowRadius: 0,
+            elevation: 2,
           }}
+          className="w-full bg-white border-[4px] border-[#F1F1F1] rounded-[20px] sm:rounded-[32px] p-4 sm:p-6"
         >
           {/* 2-Column Split Content: Radar Chart on Left, One-Row-Per-Item Legend List on Right */}
           <View className={`w-full ${isTablet ? 'flex-row items-center justify-between gap-6' : 'flex-col gap-4'}`}>
             {/* Column 1: Radar Chart */}
-            <View className={`items-center justify-center overflow-visible ${isTablet ? 'w-[45%]' : 'w-full'}`}>
+            <View className={`items-center justify-center overflow-visible ${isTablet ? 'w-[48%]' : 'w-full'}`}>
               <Svg width={svgWidth} height={svgHeight}>
                 <Defs>
                   <LinearGradient id="parentRadarGradient" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -291,32 +301,47 @@ export function ParentSkillPerformance({
                   );
                 })}
 
-                {/* Spoke Domain Labels */}
+                {/* Spoke Domain Labels (Rendered with smart multiline support without truncation) */}
                 {activeData.map((d, i) => {
-                  const p = pointAt(i, 1.25);
+                  const p = pointAt(i, 1.22);
                   const angle = angleFor(i);
                   const cos = Math.cos(angle);
                   const sin = Math.sin(angle);
                   let textAnchor: 'middle' | 'start' | 'end' = 'middle';
-                  if (cos > 0.3) textAnchor = 'start';
-                  else if (cos < -0.3) textAnchor = 'end';
+                  if (cos > 0.25) textAnchor = 'start';
+                  else if (cos < -0.25) textAnchor = 'end';
 
-                  let dy = 3;
-                  if (sin < -0.7) dy = -3;
-                  else if (sin > 0.7) dy = 9;
+                  const lines = formatRadarLabelLines(d.label);
+                  const lineHeight = isTablet ? 12 : 11;
 
-                  const labelText = d.label.length > 13 ? `${d.label.slice(0, 12)}…` : d.label;
+                  let baseDy = 3;
+                  if (sin < -0.7) {
+                    // Top labels: shift up when multiline
+                    baseDy = lines.length > 1 ? -10 : -4;
+                  } else if (sin > 0.7) {
+                    // Bottom labels: shift down
+                    baseDy = 10;
+                  }
+
                   return (
                     <SvgText
                       key={`spoke-label-${i}`}
                       x={p.x}
-                      y={p.y + dy}
+                      y={p.y + baseDy}
                       fontSize={isTablet ? 11 : 9.5}
                       fontFamily="Quicksand-Bold"
                       fill="#484A4B"
                       textAnchor={textAnchor}
                     >
-                      {labelText}
+                      {lines.map((line, lineIdx) => (
+                        <TSpan
+                          key={`spoke-line-${i}-${lineIdx}`}
+                          x={p.x}
+                          dy={lineIdx === 0 ? 0 : lineHeight}
+                        >
+                          {line}
+                        </TSpan>
+                      ))}
                     </SvgText>
                   );
                 })}
@@ -324,7 +349,7 @@ export function ParentSkillPerformance({
             </View>
 
             {/* Column 2: Domain Legend List (One Row Per Item) */}
-            <View className={`flex-col gap-2.5 ${isTablet ? 'w-[52%]' : 'w-full mt-2 pt-3 border-t border-[#F3F4F6]'}`}>
+            <View className={`flex-col gap-2.5 ${isTablet ? 'w-[50%]' : 'w-full mt-2 pt-3 border-t border-[#F3F4F6]'}`}>
               {activeData.map((item, idx) => {
                 const color = DOMAIN_COLORS[idx % DOMAIN_COLORS.length];
                 const scorePct = Math.round(item.value);
@@ -333,44 +358,36 @@ export function ParentSkillPerformance({
                 return (
                   <View
                     key={item.label}
-                    className="w-full bg-[#F9FAFB] border border-[#F3F4F6] rounded-xl p-3 flex-col"
+                    className="w-full bg-[#F8FAFC] border-[2px] border-[#F1F1F1] rounded-2xl p-3 flex-col"
                   >
-                    {/* Top Row: Color Dot + Full Domain Title + Benchmark Badge + Percentage Badge Pill */}
+                    {/* Top Row: Color Dot + Full Domain Title + Benchmark Badge + Clean Percentage */}
                     <View className="flex-row items-center justify-between">
                       <View className="flex-row items-center gap-2 flex-1 pr-2">
-                        <View className="w-3 h-3 rounded-full" style={{ backgroundColor: color }} />
-                        <Text className="font-quicksand-bold text-xs sm:text-sm text-[#374151] flex-1 leading-snug">
+                        <View className="w-3.5 h-3.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
+                        <Text className="font-fredoka-one text-sm sm:text-base text-[#484A4B] flex-1 leading-snug" numberOfLines={1}>
                           {item.label}
                         </Text>
                       </View>
-                      <View className="flex-row items-center gap-1.5">
+                      <View className="flex-row items-center gap-2">
                         <View
-                          className="px-2 py-0.5 rounded-full border"
+                          className="px-2.5 py-0.5 rounded-full border"
                           style={{
                             backgroundColor: tier.bgColor,
                             borderColor: tier.borderColor,
                           }}
                         >
-                          <Text className="font-fredoka-one text-[10px] uppercase" style={{ color: tier.accentColor }}>
+                          <Text className="font-fredoka-one text-[11px] uppercase" style={{ color: tier.accentColor }}>
                             {tier.parentLabel}
                           </Text>
                         </View>
-                        <View
-                          className="px-2 py-0.5 rounded-full border"
-                          style={{
-                            backgroundColor: `${color}18`,
-                            borderColor: `${color}50`,
-                          }}
-                        >
-                          <Text className="font-fredoka-one text-xs sm:text-sm" style={{ color: color }}>
-                            {scorePct}%
-                          </Text>
-                        </View>
+                        <Text className="font-fredoka-one text-sm sm:text-base text-[#484A4B]">
+                          {scorePct}%
+                        </Text>
                       </View>
                     </View>
 
                     {/* Micro Progress Bar Track */}
-                    <View className="w-full h-1.5 bg-[#E5E7EB] rounded-full overflow-hidden mt-2">
+                    <View className="w-full h-2 bg-[#E5E7EB] rounded-full overflow-hidden mt-2">
                       <View
                         style={{
                           width: `${Math.max(0, Math.min(100, scorePct))}%`,
@@ -388,14 +405,14 @@ export function ParentSkillPerformance({
 
           {/* Dynamic Evidence-Based Domain Insights Callouts */}
           {domainTakeaways.length > 0 && (
-            <View className="mt-4 pt-4 border-t border-[#F3F4F6] flex-col gap-3">
-              <View className="flex-row items-center justify-between">
+            <View className="mt-4 pt-4 border-t border-[#F3F4F6] flex-col gap-3 w-full">
+              <View className="flex-row items-center justify-between w-full">
                 <Text className="font-fredoka-one text-xs text-[#9CA3AF] uppercase tracking-wider">
                   DOMAIN HIGHLIGHTS & AT-HOME GUIDANCE
                 </Text>
               </View>
 
-              <View className="flex-col gap-2.5">
+              <View className="flex-col gap-2.5 w-full">
                 {domainTakeaways.map((t, idx) => {
                   const isGrowth = t.badgeType === 'growth';
                   const isFocus = t.badgeType === 'focus';
@@ -408,7 +425,7 @@ export function ParentSkillPerformance({
                   return (
                     <View
                       key={`takeaway-${idx}`}
-                      className="bg-[#F9FAFB] border border-[#F3F4F6] rounded-2xl p-3.5 flex-col gap-1.5"
+                      className="w-full bg-[#F9FAFB] border border-[#F3F4F6] rounded-2xl p-3.5 flex-col gap-1.5"
                     >
                       <View className="flex-row items-center justify-between">
                         <View className="flex-row items-center gap-2 flex-1 pr-2">
@@ -424,12 +441,12 @@ export function ParentSkillPerformance({
                           >
                             <Text
                               style={{ color: badgeText }}
-                              className="font-fredoka-one text-[9px] uppercase"
+                              className="font-fredoka-one text-[11px] uppercase"
                             >
                               {t.badgeLabel}
                             </Text>
                           </View>
-                          <Text className="font-fredoka-one text-sm text-[#374151] flex-1" numberOfLines={1}>
+                          <Text className="font-fredoka-one text-sm text-[#484A4B] flex-1" numberOfLines={1}>
                             {t.title}
                           </Text>
                         </View>

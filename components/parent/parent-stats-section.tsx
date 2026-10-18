@@ -168,7 +168,7 @@ export function ParentStatsSection({ stats, isTablet, language = 'en' }: ParentS
               {/* Label */}
               <Text
                 className={`font-fredoka-one tracking-[0.06em] text-center ${
-                  isTablet ? 'text-sm mt-1' : 'text-[10px] mt-0.5'
+                  isTablet ? 'text-sm mt-1' : 'text-[11px] mt-0.5'
                 }`}
                 style={{ color: labelColor, letterSpacing: isTablet ? 1.2 : 0.6 }}
                 numberOfLines={1}
@@ -200,7 +200,7 @@ export function ParentStatsSection({ stats, isTablet, language = 'en' }: ParentS
                 {!hasNoSessions && (
                   <Text
                     className={`font-quicksand-bold text-[#9CA3AF] text-center ${
-                      isTablet ? 'text-xs mt-0.5' : 'text-[9px] mt-0.5'
+                      isTablet ? 'text-xs mt-0.5' : 'text-[11px] mt-0.5'
                     }`}
                   >
                     {subtext}
@@ -217,8 +217,8 @@ export function ParentStatsSection({ stats, isTablet, language = 'en' }: ParentS
                   style={{ backgroundColor: badge.bgColor, borderColor: badge.borderColor }}
                 >
                   <Text
-                    className={`font-quicksand-bold text-center ${
-                      isTablet ? 'text-xs' : 'text-[9px] leading-[12px]'
+                    className={`font-fredoka-one uppercase text-center ${
+                      isTablet ? 'text-xs' : 'text-[11px]'
                     }`}
                     style={{ color: badge.color }}
                     numberOfLines={1}

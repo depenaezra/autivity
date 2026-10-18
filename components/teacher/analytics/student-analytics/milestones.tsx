@@ -267,7 +267,7 @@ export default function Milestones({ studentId }: MilestonesProps) {
             </View>
             <Text
               className={`font-fredoka-one text-[#62A9E6] text-center w-full px-1 ${
-                isTablet ? 'text-[12px] mt-2' : 'text-[10px] mt-1.5'
+                isTablet ? 'text-xs mt-2' : 'text-[11px] mt-1.5'
               }`}
               numberOfLines={1}
               adjustsFontSizeToFit
@@ -297,7 +297,7 @@ export default function Milestones({ studentId }: MilestonesProps) {
             </View>
             <Text
               className={`font-fredoka-one text-[#FF3B3F] text-center w-full px-1 ${
-                isTablet ? 'text-[12px] mt-2' : 'text-[10px] mt-1.5'
+                isTablet ? 'text-xs mt-2' : 'text-[11px] mt-1.5'
               }`}
               numberOfLines={1}
               adjustsFontSizeToFit
@@ -487,7 +487,7 @@ export default function Milestones({ studentId }: MilestonesProps) {
                     }}
                   >
                     <Text
-                      className={`font-fredoka-one uppercase ${isTablet ? 'text-xs' : 'text-[10px]'}`}
+                      className={`font-fredoka-one uppercase ${isTablet ? 'text-xs' : 'text-[11px]'}`}
                       style={{ color: statusText }}
                     >
                       {milestone.status}

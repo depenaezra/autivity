@@ -125,7 +125,7 @@ export default function StudentRecommendationsCard({ recommendations }: StudentR
                 >
                   <Text
                     className={`font-fredoka-one uppercase ${
-                      isTablet ? 'text-xs' : 'text-[10px]'
+                      isTablet ? 'text-xs' : 'text-[11px]'
                     }`}
                     style={{ color: meta.tagColor }}
                   >

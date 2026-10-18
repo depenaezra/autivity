@@ -159,7 +159,7 @@ export function ParentEvaluationReviewModal({
                 <Text className="font-fredoka-one text-sm text-[#15803D]">
                   {totalPoints} / 20
                 </Text>
-                <Text className="font-fredoka-one text-[9px] text-[#166534] uppercase">
+                <Text className="font-fredoka-one text-[11px] text-[#166534] uppercase">
                   SCORE
                 </Text>
               </View>

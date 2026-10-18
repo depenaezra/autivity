@@ -233,7 +233,7 @@ export function ParentEmotionModal({
             {supportInfo.tips.map((tip, idx) => (
               <View key={idx} className="flex-row items-start gap-2">
                 <View className="w-4 h-4 rounded-full bg-[#EBF5FF] items-center justify-center mt-0.5 border border-[#BBE8FB]">
-                  <Text className="font-fredoka-one text-[9px] text-[#62A9E6]">
+                  <Text className="font-fredoka-one text-[11px] text-[#62A9E6]">
                     {idx + 1}
                   </Text>
                 </View>

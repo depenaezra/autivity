@@ -160,7 +160,7 @@ export function ParentCompareAnalytics({
                     <Text className="font-fredoka-one text-lg" style={{ color: themeAccent }}>
                       {item.overallPerformance > 0 ? `${item.overallPerformance}%` : '—'}
                     </Text>
-                    <Text className="font-quicksand-bold text-[9px] text-[#9CA3AF] uppercase">
+                    <Text className="font-quicksand-bold text-[11px] text-[#9CA3AF] uppercase">
                       Score
                     </Text>
                   </View>

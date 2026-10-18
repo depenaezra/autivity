@@ -246,7 +246,7 @@ export function ParentActivityPerformance({ sessions = [], data: initialData, gl
       <View className="mb-4">
         <View className="flex-row items-center justify-between flex-wrap gap-2">
           <View className="flex-row items-center gap-2">
-            <Text className={`font-fredoka-one text-[#484A4B] ${isTablet ? 'text-[28px]' : 'text-[20px]'}`}>
+            <Text className={`font-fredoka-one text-[#484A4B] ${isTablet ? 'text-[32px]' : 'text-[22px]'}`}>
               {isTl ? 'Pagganap sa Bawat Aktibidad' : 'Activity Performance'}
             </Text>
             <Pressable
@@ -284,7 +284,7 @@ export function ParentActivityPerformance({ sessions = [], data: initialData, gl
           <Animated.View
             entering={FadeInUp.duration(200)}
             exiting={FadeOutUp.duration(150)}
-            className="w-full bg-[#F0F9FF] border border-[#BBE8FB] rounded-2xl p-3.5 mt-3 flex-row items-start gap-2.5 overflow-hidden"
+            className="w-full bg-[#F0F9FF] border-[2px] border-[#BBE8FB] rounded-2xl p-3.5 mt-3 flex-row items-start gap-2.5 overflow-hidden"
           >
             <Feather name="info" size={isTablet ? 20 : 16} color="#62A9E6" style={{ marginTop: 2 }} />
             <View className="flex-1 flex-col gap-1.5">
@@ -326,23 +326,18 @@ export function ParentActivityPerformance({ sessions = [], data: initialData, gl
           </Text>
         </View>
       ) : (
-        /* Styled Analytics Card */
+        /* Styled Analytics Card matching Design System */
         <View
           style={{
-            width: '100%',
-            backgroundColor: '#FFFFFF',
-            borderWidth: 1,
-            borderColor: '#E5E7EB',
-            borderRadius: isTablet ? 32 : 24,
-            padding: isTablet ? 24 : 20,
-            shadowColor: '#000000',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.03,
-            shadowRadius: 10,
-            elevation: 1,
+            shadowColor: '#F1F1F1',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 1,
+            shadowRadius: 0,
+            elevation: 2,
           }}
+          className="w-full bg-white border-[4px] border-[#F1F1F1] rounded-[20px] sm:rounded-[32px] p-4 sm:p-6"
         >
-          <View className="flex-col gap-3.5">
+          <View className="flex-col gap-3">
             {activityData.map((item, idx) => {
               const clampedVal = Math.max(0, Math.min(100, Math.round(item.value)));
               const theme = getCategoryTheme(item.label, idx);
@@ -355,62 +350,44 @@ export function ParentActivityPerformance({ sessions = [], data: initialData, gl
               return (
                 <View
                   key={item.label}
-                  style={{
-                    backgroundColor: theme.cardBg,
-                    borderColor: theme.cardBorder,
-                  }}
-                  className="flex-col border rounded-2xl p-3.5 sm:p-4"
+                  className="flex-col bg-[#F8FAFC] border-[2px] border-[#F1F1F1] rounded-2xl p-3.5 sm:p-4"
                 >
-                  {/* Category Title Row: Distinct Color Dot + Title + Practices Count Pill + Score Pill */}
+                  {/* Category Title Row: Category Color Dot + Title + Practices Count Tag (Left) | Single Status Tag + Percentage (Right) */}
                   <View className="flex-row items-center justify-between mb-2.5">
                     <View className="flex-row items-center gap-2 flex-1 pr-2">
                       <View className="w-3.5 h-3.5 rounded-full shrink-0" style={{ backgroundColor: theme.dotColor }} />
-                      <Text className="font-fredoka-one text-sm sm:text-base text-[#374151]" numberOfLines={1}>
+                      <Text className="font-fredoka-one text-sm sm:text-base text-[#484A4B]" numberOfLines={1}>
                         {item.label}
                       </Text>
                       {/* Activities Count Badge */}
-                      <View
-                        className="px-2 py-0.5 rounded-full border hidden sm:flex"
-                        style={{
-                          backgroundColor: theme.badgeBg,
-                          borderColor: theme.badgeBorder,
-                        }}
-                      >
-                        <Text className="font-quicksand-bold text-[10px]" style={{ color: theme.badgeText }}>
+                      <View className="px-2 py-0.5 rounded-md bg-[#F1F5F9] border border-[#E2E8F0] hidden sm:flex">
+                        <Text className="font-fredoka-one text-[11px] text-[#64748B] uppercase">
                           {count} {count === 1 ? 'activity' : 'activities'}
                         </Text>
                       </View>
                     </View>
 
-                    {/* Right Side: Universal Benchmark Status Tag + Percentage Pill */}
-                    <View className="flex-row items-center gap-1.5">
+                    {/* Right Side: Single Benchmark Status Tag + Clean Percentage Value */}
+                    <View className="flex-row items-center gap-2">
                       <View
-                        className="px-2 py-0.5 rounded-full border"
+                        className="px-2.5 py-0.5 rounded-full border"
                         style={{
                           backgroundColor: tier.bgColor,
                           borderColor: tier.borderColor,
                         }}
                       >
-                        <Text className="font-fredoka-one text-[10px] uppercase" style={{ color: tier.accentColor }}>
+                        <Text className="font-fredoka-one text-[11px] uppercase" style={{ color: tier.accentColor }}>
                           {statusLabel}
                         </Text>
                       </View>
-                      <View
-                        className="px-2.5 py-0.5 rounded-full border"
-                        style={{
-                          backgroundColor: theme.pillBg,
-                          borderColor: theme.pillBorder,
-                        }}
-                      >
-                        <Text className="font-fredoka-one text-xs sm:text-sm" style={{ color: theme.pillText }}>
-                          {clampedVal}%
-                        </Text>
-                      </View>
+                      <Text className="font-fredoka-one text-sm sm:text-base text-[#484A4B]">
+                        {clampedVal}%
+                      </Text>
                     </View>
                   </View>
 
                   {/* SVG Bar Track with Dashed Vertical Grid Background */}
-                  <View className="w-full h-4 justify-center relative">
+                  <View className="w-full h-3.5 justify-center relative">
                     <Svg width="100%" height="100%" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
                       {[0, 25, 50, 75, 100].map((t) => (
                         <Line
@@ -425,12 +402,12 @@ export function ParentActivityPerformance({ sessions = [], data: initialData, gl
                         />
                       ))}
                       {/* Background Track */}
-                      <Rect x="0" y="2" width="100%" height="12" rx="6" ry="6" fill="#F3F4F6" />
-                      {/* Progress Bar Fill with Solid Flat Color (No Gradient) */}
+                      <Rect x="0" y="1" width="100%" height="12" rx="6" ry="6" fill="#E5E7EB" />
+                      {/* Progress Bar Fill with Solid Theme Color */}
                       {clampedVal > 0 && (
                         <Rect
                           x="0"
-                          y="2"
+                          y="1"
                           width={`${clampedVal}%`}
                           height="12"
                           rx="6"
@@ -447,7 +424,7 @@ export function ParentActivityPerformance({ sessions = [], data: initialData, gl
 
           {/* Dynamic Evidence-Based Activity Takeaway Banner */}
           {activityTakeaway && (
-            <View className="mt-4 pt-4 border-t border-[#F3F4F6] flex-col gap-2">
+            <View className="mt-4 pt-4 border-t border-[#F1F1F1] flex-col gap-2">
               <View className="flex-row items-center gap-2">
                 <View
                   style={{
@@ -461,12 +438,12 @@ export function ParentActivityPerformance({ sessions = [], data: initialData, gl
                 >
                   <Text
                     style={{ color: activityTakeaway.badgeType === 'growth' ? '#15803D' : '#62A9E6' }}
-                    className="font-fredoka-one text-[9px] uppercase"
+                    className="font-fredoka-one text-[11px] uppercase"
                   >
                     {activityTakeaway.badgeLabel}
                   </Text>
                 </View>
-                <Text className="font-fredoka-one text-sm text-[#374151] flex-1" numberOfLines={1}>
+                <Text className="font-fredoka-one text-sm text-[#484A4B] flex-1" numberOfLines={1}>
                   {activityTakeaway.title}
                 </Text>
               </View>

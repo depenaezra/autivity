@@ -369,7 +369,7 @@ export default function StudentDevelopmentalDomainPractice({ studentId, filter: 
                           <View className="px-2.5 py-0.5 rounded-md bg-[#F1F5F9]">
                             <Text
                               className={`font-fredoka-one uppercase ${
-                                isTablet ? 'text-xs' : 'text-[10px]'
+                                isTablet ? 'text-xs' : 'text-[11px]'
                               } text-[#64748B]`}
                             >
                               {totalDomainExposures} {totalDomainExposures === 1 ? 'practice' : 'practices'}
@@ -380,14 +380,14 @@ export default function StudentDevelopmentalDomainPractice({ studentId, filter: 
                           {/* Master Domain Alert Pill */}
                           {isLowestPractice && (
                             <View className="px-2 py-0.5 rounded-md bg-[#FFFBEB] border border-[#FFF3C4]">
-                              <Text className="font-fredoka-one text-[9px] sm:text-[10px] text-[#D97706] uppercase tracking-wider">
+                              <Text className="font-fredoka-one text-[11px] text-[#D97706] uppercase tracking-wider">
                                 LOWEST PRACTICE
                               </Text>
                             </View>
                           )}
                           {!isLowestPractice && isLowestScore && (
                             <View className="px-2 py-0.5 rounded-md bg-[#FFF7ED] border border-[#FFDBD4]">
-                              <Text className="font-fredoka-one text-[9px] sm:text-[10px] text-[#FF8870] uppercase tracking-wider">
+                              <Text className="font-fredoka-one text-[11px] text-[#FF8870] uppercase tracking-wider">
                                 LOWEST SCORE
                               </Text>
                             </View>
@@ -500,7 +500,7 @@ export default function StudentDevelopmentalDomainPractice({ studentId, filter: 
                                         {skill.count} {skill.count === 1 ? 'practice' : 'practices'}
                                       </Text>
                                       {skill.averageScore !== null && skill.averageScore !== undefined && (
-                                        <Text className="font-quicksand-bold text-[10px] text-[#62A9E6]">
+                                        <Text className="font-quicksand-bold text-[11px] text-[#62A9E6]">
                                           • ★ {skill.averageScore.toFixed(1)} / 4.0
                                         </Text>
                                       )}
@@ -540,7 +540,7 @@ export default function StudentDevelopmentalDomainPractice({ studentId, filter: 
                                   alignItems: isFirst ? 'flex-start' : isLast ? 'flex-end' : 'center',
                                 }}
                               >
-                                <Text className="font-quicksand-bold text-[10px] text-[#9CA3AF]">
+                                <Text className="font-quicksand-bold text-[11px] text-[#9CA3AF]">
                                   {t}
                                 </Text>
                               </View>
@@ -551,7 +551,7 @@ export default function StudentDevelopmentalDomainPractice({ studentId, filter: 
 
                       {/* Tap Hint for Teachers */}
                       <View className="flex-row items-center justify-end mt-2 pt-0.5">
-                        <Text className="font-quicksand-medium text-[10px] text-[#9CA3AF] italic">
+                        <Text className="font-quicksand-medium text-[11px] text-[#9CA3AF] italic">
                           Tap any bar to view exact practice count
                         </Text>
                       </View>

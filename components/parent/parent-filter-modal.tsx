@@ -233,7 +233,7 @@ export function ParentFilterModal({
                         elevation: 2,
                       }}
                     >
-                      <Text className={`font-fredoka-one text-[#62A9E6] uppercase ${isTablet ? 'text-xs' : 'text-[10px]'}`}>
+                      <Text className={`font-fredoka-one text-[#62A9E6] uppercase ${isTablet ? 'text-xs' : 'text-[11px]'}`}>
                         {label} {sy.isCurrent ? '(NOW)' : ''}
                       </Text>
                     </Pressable>

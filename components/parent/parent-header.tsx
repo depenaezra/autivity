@@ -134,7 +134,7 @@ export function ParentHeader({
               {getGreeting()}
             </Text>
             <Text
-              className={`font-fredoka-one text-[#484A4B] ${isTablet ? 'text-[32px] mt-1' : 'text-[20px]'}`}
+              className={`font-fredoka-one text-[#484A4B] ${isTablet ? 'text-[32px] mt-1' : 'text-[22px]'}`}
               numberOfLines={1}
             >
               {fullParentName}

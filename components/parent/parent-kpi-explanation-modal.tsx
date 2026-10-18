@@ -320,7 +320,7 @@ export function ParentKpiExplanationModal({
                 style={{ borderColor: activeGuide.borderColor }}
               >
                 <Text
-                  className="font-quicksand-bold text-[10px]"
+                  className="font-fredoka-one text-[11px] uppercase"
                   style={{ color: activeGuide.accentColor }}
                 >
                   ● {currentSummary.status}

@@ -374,7 +374,7 @@ export default function StudentEmotionRegulationCard({
             <View className="flex-row items-center gap-2">
               {/* Missed Logs Pill */}
               <View className="bg-[#FFF7ED] border border-[#FFDBD4] rounded-xl px-3 py-1.5 items-end">
-                <Text className="font-fredoka-one text-[10px] text-[#FF8870] uppercase tracking-wide">
+                <Text className="font-fredoka-one text-[11px] text-[#FF8870] uppercase tracking-wide">
                   MISSED LOGS
                 </Text>
                 <Text className="font-fredoka-one text-xs sm:text-sm text-[#FF8870] mt-0.5">
@@ -384,7 +384,7 @@ export default function StudentEmotionRegulationCard({
 
               {/* Total Logged for this Week Pill */}
               <View className="bg-[#F0FDF4] border border-[#CBFAC4] rounded-xl px-3 py-1.5 items-end">
-                <Text className="font-fredoka-one text-[10px] text-[#179D33] uppercase tracking-wide">
+                <Text className="font-fredoka-one text-[11px] text-[#179D33] uppercase tracking-wide">
                   TOTAL LOGGED
                 </Text>
                 <Text className="font-fredoka-one text-xs sm:text-sm text-[#179D33] mt-0.5">
@@ -454,7 +454,7 @@ export default function StudentEmotionRegulationCard({
                             >
                               {day.dayName}
                             </Text>
-                            <Text className="font-quicksand-bold text-[10px] text-[#9CA3AF]">
+                            <Text className="font-quicksand-bold text-[11px] text-[#9CA3AF]">
                               {day.monthDayStr}
                             </Text>
                           </View>
@@ -469,7 +469,7 @@ export default function StudentEmotionRegulationCard({
                                 contentFit="contain"
                               />
                               <Text
-                                className="font-fredoka-one text-[10px] sm:text-xs text-center mt-0.5 uppercase tracking-wide"
+                                className="font-fredoka-one text-[11px] sm:text-xs text-center mt-0.5 uppercase tracking-wide"
                                 style={{ color: emotionMeta.color }}
                                 numberOfLines={1}
                               >
@@ -479,7 +479,7 @@ export default function StudentEmotionRegulationCard({
                           ) : (
                             <View className="items-center justify-center my-1.5 opacity-40">
                               <Ionicons name="remove-outline" size={isTablet ? 24 : 18} color="#9CA3AF" />
-                              <Text className="font-quicksand-medium text-[9px] text-[#9CA3AF] text-center">
+                              <Text className="font-quicksand-medium text-[11px] text-[#9CA3AF] text-center">
                                 {day.isFuture ? 'UPCOMING' : 'NO ENTRY'}
                               </Text>
                             </View>
@@ -505,7 +505,7 @@ export default function StudentEmotionRegulationCard({
                               }}
                             >
                               <Text
-                                className="font-fredoka-one text-[9px] text-center uppercase"
+                                className="font-fredoka-one text-[11px] text-center uppercase"
                                 style={{
                                   color:
                                     day.checkIn.zone === 'optimal'
@@ -563,7 +563,7 @@ export default function StudentEmotionRegulationCard({
                               }}
                             >
                               <Text
-                                className="font-fredoka-one text-[9px] uppercase tracking-wide"
+                                className="font-fredoka-one text-[11px] uppercase tracking-wide"
                                 style={{ color: zoneConfig?.color || '#62A9E6' }}
                               >
                                 {zoneConfig?.title || 'LOW ENERGY'}
@@ -636,7 +636,7 @@ export default function StudentEmotionRegulationCard({
                             style={{ backgroundColor: z.bgColor, borderColor: z.borderColor }}
                           >
                             <Feather name="award" size={10} color={z.color} />
-                            <Text className="font-fredoka-one text-[10px]" style={{ color: z.color }}>
+                            <Text className="font-fredoka-one text-[11px]" style={{ color: z.color }}>
                               Avg: {avgScore.toFixed(1)} / 4.0
                             </Text>
                           </View>

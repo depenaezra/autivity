@@ -283,7 +283,7 @@ export default function Sessions({
             </View>
             <Text
               className={`font-fredoka-one text-[#62A9E6] text-center w-full px-1 ${
-                isTablet ? 'text-[12px] mt-2' : 'text-[10px] mt-1.5'
+                isTablet ? 'text-xs mt-2' : 'text-[11px] mt-1.5'
               }`}
               numberOfLines={1}
               adjustsFontSizeToFit
@@ -459,13 +459,13 @@ export default function Sessions({
                   <View className="flex-1 pr-2">
                     {/* Domain Category Eyebrow */}
                     <View className="flex-row items-center gap-1.5 mb-1 flex-wrap">
-                      <Text className={`font-fredoka-one text-[#9CA3AF] uppercase tracking-wider ${isTablet ? 'text-xs' : 'text-[10px]'}`}>
+                      <Text className={`font-fredoka-one text-[#9CA3AF] uppercase tracking-wider ${isTablet ? 'text-xs' : 'text-[11px]'}`}>
                         {session.category}
                       </Text>
                       {session.is_timed_out && (
                         <>
-                          <Text className="text-[#D1D5DB] text-[10px]">•</Text>
-                          <Text className={`font-quicksand-bold text-[#FF8870] ${isTablet ? 'text-xs' : 'text-[10px]'}`}>
+                          <Text className="text-[#D1D5DB] text-xs">•</Text>
+                          <Text className={`font-quicksand-bold text-[#FF8870] ${isTablet ? 'text-xs' : 'text-[11px]'}`}>
                             Timed Out ({session.completed_count || 1}/3)
                           </Text>
                         </>
@@ -488,11 +488,11 @@ export default function Sessions({
                       >
                         <Feather
                           name={session.activityType === 'classroom' ? 'book-open' : 'tablet'}
-                          size={isTablet ? 11 : 9}
+                          size={isTablet ? 12 : 11}
                           color={session.activityType === 'classroom' ? '#8B5CF6' : '#62A9E6'}
                         />
                         <Text
-                          className={`font-fredoka-one uppercase ${isTablet ? 'text-xs' : 'text-[9px]'}`}
+                          className={`font-fredoka-one uppercase ${isTablet ? 'text-xs' : 'text-[11px]'}`}
                           style={{ color: session.activityType === 'classroom' ? '#8B5CF6' : '#62A9E6' }}
                         >
                           {session.activityType === 'classroom' ? 'CLASSROOM' : 'APP'}
@@ -532,23 +532,14 @@ export default function Sessions({
 
                       <Text className="text-[#D1D5DB] text-xs">•</Text>
 
-                      {/* Prompts / Noticeable Independent Achievement Badge */}
+                      {/* Prompts / Independent Achievement Tag (matching Recommendations tag pill) */}
                       {isIndependent ? (
                         <View
-                          className="px-2.5 py-0.5 rounded-full flex-row items-center gap-1"
-                          style={{
-                            backgroundColor: '#E8F8ED',
-                            borderWidth: 1.5,
-                            borderColor: '#86EFAC',
-                            shadowColor: '#86EFAC',
-                            shadowOffset: { width: 0, height: 1 },
-                            shadowOpacity: 0.6,
-                            shadowRadius: 1,
-                            elevation: 1,
-                          }}
+                          className="px-2 py-0.5 rounded-md flex-row items-center gap-1"
+                          style={{ backgroundColor: '#E8F8EE' }}
                         >
-                          <Feather name="award" size={isTablet ? 12 : 10} color="#15803D" />
-                          <Text className={`font-fredoka-one uppercase text-[#15803D] tracking-wide ${isTablet ? 'text-xs' : 'text-[10px]'}`}>
+                          <Feather name="award" size={isTablet ? 13 : 11} color="#179D33" />
+                          <Text className={`font-fredoka-one uppercase text-[#179D33] ${isTablet ? 'text-xs' : 'text-[11px]'}`}>
                             INDEPENDENT
                           </Text>
                         </View>
@@ -563,22 +554,22 @@ export default function Sessions({
                     </View>
                   </View>
 
-                  {/* Clean Single Status Badge on Right */}
+                  {/* Status Pill on Right - Aligned with Milestone Tracking design */}
                   <View
-                    className="px-2.5 py-1 rounded-xl border flex-row items-center gap-1 shrink-0 self-center ml-2"
+                    className="px-3 py-1 rounded-[8px] border-[2px] flex-row items-center gap-1 shrink-0 self-center ml-2"
                     style={{
-                      backgroundColor: isPending ? '#FFF7ED' : '#F8FAFC',
-                      borderColor: isPending ? '#FFDBD4' : '#E2E8F0',
+                      backgroundColor: isPending ? '#FFDBD4' : '#CBFAC4',
+                      borderColor: isPending ? '#FFDBD4' : '#CBFAC4',
                     }}
                   >
                     <Feather
                       name={isPending ? 'clock' : 'check-circle'}
-                      size={isTablet ? 12 : 10}
+                      size={isTablet ? 13 : 11}
                       color={isPending ? '#FF8870' : '#179D33'}
                     />
                     <Text
-                      className={`font-fredoka-one uppercase ${isTablet ? 'text-xs' : 'text-[10px]'}`}
-                      style={{ color: isPending ? '#FF8870' : '#64748B' }}
+                      className={`font-fredoka-one uppercase ${isTablet ? 'text-xs' : 'text-[11px]'}`}
+                      style={{ color: isPending ? '#FF8870' : '#179D33' }}
                     >
                       {isPending ? 'PENDING' : 'EVALUATED'}
                     </Text>
