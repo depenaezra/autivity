@@ -18,6 +18,7 @@ export interface ParentExportOptions {
   endDate?: Date;
   timeframeLabel: string;
   activityType: ActivityTypeFilter;
+  format?: 'pdf' | 'excel';
 }
 
 interface ParentExportModalProps {
@@ -25,8 +26,11 @@ interface ParentExportModalProps {
   onClose: () => void;
   isTablet: boolean;
   studentName?: string;
+  title?: string;
+  description?: string;
   language?: 'en' | 'tl';
   isExporting?: boolean;
+  showExcelDownload?: boolean;
   onConfirmExport: (options: ParentExportOptions) => Promise<void> | void;
 }
 
@@ -43,8 +47,11 @@ export function ParentExportModal({
   onClose,
   isTablet,
   studentName = 'Learner',
+  title,
+  description,
   language = 'en',
   isExporting = false,
+  showExcelDownload = false,
   onConfirmExport,
 }: ParentExportModalProps) {
   const isTl = language === 'tl';
@@ -92,7 +99,7 @@ export function ParentExportModal({
 
   const isDateRangeInvalid = activeTab === 'custom' && customStartDate > customEndDate;
 
-  const handleDownloadPress = () => {
+  const handleDownloadPress = (format: 'pdf' | 'excel' = 'pdf') => {
     if (isDateRangeInvalid || isExporting) return;
 
     if (activeTab === 'quick') {
@@ -104,6 +111,7 @@ export function ParentExportModal({
         period: selectedPreset,
         timeframeLabel: label,
         activityType: selectedActivityType,
+        format,
       });
     } else {
       const label = `${formatDateDisplay(customStartDate)} – ${formatDateDisplay(customEndDate)}`;
@@ -113,6 +121,7 @@ export function ParentExportModal({
         endDate: customEndDate,
         timeframeLabel: label,
         activityType: selectedActivityType,
+        format,
       });
     }
   };
@@ -127,13 +136,15 @@ export function ParentExportModal({
             <Feather name="file-text" size={17} color="#0284C7" />
           </View>
           <Text className="font-fredoka-one text-xl text-[#0F172A]">
-            {isTl ? 'I-download ang Ulat ng Pagkatuto' : 'Download Learning Report'}
+            {title || (isTl ? 'I-download ang Ulat ng Pagkatuto' : 'Download Learning Report')}
           </Text>
         </View>
       }
       isTablet={isTablet}
       submitLabel={isExporting ? (isTl ? 'GUMAGAWA...' : 'GENERATING...') : isTl ? 'I-DOWNLOAD ANG PDF' : 'DOWNLOAD PDF'}
-      onSubmit={handleDownloadPress}
+      onSubmit={() => handleDownloadPress('pdf')}
+      additionalSubmitLabel={showExcelDownload ? 'DOWNLOAD EXCEL' : undefined}
+      onAdditionalSubmit={showExcelDownload ? () => handleDownloadPress('excel') : undefined}
       submitDisabled={isDateRangeInvalid || isExporting}
       isSubmitting={isExporting}
       cancelLabel={isTl ? 'ISARA' : 'CANCEL'}
@@ -144,7 +155,7 @@ export function ParentExportModal({
         <Text className="font-quicksand-semibold text-xs text-[#64748B]">
           {isTl
             ? `Piliin ang saklaw ng petsa at uri ng aktibidad para sa opisyal na ulat ng pag-unlad ni ${studentName}.`
-            : `Select the date range and activity source for ${studentName}'s official progress report.`}
+            : description || `Select the date range and activity source for ${studentName}'s official progress report.`}
         </Text>
 
         {/* 1. Timeframe Mode Tabs */}

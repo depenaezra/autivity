@@ -245,7 +245,10 @@ export default function StudentHome() {
       lower.includes('pick') ||
       lower.includes('choice') ||
       lower.includes('identification') ||
-      lower.includes('picture-word')
+      lower.includes('picture-word') ||
+      lower.includes('odd one out') ||
+      lower.includes('choose by clue') || lower.includes('choose-by-clue') ||
+      lower.includes('odd-one-out')
     );
   };
 

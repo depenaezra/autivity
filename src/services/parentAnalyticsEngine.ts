@@ -702,7 +702,8 @@ export function generateHomeActivities(
   masterDomains: { name: string; subSkills: string[] }[] = [],
   checkIns: { emotion: string; check_in_date?: string }[] = [],
   childName: string = 'Learner',
-  language: 'en' | 'tl' = 'en'
+  language: 'en' | 'tl' = 'en',
+  milestones: { title: string; description?: string; status: string }[] = []
 ): HomeActivitySuggestion[] {
   const isTl = language === 'tl';
   const firstName = childName.split(' ')[0] || childName;
@@ -720,7 +721,11 @@ export function generateHomeActivities(
         (r.completed_work || 0);
       const score = sum / 5;
       (s.skill_domain || []).forEach((dom) => {
-        const key = dom.trim().toLowerCase();
+        const matchingDomain = masterDomains.find((domain) =>
+          domain.name.toLowerCase() === dom.trim().toLowerCase() ||
+          domain.subSkills.some((skill) => skill.trim().toLowerCase() === dom.trim().toLowerCase())
+        );
+        const key = (matchingDomain?.name || dom).trim().toLowerCase();
         if (!domainScores[key]) domainScores[key] = { totalScore: 0, count: 0 };
         domainScores[key].totalScore += score;
         domainScores[key].count += 1;
@@ -813,7 +818,7 @@ export function generateHomeActivities(
   }
 
   // Home Activity 3: Functional Independence Routine
-  const activity3: HomeActivitySuggestion = {
+  let activity3: HomeActivitySuggestion = {
     id: 'adaptive_backpack_routine',
     icon: '🎒',
     title: isTl ? 'Gawain sa Pag-aayos ng Bag' : 'Independent Backpack Routine',
@@ -822,6 +827,31 @@ export function generateHomeActivities(
       : `Invite ${firstName} to unzip their own school bag, take out their water tumbler, and place it on the counter each afternoon. Builds confidence and self-direction in daily living skills.`,
     domainName: isTl ? 'Pang-araw-araw na Gawi' : 'Daily Life Independence',
   };
+
+  const activeGoal = milestones.find((milestone) => {
+    const status = milestone.status.toLowerCase();
+    return status !== 'achieved' && status !== 'completed';
+  });
+  if (activeGoal) {
+    const goal = `${activeGoal.title} ${activeGoal.description || ''}`.toLowerCase();
+    if (/button|grasp|pinch|fine.motor|pencil|writing/.test(goal)) {
+      activity3 = {
+        id: 'goal_fine_motor', icon: '✋',
+        title: isTl ? 'Pagsasanay ng Kamay' : 'Hands-on Practice',
+        description: isTl ? 'Maglaro ng malambot na playdough o magsanay sa pagsasara ng malalaking butones kasama ang isang nakatatanda.' : 'Roll playdough together or practice fastening large buttons with an adult.',
+        domainName: isTl ? 'Kasanayan ng Kamay' : 'Fine Motor',
+      };
+    } else if (/communicat|speech|speak|request|choice|language/.test(goal)) {
+      activity3 = {
+        id: 'goal_communication', icon: '💬',
+        title: isTl ? 'Pagpili sa Merienda' : 'Snack Choices',
+        description: isTl ? 'Magpakita ng dalawang pagpipilian at hayaang ituro o sabihin ng bata ang nais niya.' : 'Offer two snacks and invite your child to point, gesture, or say which one they prefer.',
+        domainName: isTl ? 'Komunikasyon' : 'Communication',
+      };
+    } else if (/dress|routine|self.care|independ|toilet|wash/.test(goal)) {
+      activity3 = { ...activity3, id: 'goal_daily_routine' };
+    }
+  }
 
   return [activity1, activity2, activity3];
 }

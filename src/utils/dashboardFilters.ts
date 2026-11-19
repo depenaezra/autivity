@@ -75,20 +75,20 @@ export function getDateRangeForFilter(period: FilterPeriod): {
 
   if (period === 'week') {
     // Current week: from 7 days ago at start of day until now
-    const weekAgo = new Date(startOfDay.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const weekAgo = new Date(startOfDay.getTime() - 6 * 24 * 60 * 60 * 1000);
     return { startDate: weekAgo, endDate: null };
   }
 
   if (period === 'last_week') {
     // Last week: from 14 days ago to 7 days ago
-    const startOfLastWeek = new Date(startOfDay.getTime() - 14 * 24 * 60 * 60 * 1000);
-    const endOfLastWeek = new Date(startOfDay.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const startOfLastWeek = new Date(startOfDay.getTime() - 13 * 24 * 60 * 60 * 1000);
+    const endOfLastWeek = new Date(startOfDay.getTime() - 6 * 24 * 60 * 60 * 1000 - 1);
     return { startDate: startOfLastWeek, endDate: endOfLastWeek };
   }
 
   if (period === 'month') {
     // Current month: from 30 days ago at start of day until now
-    const monthAgo = new Date(startOfDay.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const monthAgo = new Date(startOfDay.getTime() - 29 * 24 * 60 * 60 * 1000);
     return { startDate: monthAgo, endDate: null };
   }
 

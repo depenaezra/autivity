@@ -219,7 +219,8 @@ export const getStudentCheckInsHistory = async (
  */
 export const getStudentCheckInsForFilter = async (
   studentId: string,
-  filter: FilterPeriod = 'overall'
+  filter: FilterPeriod = 'overall',
+  customRange?: { startDate: Date | null; endDate: Date | null }
 ): Promise<StudentCheckIn[]> => {
   if (!studentId) return [];
 
@@ -232,7 +233,7 @@ export const getStudentCheckInsForFilter = async (
     return allRecords.filter((r) => r.check_in_date === todayStr);
   }
 
-  const { startDate, endDate } = getDateRangeForFilter(filter);
+  const { startDate, endDate } = customRange || getDateRangeForFilter(filter);
 
   return allRecords.filter((r) => {
     const d = new Date(r.check_in_date);

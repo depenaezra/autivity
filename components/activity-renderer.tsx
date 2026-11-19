@@ -4,19 +4,29 @@ import React from 'react';
 import DragDropActivity from '@/activities/drag-drop/components/dragdrop-activity';
 import BubbleActivity from '@/activities/bubble-pop/components/bubble-activity';
 import PickChoiceActivity from '@/activities/pick-n-choose/components/pick-n-choose-activity';
+import OddOneOutActivity from '@/activities/pick-n-choose/components/odd-one-out-activity';
+import ChooseByClueActivity from '@/activities/pick-n-choose/components/choose-by-clue-activity';
 import SequencingActivity from '@/activities/sequencing/components/sequencing-activity';
 import CountingActivity from '@/activities/counting/components/counting-activity';
 
 type ActivityRendererProps = {
     activity: any;
     onComplete: (score: number, timeSpent: number, mistakes: number, hintsUsed?: number) => void;
-    onFeedback?: (message: string) => void;
+    onFeedback?: (message: string, onSpoken?: () => void, correct?: boolean) => void;
     onIncorrectAttempt?: () => void;
     hintSignal?: number;
 };
 
 export default function ActivityRenderer({ activity, onComplete, onFeedback, onIncorrectAttempt, hintSignal }: ActivityRendererProps) {
     const activityType = (activity.type || activity.content_data?.type || activity.category || '').toLowerCase();
+
+    const activityIdentity = [activityType, activity.path, activity.sub_category, activity.title, activity.name, activity.content_data?.activity_id].filter(Boolean).join(' ').toLowerCase();
+    if (activityIdentity.includes('choose-by-clue') || activityIdentity.includes('choose by clue')) {
+        return <ChooseByClueActivity contentData={activity.content_data} onComplete={onComplete} onFeedback={onFeedback} onIncorrectAttempt={onIncorrectAttempt} hintSignal={hintSignal} />;
+    }
+    if (activityIdentity.includes('odd-one-out') || activityIdentity.includes('odd one out') || activityIdentity.includes('doesn\u0027t belong') || activityIdentity.includes('does not belong')) {
+        return <OddOneOutActivity contentData={activity.content_data} onComplete={onComplete} onFeedback={onFeedback} onIncorrectAttempt={onIncorrectAttempt} hintSignal={hintSignal} />;
+    }
 
     if (activityType.includes('count') || activityType.includes('basket')) {
         return (

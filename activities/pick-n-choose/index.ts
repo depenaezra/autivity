@@ -1,4 +1,6 @@
 export { default as PickChoiceActivity } from './components/pick-n-choose-activity';
+export { default as OddOneOutActivity } from './components/odd-one-out-activity';
+export { default as ChooseByClueActivity } from './components/choose-by-clue-activity';
 export * from './data';
 export * from './types';
 export * from './utils/assetDictionary';

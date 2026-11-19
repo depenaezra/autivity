@@ -29,6 +29,12 @@ export const ALL_PICK_CHOOSE_CATEGORIES = [
     title: 'Picture-Word Match',
     icon: 'text-outline',
   },
+  {
+    id: 'Odd One Out',
+    title: 'Which One Doesn’t Belong?',
+    icon: 'help-circle-outline',
+  },
+  { id: 'Choose by Clue', title: 'Choose by Clue', icon: 'search-outline' },
 ];
 
 export const ALL_SEQUENCING_CATEGORIES = [

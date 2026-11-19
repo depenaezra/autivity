@@ -19,6 +19,8 @@ interface InstructionSpeakerButtonProps {
     autoPlay?: boolean;
     language?: 'en' | 'tl';
     className?: string;
+    onSpeechComplete?: () => void;
+    replayKey?: number;
 }
 
 export default function InstructionSpeakerButton({
@@ -29,6 +31,8 @@ export default function InstructionSpeakerButton({
     autoPlay = true,
     language = 'en',
     className = '',
+    onSpeechComplete,
+    replayKey,
 }: InstructionSpeakerButtonProps) {
     const { width } = useWindowDimensions();
     const isTablet = width >= 768;
@@ -73,10 +77,12 @@ export default function InstructionSpeakerButton({
             onDone: () => {
                 setIsPlaying(false);
                 stopPulseAnimation();
+                onSpeechComplete?.();
             },
             onError: () => {
                 setIsPlaying(false);
                 stopPulseAnimation();
+                onSpeechComplete?.();
             },
         });
     };
@@ -100,7 +106,7 @@ export default function InstructionSpeakerButton({
         if (autoPlay && text) {
             playSpeech(text);
         }
-    }, [text, autoPlay]);
+    }, [text, autoPlay, replayKey]);
 
     // Clean up speech when component unmounts
     useEffect(() => {

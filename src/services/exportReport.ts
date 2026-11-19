@@ -32,6 +32,8 @@ import {
   StudentHeaderDetails,
 } from './student-analytics';
 import { getStudentCheckInsForFilter, getStudentCheckInsHistory } from './check-ins';
+import { parentReportIcon } from './parentReportIcon';
+import { getDateRangeForFilter } from '../utils/dashboardFilters';
 import {
   UNIVERSAL_BENCHMARK_TIERS,
   getAccuracyTier,
@@ -138,7 +140,8 @@ const generateTrendChartSvg = (sessions: ParentSessionRecord[]) => {
       scorePct = Math.round((sum / 25) * 100);
     }
     if (scorePct !== null) {
-      const dateKey = new Date(s.date).toISOString().split('T')[0];
+      const day = new Date(s.date);
+      const dateKey = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
       if (!groups[dateKey]) {
         groups[dateKey] = [];
       }
@@ -263,12 +266,12 @@ const generateTrendChartSvg = (sessions: ParentSessionRecord[]) => {
   const target80Y = paddingTop + chartH - (80 / 100) * chartH;
   const target80Line = `
     <line x1="${paddingLeft}" y1="${target80Y}" x2="${svgWidth - paddingRight}" y2="${target80Y}" stroke="#8B5CF6" stroke-dasharray="4,4" stroke-width="1.5" />
-    <text x="${svgWidth - paddingRight}" y="${target80Y - 5}" font-size="10" font-weight="700" fill="#7C3AED" text-anchor="end">Mastery Target (80%)</text>
+    <text x="${svgWidth - paddingRight}" y="${target80Y - 5}" font-size="10" font-weight="700" fill="#7C3AED" text-anchor="end">Goal Line (80%)</text>
   `;
 
   return `
     <div style="background:#FFFFFF; border:2px solid #E2E8F0; border-radius:16px; padding:18px; margin-bottom:20px; page-break-inside:avoid;">
-      <div style="font-weight:800; font-size:14px; color:#1E293B; margin-bottom:12px; text-transform:uppercase; letter-spacing:0.5px;">Progress Over Time</div>
+      <div style="font-weight:800; font-size:14px; color:#1E293B; margin-bottom:12px; text-transform:uppercase; letter-spacing:0.5px;">Learning Progress</div>
       <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px;">
         <div>
           <div style="display:flex; align-items:center; gap:8px;">
@@ -287,7 +290,7 @@ const generateTrendChartSvg = (sessions: ParentSessionRecord[]) => {
         </div>
         <div style="display:flex; align-items:center; gap:6px;">
           <div style="width:12px; height:2px; background:#8B5CF6; border-radius:1px;"></div>
-          <span style="font-size:11px; font-weight:700; color:#7C3AED;">Mastery Target (80%)</span>
+          <span style="font-size:11px; font-weight:700; color:#7C3AED;">Goal Line (80%)</span>
         </div>
       </div>
 
@@ -550,11 +553,10 @@ const buildReportHtml = (
   const student = data.student;
   const studentName = student?.name || 'Learner';
   const firstName = studentName.split(' ')[0] || studentName;
-  const learnerCode = student?.learner_code || '#AUT-104';
-  const ageStr = student?.age ? `${student.age} yrs` : '7 yrs';
-  const classTitle = data.classInfo?.title || 'SPED Primary';
-  const classGrade = data.classInfo?.grade || 'Transition Cohort';
-  const teacherName = data.teacherName || 'Teacher Maria';
+  const learnerCode = student?.learner_code || 'Not recorded';
+  const classTitle = data.classInfo?.title || 'Not recorded';
+  const classGrade = data.classInfo?.grade || '';
+  const teacherName = data.teacherName || 'Not recorded';
   const parentName = [data.parentFirstName, data.parentLastName].filter(Boolean).join(' ') || (isTl ? 'Magulang / Tagapangalaga' : 'Parent / Guardian');
   const generatedOn = new Date().toLocaleDateString(isTl ? 'fil-PH' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' });
   const displayTimeframe = timeframeLabel || (isTl ? 'Lahat ng Tala' : 'All Time');
@@ -562,25 +564,8 @@ const buildReportHtml = (
   const evaluatedSessions = data.sessions.filter((s) => s.status === 'validated' && s.rubricEvaluation);
   const totalSessionsCount = data.sessions.length;
 
-  // Independence rate (sessions done with high independence / score >= 70% or stars >= 3)
-  const independentCount = evaluatedSessions.filter((s) => {
-    if (s.stars && s.stars >= 3) return true;
-    if (s.rubricEvaluation) {
-      const r = s.rubricEvaluation;
-      const sum = (r.looking_at_objects || 0) + (r.concentrating || 0) + (r.performing_task || 0) + (r.following_instructions || 0) + (r.completed_work || 0);
-      return sum / 25 >= 0.7;
-    }
-    return false;
-  }).length;
-  const independencePct = evaluatedSessions.length > 0 ? Math.round((independentCount / evaluatedSessions.length) * 100) : 68;
-
-  // Mastery percentage
-  const masteryPct = stats.overallPerformance > 0 ? stats.overallPerformance : 86;
-
-  // Focus duration (in minutes)
-  const sessionMins = stats.avgSessionSeconds !== undefined
-    ? Math.max(1, Math.round(stats.avgSessionSeconds / 60))
-    : Math.max(1, Math.round(stats.avgSessionMinutes || 7));
+  const masteryPct = evaluatedSessions.length ? `${stats.overallPerformance}%` : 'N/A';
+  const sessionMins = stats.avgSessionSeconds ? `${Math.max(1, Math.round(stats.avgSessionSeconds / 60))}m` : 'N/A';
 
   // Domain Exposure Breakdown
   const domainCounts = {
@@ -590,19 +575,17 @@ const buildReportHtml = (
     adaptive: 0,
   };
   data.sessions.forEach((s) => {
-    const domains = (s.skill_domain || []).map((d) => d.toLowerCase());
+    const domains = (s.skill_domain || []).flatMap((tag) => {
+      const name = tag.trim().toLowerCase();
+      const master = (data.masterDomains || []).find((domain) => domain.name.toLowerCase() === name || domain.subSkills.some((skill) => skill.trim().toLowerCase() === name));
+      return master ? [name, master.name.toLowerCase()] : [name];
+    });
     if (domains.some((d) => d.includes('cog') || d.includes('sort') || d.includes('think'))) domainCounts.cognitive++;
-    else if (domains.some((d) => d.includes('motor') || d.includes('hand') || d.includes('movement'))) domainCounts.motor++;
-    else if (domains.some((d) => d.includes('soc') || d.includes('turn') || d.includes('share') || d.includes('emotion'))) domainCounts.social++;
-    else if (domains.some((d) => d.includes('adapt') || d.includes('calm') || d.includes('routine') || d.includes('sensory'))) domainCounts.adaptive++;
-    else domainCounts.cognitive++;
+    if (domains.some((d) => d.includes('motor') || d.includes('hand') || d.includes('movement'))) domainCounts.motor++;
+    if (domains.some((d) => d.includes('soc') || d.includes('communicat') || d.includes('turn') || d.includes('share') || d.includes('emotion'))) domainCounts.social++;
+    if (domains.some((d) => d.includes('adapt') || d.includes('calm') || d.includes('routine') || d.includes('sensory'))) domainCounts.adaptive++;
+
   });
-  if (domainCounts.cognitive === 0 && domainCounts.motor === 0 && domainCounts.social === 0 && domainCounts.adaptive === 0) {
-    domainCounts.cognitive = 10;
-    domainCounts.motor = 6;
-    domainCounts.social = 5;
-    domainCounts.adaptive = 3;
-  }
   const maxDomainCount = Math.max(1, ...Object.values(domainCounts));
 
   // Emotional Check-ins Breakdown
@@ -612,36 +595,36 @@ const buildReportHtml = (
   checkIns.forEach((c) => {
     const e = (c.emotion || '').toLowerCase();
     if (e.includes('happy') || e.includes('calm') || e.includes('focused') || e.includes('ready') || e.includes('masaya') || e.includes('kalmado')) greenCount++;
-    else if (e.includes('excited') || e.includes('nervous') || e.includes('energetic') || e.includes('anxious') || e.includes('masigla') || e.includes('kinakabahan')) yellowCount++;
-    else if (e.includes('tired') || e.includes('sad') || e.includes('sleepy') || e.includes('low') || e.includes('pagod') || e.includes('malungkot')) blueCount++;
-    else greenCount++;
+    else if (['excited', 'nervous', 'energetic', 'anxious', 'angry', 'surprised', 'masigla', 'kinakabahan'].some((value) => e.includes(value))) yellowCount++;
+    else if (['tired', 'sad', 'sleepy', 'low', 'sick', 'pagod', 'malungkot'].some((value) => e.includes(value))) blueCount++;
+
   });
   const totalCheckIns = greenCount + yellowCount + blueCount;
-  const greenPct = totalCheckIns > 0 ? Math.round((greenCount / totalCheckIns) * 100) : 65;
-  const yellowPct = totalCheckIns > 0 ? Math.round((yellowCount / totalCheckIns) * 100) : 20;
-  const bluePct = totalCheckIns > 0 ? Math.round((blueCount / totalCheckIns) * 100) : 15;
-  const displayTotalDays = totalCheckIns > 0 ? totalCheckIns : 20;
-  const displayGreenDays = totalCheckIns > 0 ? greenCount : 13;
-  const displayYellowDays = totalCheckIns > 0 ? yellowCount : 4;
-  const displayBlueDays = totalCheckIns > 0 ? blueCount : 3;
+  const greenPct = totalCheckIns > 0 ? Math.round((greenCount / totalCheckIns) * 100) : 0;
+  const yellowPct = totalCheckIns > 0 ? Math.round((yellowCount / totalCheckIns) * 100) : 0;
+  const bluePct = totalCheckIns > 0 ? Math.round((blueCount / totalCheckIns) * 100) : 0;
+  const displayTotalDays = totalCheckIns;
+  const displayGreenDays = greenCount;
+  const displayYellowDays = yellowCount;
+  const displayBlueDays = blueCount;
 
   // Generate 3 Home Activities
-  const homeActivities = generateHomeActivities(data.sessions, data.masterDomains || [], checkIns, studentName, language);
+  const homeActivities = generateHomeActivities(data.sessions, data.masterDomains || [], checkIns, studentName, language, data.milestones || []);
 
   // Recent Sessions with Teacher Notes (Capped at 8 rows)
   const sessionsWithFeedback = data.sessions
     .filter((s) => s.teacherFeedback && s.teacherFeedback.trim().length > 0)
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  
-  const displaySessionsList = sessionsWithFeedback.length >= 3
+
+  const displaySessionsList = sessionsWithFeedback.length > 0
     ? sessionsWithFeedback
     : data.sessions.slice().sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   const topSessions = displaySessionsList.slice(0, 8);
 
   const celebrationText = isTl
-    ? `Naging napakaganda at mabunga ang pag-aaral ni ${firstName}! Nakatapos siya ng <strong>${totalSessionsCount} mga gawaing pampagkatuto</strong> sa silid-aralan at sa app. Gumawa si ${firstName} ng matatag na hakbang sa kasanayan sa pag-iisip at pagbubukod, at lalong naging magaling sa paggawa nang may sariling tiwala (<strong>${independencePct}% ang natapos nang mag-isa!</strong>). Kapag kalmado at masaya sa klase, kahanga-hanga ang kanyang pokus at sigla.`
-    : `${firstName} has had a wonderful, productive learning period! Completed <strong>${totalSessionsCount} learning activities</strong> across hands-on classroom play and interactive tablet sessions. ${firstName} made huge strides in object sorting, puzzle challenges, and fine motor accuracy, doing much more on their own without constant prompting (<strong>${independencePct}% completed with independent confidence!</strong>). When calm and ready to learn, concentration and enthusiasm are outstanding.`;
+    ? `Sa napiling panahon, may <strong>${totalSessionsCount} na naitalang gawain</strong> para kay ${escapeHtml(firstName)}. Salamat sa inyong pakikiisa sa kanyang pag-aaral.`
+    : `During this period, <strong>${totalSessionsCount} activities</strong> were recorded for ${escapeHtml(firstName)}. Thank you for supporting their learning journey.`;
 
   // Trend Chart SVG
   const trendSvg = generateTrendChartSvg(data.sessions);
@@ -681,7 +664,7 @@ const buildReportHtml = (
       align-items: center;
     }
     .brand-title {
-      font-size: 19pt;
+      font-size: 15pt;
       font-weight: 800;
       color: #0284C7;
       letter-spacing: -0.5px;
@@ -690,7 +673,7 @@ const buildReportHtml = (
       gap: 8px;
     }
     .brand-subtitle {
-      font-size: 9.5pt;
+      font-size: 8pt;
       font-weight: 700;
       color: #64748B;
       text-transform: uppercase;
@@ -704,7 +687,7 @@ const buildReportHtml = (
       font-size: 8pt;
       font-weight: 800;
       text-transform: uppercase;
-      padding: 4px 12px;
+      padding: 4px 7px;
       border-radius: 999px;
       display: inline-block;
     }
@@ -968,12 +951,10 @@ const buildReportHtml = (
   <div class="report-header">
     <div>
       <div class="brand-title">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0284C7" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-        </svg>
+        <img src="${parentReportIcon}" alt="Autivity" width="40" height="40" style="object-fit:contain; flex-shrink:0;" />
         AUTIVITY &nbsp;|&nbsp; ${isTl ? 'Paglalakbay sa Pagkatuto at Pag-unlad' : 'Child Learning Journey & Progress'}
       </div>
-      <div class="brand-subtitle">${isTl ? 'Ulat ng Pag-unlad para sa mga Magulang at Tagapangalaga' : 'A Monthly Progress Update for Parents & Guardians'}</div>
+      <div class="brand-subtitle">${isTl ? 'Ulat ng Pag-unlad para sa mga Magulang at Tagapangalaga' : 'A Progress Update for Parents & Guardians'}</div>
     </div>
     <div style="text-align: right;">
       <span class="badge-parent">${isTl ? 'Ulat para sa Magulang' : 'Parent Progress Report'}</span>
@@ -986,7 +967,7 @@ const buildReportHtml = (
     <div>
       <div class="info-label">${isTl ? 'Mag-aaral' : 'Learner'}</div>
       <div class="info-value">${escapeHtml(studentName)}</div>
-      <div class="info-sub">${escapeHtml(learnerCode)} &bull; ${escapeHtml(ageStr)}</div>
+      <div class="info-sub">${escapeHtml(learnerCode)}</div>
     </div>
     <div>
       <div class="info-label">${isTl ? 'Klase at Baitang' : 'Class & Grade'}</div>
@@ -996,7 +977,7 @@ const buildReportHtml = (
     <div>
       <div class="info-label">${isTl ? 'Guro sa Klase' : 'Class Teacher'}</div>
       <div class="info-value">${escapeHtml(teacherName)}</div>
-      <div class="info-sub">SPED Specialist</div>
+
     </div>
     <div>
       <div class="info-label">${isTl ? 'Saklaw ng Panahon' : 'Timeframe'}</div>
@@ -1008,7 +989,7 @@ const buildReportHtml = (
   <!-- 1. Warm Celebration Summary -->
   <div class="celebration-box">
     <div class="celebration-title">
-      <span>🌟</span> ${isTl ? `Ipagdiwang ang Pag-unlad ni ${escapeHtml(firstName)}!` : `Celebrating ${escapeHtml(firstName)}'s Progress this Month!`}
+      <span>🌟</span> ${isTl ? `Ipagdiwang ang Pag-unlad ni ${escapeHtml(firstName)}!` : `Celebrating ${escapeHtml(firstName)}'s Progress!`}
     </div>
     <div class="celebration-text">
       ${celebrationText}
@@ -1018,24 +999,24 @@ const buildReportHtml = (
   <!-- 2. Four Friendly Core Highlights -->
   <div class="kpi-grid">
     <div class="kpi-card" style="border-color: #86EFAC;">
-      <div class="kpi-val" style="color: #15803D;">${masteryPct}%</div>
+      <div class="kpi-val" style="color: #15803D;">${masteryPct}</div>
       <div class="kpi-lbl">${isTl ? 'Pangkalahatang Husay' : 'Overall Mastery'}</div>
       <span class="kpi-pill" style="background: #DCFCE7; color: #15803D; border: 1px solid #86EFAC;">
         ⭐ ${isTl ? 'Napakagaling!' : 'Great Job!'}
       </span>
     </div>
     <div class="kpi-card" style="border-color: #BBE8FB;">
-      <div class="kpi-val" style="color: #0284C7;">${independencePct}%</div>
-      <div class="kpi-lbl">${isTl ? 'Nagawa Nang Mag-isa' : 'Did It On His Own'}</div>
+      <div class="kpi-val" style="color: #0284C7;">${evaluatedSessions.length}</div>
+      <div class="kpi-lbl">${isTl ? 'Nasuring Gawain' : 'Activities Evaluated'}</div>
       <span class="kpi-pill" style="background: #E0F2FE; color: #0284C7; border: 1px solid #BBE8FB;">
-        🚀 ${isTl ? 'May Sariling Kusa' : 'Independent'}
+        🚀 ${isTl ? 'May Pagsusuri' : 'Teacher Evaluated'}
       </span>
     </div>
     <div class="kpi-card" style="border-color: #FED7AA;">
-      <div class="kpi-val" style="color: #C2410C;">~${sessionMins}m</div>
-      <div class="kpi-lbl">${isTl ? 'Oras ng Pokus' : 'Focus Time'}</div>
+      <div class="kpi-val" style="color: #C2410C;">${sessionMins}</div>
+      <div class="kpi-lbl">${isTl ? 'Tagal ng Sesyon' : 'Session Duration'}</div>
       <span class="kpi-pill" style="background: #FFEDD5; color: #C2410C; border: 1px solid #FED7AA;">
-        ⏱️ ${sessionMins >= 10 ? (isTl ? 'Mahusay na Pokus' : 'Great Stamina') : (isTl ? 'Tamang Pacing' : 'Optimal Focus')}
+        ⏱️ ${isTl ? 'Karaniwang Tagal' : 'Average Duration'}
       </span>
     </div>
     <div class="kpi-card" style="border-color: #E9D5FF;">
@@ -1053,9 +1034,6 @@ const buildReportHtml = (
     <div class="chart-box">
       <div class="chart-title">
         <span>${isTl ? `Marka ng Pag-aaral ni ${escapeHtml(firstName)}` : `${escapeHtml(firstName)}'s Learning Score Over Time`}</span>
-        <span style="font-size: 7.5pt; color: #15803D; font-weight: 700; background: #DCFCE7; padding: 2px 6px; border-radius: 4px;">
-          ▲ ${isTl ? '+34% Pagbuti!' : '+34% Improvement!'}
-        </span>
       </div>
       ${trendSvg}
     </div>
@@ -1070,7 +1048,7 @@ const buildReportHtml = (
         <!-- Domain 1: Cognitive -->
         <div style="display: flex; align-items: center; justify-content: space-between; font-size: 7.5pt; font-weight: 700; margin-bottom: 2px;">
           <span>🧩 ${isTl ? 'Kaisipan at Pagbubukod' : 'Thinking & Sorting Skills'}</span>
-          <span style="color: #0284C7;">${domainCounts.cognitive} ${isTl ? 'Gawain • Magaling' : 'Activities • Confident'}</span>
+          <span style="color: #0284C7;">${domainCounts.cognitive} ${isTl ? 'Gawain' : 'Activities'}</span>
         </div>
         <div style="height: 10px; background: #F1F5F9; border-radius: 5px; overflow: hidden; margin-bottom: 8px;">
           <div style="height: 100%; width: ${Math.round((domainCounts.cognitive / maxDomainCount) * 100)}%; background: #0284C7; border-radius: 5px;"></div>
@@ -1079,7 +1057,7 @@ const buildReportHtml = (
         <!-- Domain 2: Motor -->
         <div style="display: flex; align-items: center; justify-content: space-between; font-size: 7.5pt; font-weight: 700; margin-bottom: 2px;">
           <span>🖐️ ${isTl ? 'Kamay at Paggalaw' : 'Hands & Movement Skills'}</span>
-          <span style="color: #10B981;">${domainCounts.motor} ${isTl ? 'Gawain • Magaling' : 'Activities • Confident'}</span>
+          <span style="color: #10B981;">${domainCounts.motor} ${isTl ? 'Gawain' : 'Activities'}</span>
         </div>
         <div style="height: 10px; background: #F1F5F9; border-radius: 5px; overflow: hidden; margin-bottom: 8px;">
           <div style="height: 100%; width: ${Math.round((domainCounts.motor / maxDomainCount) * 100)}%; background: #10B981; border-radius: 5px;"></div>
@@ -1088,7 +1066,7 @@ const buildReportHtml = (
         <!-- Domain 3: Social -->
         <div style="display: flex; align-items: center; justify-content: space-between; font-size: 7.5pt; font-weight: 700; margin-bottom: 2px;">
           <span>💬 ${isTl ? 'Pakikipagkapwa at Pagbabahagi' : 'Sharing & Communication'}</span>
-          <span style="color: #F59E0B;">${domainCounts.social} ${isTl ? 'Gawain • Umuunlad' : 'Activities • Growing'}</span>
+          <span style="color: #F59E0B;">${domainCounts.social} ${isTl ? 'Gawain' : 'Activities'}</span>
         </div>
         <div style="height: 10px; background: #F1F5F9; border-radius: 5px; overflow: hidden; margin-bottom: 8px;">
           <div style="height: 100%; width: ${Math.round((domainCounts.social / maxDomainCount) * 100)}%; background: #F59E0B; border-radius: 5px;"></div>
@@ -1097,14 +1075,11 @@ const buildReportHtml = (
         <!-- Domain 4: Adaptive -->
         <div style="display: flex; align-items: center; justify-content: space-between; font-size: 7.5pt; font-weight: 700; margin-bottom: 2px;">
           <span>🧘 ${isTl ? 'Pagpapakalma at Pang-araw-araw' : 'Calming & Daily Routines'}</span>
-          <span style="color: #8B5CF6;">${domainCounts.adaptive} ${isTl ? 'Gawain • Matatag' : 'Activities • Steady'}</span>
+          <span style="color: #8B5CF6;">${domainCounts.adaptive} ${isTl ? 'Gawain' : 'Activities'}</span>
         </div>
         <div style="height: 10px; background: #F1F5F9; border-radius: 5px; overflow: hidden;">
           <div style="height: 100%; width: ${Math.round((domainCounts.adaptive / maxDomainCount) * 100)}%; background: #8B5CF6; border-radius: 5px;"></div>
         </div>
-      </div>
-      <div style="font-size: 7.5pt; color: #475569; font-weight: 600; margin-top: 10px; background: #F8FAFC; padding: 6px; border-radius: 6px; text-align: center;">
-        💡 ${isTl ? 'Susunod na Pokus sa Klase: Magsasanay kami sa pagbabahagi at turn-taking sa darating na linggo!' : 'Next Classroom Focus: We are doing more sharing and turn-taking games next week!'}
       </div>
     </div>
   </div>
@@ -1128,32 +1103,32 @@ const buildReportHtml = (
   <!-- 4. How Liam Felt at School (Emotional Check-Ins) -->
   <div class="section-title">
     <span>${isTl ? `Pakiramdam ni ${escapeHtml(firstName)} sa Pang-araw-araw na Check-In` : `How ${escapeHtml(firstName)} Felt During Daily Check-Ins`}</span>
-    <span class="section-subtitle">${displayTotalDays} ${isTl ? 'Araw na Naitala' : 'School Days Recorded'}</span>
+    <span class="section-subtitle">${displayTotalDays} ${isTl ? 'Araw na Naitala' : 'Check-Ins Recorded'}</span>
   </div>
 
   <div class="emotion-grid">
     <div class="emotion-card" style="background: #F0FDF4; border: 1.5px solid #86EFAC;">
       <div class="emotion-pct" style="color: #15803D;">${greenPct}%</div>
       <div class="emotion-name" style="color: #166534;">🟢 ${isTl ? 'Kalmado at Masaya' : 'Calm & Happy'}</div>
-      <div class="emotion-sub" style="color: #15803D;">${displayGreenDays} of ${displayTotalDays} ${isTl ? 'Araw (Pinakamainam)' : 'Days (Optimal)'}</div>
+      <div class="emotion-sub" style="color: #15803D;">${displayGreenDays} of ${displayTotalDays} ${isTl ? 'Araw (Pinakamainam)' : 'Check-Ins'}</div>
       <div class="emotion-desc" style="color: #166534;">
-        ${isTl ? 'Mataas ang sigla at pinakamahusay ang pokus at paggawa sa mga araw na ito!' : `${firstName} was in high spirits and did his best, most focused work on these days!`}
+        ${isTl ? 'Mga naitalang check-in.' : 'Recorded check-ins.'}
       </div>
     </div>
     <div class="emotion-card" style="background: #FEFCE8; border: 1.5px solid #FDE047;">
       <div class="emotion-pct" style="color: #A16207;">${yellowPct}%</div>
       <div class="emotion-name" style="color: #854D0E;">🟡 ${isTl ? 'Masigla o Kinakabahan' : 'Energetic or Anxious'}</div>
-      <div class="emotion-sub" style="color: #A16207;">${displayYellowDays} of ${displayTotalDays} ${isTl ? 'Araw (Mataas na Enerhiya)' : 'Days (Heightened)'}</div>
+      <div class="emotion-sub" style="color: #A16207;">${displayYellowDays} of ${displayTotalDays} ${isTl ? 'Araw (Mataas na Enerhiya)' : 'Check-Ins'}</div>
       <div class="emotion-desc" style="color: #854D0E;">
-        ${isTl ? 'Kadalasan pagkatapos ng recess. Nakatutulong ang 2-minutong sand timer at squish toy upang kumalma.' : 'Usually right after lively recess. A 2-minute calming squeeze toy helped him settle.'}
+        ${isTl ? 'Mga naitalang check-in.' : 'Recorded check-ins.'}
       </div>
     </div>
     <div class="emotion-card" style="background: #EFF6FF; border: 1.5px solid #BFDBFE;">
       <div class="emotion-pct" style="color: #1D4ED8;">${bluePct}%</div>
       <div class="emotion-name" style="color: #1E40AF;">🔵 ${isTl ? 'Pagod o Mababang Enerhiya' : 'Tired or Low Energy'}</div>
-      <div class="emotion-sub" style="color: #1D4ED8;">${displayBlueDays} of ${displayTotalDays} ${isTl ? 'Araw (Mababang Sigla)' : 'Days (Low Energy)'}</div>
+      <div class="emotion-sub" style="color: #1D4ED8;">${displayBlueDays} of ${displayTotalDays} ${isTl ? 'Araw (Mababang Sigla)' : 'Check-Ins'}</div>
       <div class="emotion-desc" style="color: #1E40AF;">
-        ${isTl ? 'Medyo antok. Ginagawang maikli ang mga aktibidad at nagbibigay ng pampalakas-loob na papuri.' : 'Kept activities shorter with encouraging verbal praise and gentle step pacing.'}
+        ${isTl ? 'Mga naitalang check-in.' : 'Recorded check-ins.'}
       </div>
     </div>
   </div>
@@ -1175,30 +1150,29 @@ const buildReportHtml = (
       </tr>
     </thead>
     <tbody>
+      ${topSessions.length === 0 ? `<tr><td colspan="5">${isTl ? 'Walang naitalang gawain sa panahong ito.' : 'No activities logged in this timeframe.'}</td></tr>` : ''}
       ${topSessions.map((s) => {
         const d = s.date instanceof Date ? s.date : new Date(s.date);
         const dateStr = d.toLocaleDateString(isTl ? 'fil-PH' : 'en-US', { month: 'short', day: 'numeric' });
-        const isApp = s.activityType === 'app';
+        const isApp = (s.activityType || 'app') === 'app';
         const sourceBadge = isApp
           ? `<span style="background:#EFF6FF; color:#0369A1; padding:2px 6px; border-radius:4px; font-weight:700; font-size:7pt;">📱 APP</span>`
           : `<span style="background:#FAF5FF; color:#7E22CE; padding:2px 6px; border-radius:4px; font-weight:700; font-size:7pt;">🏫 CLASS</span>`;
 
-        // Result stars
-        let resultHtml = `<span style="color:#15803D; font-weight:800;">⭐⭐⭐⭐ ${isTl ? 'Nagawa' : 'Mastered'}</span>`;
-        if (s.stars && s.stars <= 2) {
-          resultHtml = `<span style="color:#D97706; font-weight:800;">⭐⭐⭐ ${isTl ? 'Umuunlad' : 'Growing'}</span>`;
-        } else if (s.rubricEvaluation) {
+        // Show only recorded results.
+        let resultHtml = isTl ? 'Walang resulta' : 'No result';
+        if (s.status === 'validated' && s.rubricEvaluation) {
           const r = s.rubricEvaluation;
           const sum = (r.looking_at_objects || 0) + (r.concentrating || 0) + (r.performing_task || 0) + (r.following_instructions || 0) + (r.completed_work || 0);
-          if (sum / 25 < 0.65) {
-            resultHtml = `<span style="color:#D97706; font-weight:800;">⭐⭐⭐ ${isTl ? 'Umuunlad' : 'Growing'}</span>`;
-          }
+          resultHtml = `${Math.round(sum / 25 * 100)}%`;
+        } else if (s.stars != null) {
+          resultHtml = `${s.stars} ${isTl ? 'bituin' : 'stars'}`;
         }
 
         const domainLabel = s.skill_domain && s.skill_domain[0] ? s.skill_domain[0] : (isTl ? 'Pangkalahatan' : 'General Skill');
         const feedbackText = s.teacherFeedback && s.teacherFeedback.trim().length > 0
           ? `"${escapeHtml(s.teacherFeedback.trim())}"`
-          : (isTl ? 'Magandang partisipasyon at pagsisikap ang ipinakita sa aktibidad.' : 'Demonstrated good engagement and positive effort during the activity.');
+          : (isTl ? 'Walang tala ng guro.' : 'No teacher note recorded.');
 
         return `<tr>
           <td><strong>${escapeHtml(dateStr)}</strong></td>
@@ -1217,8 +1191,8 @@ const buildReportHtml = (
   ${totalSessionsCount > topSessions.length ? `
     <div style="font-size: 7.5pt; color: #64748B; font-weight: 600; margin-top: -6px; margin-bottom: 12px; font-style: italic;">
       ${isTl
-        ? `* Ipinapakita ang pinakabagong ${topSessions.length} na tala ng aktibidad na may puna ng guro. Upang makita ang lahat ng ${totalSessionsCount} na tala, buksan ang Feedback tab sa inyong Autivity Parent App.`
-        : `* Showing ${firstName}'s latest ${topSessions.length} activity logs with teacher notes. To review all ${totalSessionsCount} session logs, please open the Feedback tab in your Autivity Parent App.`}
+        ? `* Ipinapakita ang ${topSessions.length} na kamakailang tala mula sa ${totalSessionsCount} na gawain. Tingnan ang Feedback tab para sa iba pang tala.`
+        : `* Showing ${topSessions.length} recent activity logs from ${totalSessionsCount} activities. Open the Feedback tab to review more.`}
     </div>
   ` : ''}
 
@@ -1240,8 +1214,8 @@ const buildReportHtml = (
   <!-- 7. Warm Sign-Off Footer -->
   <div class="footer-box">
     <div>
-      <strong>St. Bernadette Inclusive Learning Center</strong> &bull; SPED Department<br/>
-      ${escapeHtml(teacherName)}, LPT, SPED &bull; ${isTl ? 'Ugnayan sa pamamagitan ng Autivity Portal' : 'Contact via Autivity Parent Portal'}
+      <strong>Autivity</strong><br/>
+      ${escapeHtml(teacherName)} &bull; ${isTl ? 'Ugnayan sa pamamagitan ng Autivity Portal' : 'Contact via Autivity Parent Portal'}
     </div>
     <div style="text-align: right;">
       <div style="font-weight: 800; color: #0284C7;">${isTl ? `Inihanda nang may pagmamalasakit para kay ${escapeHtml(parentName)} at ${escapeHtml(firstName)}` : `Prepared with care for ${escapeHtml(parentName)} & ${escapeHtml(firstName)}`}</div>
@@ -1257,10 +1231,16 @@ const buildReportHtml = (
 export const exportStudentAnalyticsReportPdf = async (
   studentId: string,
   studentDetails: StudentHeaderDetails,
-  filter: 'today' | 'week' | 'month' | 'overall' = 'overall',
+  filter: 'today' | 'week' | 'last_week' | 'month' | 'last_month' | 'overall' | string = 'overall',
   timeframeLabel: string = 'Overall',
-  activityType: ActivityTypeFilter = 'all'
+  activityType: ActivityTypeFilter = 'all',
+  customRange?: { startDate: Date | null; endDate: Date | null }
 ) => {
+  if (filter === 'last_week') filter = 'week';
+  const effectiveRange = customRange || getDateRangeForFilter(filter);
+  const resolvedLabel = effectiveRange.startDate
+    ? `${effectiveRange.startDate.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})} - ${(effectiveRange.endDate || new Date()).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}`
+    : timeframeLabel;
   const generatedOn = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
   // 1. Fetch live metrics directly from database
@@ -1273,12 +1253,12 @@ export const exportStudentAnalyticsReportPdf = async (
 
   try {
     const [statsRes, evalsRes, domRes, sessRes, milestonesRes, checkInsRes] = await Promise.all([
-      getStudentSessionStats(studentId, filter, activityType).catch(() => ({ averageDuration: 0, averageMistakes: 0, averageHints: 0, totalSessions: 0 })),
-      getStudentValidatedSessionsEvaluations(studentId, activityType).catch(() => []),
-      getStudentDevelopmentalSkillsExposure(studentId, filter, activityType).catch(() => []),
-      getStudentSessions(studentId, activityType).catch(() => []),
+      getStudentSessionStats(studentId, filter, activityType, customRange).catch(() => ({ averageDuration: 0, averageMistakes: 0, averageHints: 0, totalSessions: 0 })),
+      getStudentValidatedSessionsEvaluations(studentId, activityType, customRange).catch(() => []),
+      getStudentDevelopmentalSkillsExposure(studentId, filter, activityType, customRange).catch(() => []),
+      getStudentSessions(studentId, activityType, customRange).catch(() => []),
       getStudentMilestones(studentId).catch(() => []),
-      getStudentCheckInsForFilter(studentId, filter).catch(() => []),
+      getStudentCheckInsForFilter(studentId, filter, customRange).catch(() => []),
     ]);
     stats = statsRes || stats;
     evaluations = evalsRes || [];
@@ -1290,6 +1270,11 @@ export const exportStudentAnalyticsReportPdf = async (
     console.error('exportStudentAnalyticsReportPdf: error loading student data', err);
   }
 
+  if (customRange) {
+    const start = customRange.startDate ? customRange.startDate.toISOString().slice(0,10) : null;
+    const end = customRange.endDate ? customRange.endDate.toISOString().slice(0,10) : null;
+    checkIns = checkIns.filter((c:any) => (!start || c.check_in_date >= start) && (!end || c.check_in_date <= end));
+  }
   const emotionAnalytics = calculateStudentEmotionRegulationAnalytics(checkIns, evaluations, studentDetails.name);
 
   // 2. Determine rubric benchmark tier (Mastered >= 3.2, Developing 2.6 - 3.19, Needs Support < 2.6)
@@ -1310,8 +1295,11 @@ export const exportStudentAnalyticsReportPdf = async (
   };
 
   // 4. Generate Sections
-  const trendChartHtml = generateStudentEvaluationTrendChartSvg(evaluations, filter);
-  const domainPracticeHtml = generateClassDevelopmentalDomainPracticeSvg(domainExposure);
+  const trendChartHtml = generateStudentEvaluationTrendChartSvg(evaluations, (filter === 'last_week' || filter === 'last_month' || filter === 'custom' || filter.startsWith('sy-')) ? 'overall' : filter as any);
+  const domainTotals = domainExposure.map((domain) => ({ ...domain, total: domain.skills.reduce((sum, skill) => sum + skill.count, 0) }));
+  const maxDomainTotal = Math.max(1, ...domainTotals.map((domain) => domain.total));
+  const domainColors = ['#0284C7', '#10B981', '#F59E0B', '#8B5CF6'];
+  const domainPracticeHtml = `<div style="border:1px solid #E2E8F0;border-radius:12px;padding:14px;break-inside:avoid"><div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:12px"><strong style="font-size:13px">Developmental Domain Practice</strong><span style="color:#64748B;font-weight:700">${domainTotals.reduce((sum, d) => sum + d.total, 0)} Total Practices</span></div>${domainTotals.length ? domainTotals.map((d, i) => { const color = domainColors[i % domainColors.length]; const score = d.averageScore; return `<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;gap:4px;font-size:10px;font-weight:700"><span>${escapeHtml(d.masterDomain)}</span><span style="color:${color};text-align:right">${d.total} practices${score != null ? ` · ${score.toFixed(2)} Avg (${escapeHtml(getRubricTier(score).shortLabel)})` : ''}</span></div><div style="height:9px;background:#F1F5F9;border-radius:6px;margin-top:4px"><div style="height:9px;width:${d.total / maxDomainTotal * 100}%;background:${color};border-radius:6px"></div></div></div>`; }).join('') : '<div>No domain practice recorded for this period.</div>'}</div>`;
 
   const recommendations = generateStudentRecommendations(evaluations, domainExposure, studentDetails.name);
   const recommendationsHtml = recommendations.length > 0 ? recommendations.map((rec) => {
@@ -1371,51 +1359,11 @@ export const exportStudentAnalyticsReportPdf = async (
   ` : '<div style="color:#64748B; font-size:13px;">No milestones set for this student.</div>';
 
   const validatedSessionsList = rawSessions.filter((s: any) => s.status === 'validated' && s.rubric_evaluation);
-  const validatedSessionsHtml = validatedSessionsList.length > 0 ? validatedSessionsList.map((s: any) => {
-    const rubricObj = s.rubric_evaluation || {};
-    const totalPoints = Object.values(rubricObj).reduce((sum: number, val: any) => sum + (Number(val) || 0), 0);
-    const isClassroom = s.activity_type === 'classroom';
-    const rubricRowsHtml = RUBRIC_CRITERIA.map((criterion) => {
-      const score = Number((rubricObj as any)?.[criterion.key]) || 0;
-      const scaleInfo = RUBRIC_SCALE[score] || RUBRIC_SCALE[0];
-      return `
-        <div style="background:#FFFFFF; border:2px solid #E2E8F0; border-radius:12px; padding:10px 14px; margin-bottom:8px;">
-          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">
-            <span style="font-weight:700; font-size:13px; color:#1E293B;">${escapeHtml(criterion.title)}</span>
-            <span style="font-weight:700; font-size:11px; text-transform:uppercase; padding:3px 10px; border-radius:6px; border:2px solid ${scaleInfo.borderColor}; background:${scaleInfo.bgColor}; color:${scaleInfo.color};">
-              ${score} • ${scaleInfo.label}
-            </span>
-          </div>
-          <div style="font-size:12px; color:#475569; font-weight:500; line-height:1.4;">${escapeHtml(scaleInfo.description)}</div>
-        </div>`;
-    }).join('');
-
-    return `
-      <div style="background:#FFFFFF; border:2px solid #CBD5E1; border-radius:20px; padding:18px; margin-bottom:20px; page-break-inside:avoid;">
-        <div style="background:#F1F5F9; border-radius:12px; padding:12px 16px; display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
-          <div>
-            <div style="display:flex; align-items:center; gap:8px;">
-              <span style="font-weight:700; font-size:15px; color:#1E293B;">Category: ${escapeHtml(s.category || 'General')}</span>
-              <span style="font-weight:800; font-size:10px; text-transform:uppercase; padding:2px 8px; border-radius:6px; border:1px solid ${isClassroom ? '#E9D5FF' : '#BBE8FB'}; background:${isClassroom ? '#FAF5FF' : '#EFF6FF'}; color:${isClassroom ? '#A855F7' : '#0284C7'};">
-                ${isClassroom ? '🏫 CLASSROOM' : '📱 APP'}
-              </span>
-            </div>
-            ${s.title || s.activityName ? `<div style="font-size:13px; color:#475569; font-weight:700; margin-top:3px;">${escapeHtml(s.title || s.activityName)}</div>` : ''}
-            <div style="font-size:12px; color:#64748B; font-weight:500; margin-top:2px;">Validated on ${s.date}</div>
-          </div>
-          <div style="background:#F0FDF4; border:2px solid #86EFAC; border-radius:8px; padding:6px 14px; text-align:center;">
-            <div style="font-weight:700; font-size:15px; color:#15803D;">${totalPoints} / 20</div>
-            <div style="font-weight:700; font-size:9px; color:#166534; text-transform:uppercase;">SCORE</div>
-          </div>
-        </div>
-        <div style="font-weight:700; font-size:12px; color:#475569; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;">Evaluation Scores</div>
-        ${rubricRowsHtml}
-        <div style="font-weight:700; font-size:12px; color:#475569; margin-top:14px; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;">Teacher Remarks</div>
-        <div style="background:#F1F5F9; border-radius:12px; padding:12px 16px; font-size:13px; color:#1E293B; font-weight:600; min-height:44px; line-height:1.4;">
-          ${s.teacher_feedback && s.teacher_feedback.trim() ? `"${escapeHtml(s.teacher_feedback.trim())}"` : '<span style="color:#64748B; font-style:italic;">No teacher remarks entered.</span>'}
-        </div>
-      </div>`;
-  }).join('') : '<div style="color:#64748B; font-size:13px;">No validated evaluations recorded for this timeframe.</div>';
+  const scoresSorted = validatedSessionsList.slice().sort((a:any,b:any)=>(calculateRubricScore(b.rubric_evaluation)||0)-(calculateRubricScore(a.rubric_evaluation)||0));
+  const sessionsWithHintCounts = validatedSessionsList.filter((s:any) => s.hints_used != null && Number.isFinite(Number(s.hints_used)));
+  const independenceRate = sessionsWithHintCounts.length ? Math.round(sessionsWithHintCounts.filter((s:any)=>Number(s.hints_used)===0).length/sessionsWithHintCounts.length*100) : null;
+  const spotlights = [scoresSorted[0]?{label:'Highest Mastery Breakthrough',s:scoresSorted[0],bg:'#F0FDF4',border:'#86EFAC',color:'#15803D'}:null,scoresSorted.length>1?{label:'Key Support Session',s:scoresSorted[scoresSorted.length-1],bg:'#FFFBEB',border:'#FDE68A',color:'#B45309'}:null].filter(Boolean).map((x:any)=>`<div style="flex:1;background:${x.bg};border:1px solid ${x.border};border-radius:10px;padding:10px 12px"><strong style="font-size:10px;color:${x.color};text-transform:uppercase">${x.label}</strong><div style="font-weight:700;margin-top:4px">${escapeHtml(x.s.title||x.s.category||'Learning Activity')}</div><div style="font-size:10px;color:#475569;margin-top:3px">${new Date(x.s.created_at).toLocaleDateString('en-US')} - ${calculateRubricScore(x.s.rubric_evaluation)?.toFixed(2)||'N/A'} / 4.0${x.s.teacher_feedback?` ? ${escapeHtml(x.s.teacher_feedback)}`:''}</div></div>`).join('');
+  const validatedSessionsHtml = validatedSessionsList.length ? `<table class="session-table"><thead><tr><th>Date</th><th>Source</th><th>Domain & Activity Name</th><th>Rubric Score</th><th>Mastery Status</th><th>Hints & Mistakes</th><th>Teacher Remarks</th></tr></thead><tbody>${validatedSessionsList.slice().sort((a:any,b:any)=>new Date(b.created_at).getTime()-new Date(a.created_at).getTime()).slice(0,12).map((s:any)=>{const score=calculateRubricScore(s.rubric_evaluation);const cls=s.activity_type==='classroom';const domain=Array.isArray(s.skill_domain)?s.skill_domain.join(', '):String(s.skill_domain||'General');return `<tr><td>${new Date(s.created_at).toLocaleDateString('en-US')}</td><td><span class="source ${cls?'class':'app'}">${cls?'CLASS':'APP'}</span></td><td><strong>${escapeHtml(domain)}</strong><br/>${escapeHtml(s.title||s.category||'Activity')}</td><td>${score?.toFixed(2)||'N/A'} / 4.0</td><td>${score===null?'Not scored':`<span style="display:inline-block;border-radius:999px;padding:3px 6px;background:${getRubricTier(score).bgColor};color:${getRubricTier(score).accentColor};border:1px solid ${getRubricTier(score).borderColor};font-weight:700">${escapeHtml(getRubricTier(score).shortLabel)}</span>`}</td><td>${Number(s.hints_used||0)} hints ? ${Number(s.mistakes||0)} mistakes</td><td>${s.teacher_feedback?escapeHtml(s.teacher_feedback):'No remarks recorded'}</td></tr>`}).join('')}</tbody></table>${validatedSessionsList.length>12?`<p class="table-note">Showing 12 of ${validatedSessionsList.length} evaluations. Open student analytics for full history.</p>`:''}`:'<div class="empty-state">No validated evaluations were recorded during this period.</div>';
 
   // Benchmark overview banner
   let benchmarkBannerHtml = '';
@@ -1440,78 +1388,73 @@ export const exportStudentAnalyticsReportPdf = async (
     <head>
       <meta charset="utf-8" />
       <style>
-        * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #1E293B; padding: 24px; background: #F8FAFC; }
-        h1 { color: #0284C7; font-size: 24px; font-weight: 800; margin-bottom: 4px; }
-        h2 { font-size: 16px; font-weight: 700; color: #1E293B; margin-top: 24px; margin-bottom: 12px; }
+        * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; box-sizing:border-box; }
+        @page { size:A4 portrait; margin:12mm 14mm; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #1E293B; padding: 0; background: #FFFFFF; font-size:10px; }
+        h1 { color: #0284C7; font-size: 17px; font-weight: 800; margin:0; }
+        h2 { font-size: 13px; font-weight: 700; color: #1E293B; margin-top: 14px; margin-bottom: 7px; }
         .meta { font-size: 13px; color: #475569; font-weight: 500; margin-bottom: 18px; }
-        .stat-row { display: flex; gap: 10px; margin-bottom: 20px; }
-        .stat-box { flex: 1; background: #FFFFFF; border: 2px solid #E2E8F0; border-radius: 14px; padding: 12px; text-align: center; }
-        .stat-value { font-size: 20px; font-weight: 800; }
+        .stat-row { display: flex; gap: 8px; margin-bottom: 10px; }
+        .stat-box { flex: 1; background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 10px; padding: 8px; text-align: center; }
+        .stat-value { font-size: 16px; font-weight: 800; }
         .stat-label { font-size: 11px; font-weight: 700; color: #475569; margin-top: 2px; }
+        .report-head{display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #E2E8F0;padding-bottom:8px;margin-bottom:10px}.brand{display:flex;align-items:center;gap:6px}.subtitle{font-size:8px;color:#64748B;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-top:2px}.report-pill{font-size:8px;font-weight:800;text-transform:uppercase;padding:3px 6px;border-radius:999px;background:#ECFDF5;color:#059669;border:1px solid #86EFAC}.spotlights{display:flex;gap:8px;margin:8px 0}.session-table{width:100%;border-collapse:collapse;font-size:10px;table-layout:fixed}.session-table th{background:#F1F5F9;text-align:left;padding:7px 5px;font-size:9px;text-transform:uppercase}.session-table td{padding:7px 5px;border-bottom:1px solid #E2E8F0;vertical-align:top;overflow-wrap:anywhere}.session-table tbody tr:nth-child(even){background:#F8FAFC}.source{font-weight:800;padding:2px 4px;border-radius:4px}.source.app{background:#EFF6FF;color:#0369A1}.source.class{background:#FAF5FF;color:#7E22CE}.table-note,.empty-state{font-size:10px;color:#64748B;font-style:italic;margin:6px 0}
+        .metric-pill { display:inline-block; margin-top:4px; padding:3px 6px; border-radius:999px; background:#E0F2FE; color:#0369A1; font-size:9px; font-weight:700; }
+        .summary { background:#F0F9FF; border:1px solid #BBE8FB; border-radius:10px; padding:10px 12px; margin:10px 0; line-height:1.5; }
+        .summary h2 { margin:0 0 4px; color:#0369A1; }
+        .signature-row { display:flex; gap:20px; margin-top:30px; break-inside:avoid; page-break-inside:avoid; }
+        .signature-row div { flex:1; border-top:1px solid #94A3B8; padding-top:5px; color:#475569; font-size:10px; }
+        .spotlights, .summary { break-inside:avoid; page-break-inside:avoid; }
+        .session-table tr { break-inside:avoid; page-break-inside:avoid; }
       </style>
     </head>
     <body>
-      <h1>${escapeHtml(studentDetails.name)} — Student Analytics Report</h1>
-      <div class="meta">
-        Grade: ${escapeHtml(studentDetails.grade || 'SPED')} &nbsp;•&nbsp;
-        Learner Code: #${escapeHtml(studentDetails.learnerCode || 'AUT-000')} &nbsp;•&nbsp;
-        Parent Account: ${studentDetails.isLinked ? 'LINKED' : 'NOT LINKED'} &nbsp;•&nbsp;
-        Generated ${generatedOn}
-        <div style="margin-top:8px; display:flex; gap:8px;">
-          <span style="background:#E0F2FE; border:1px solid #BBE8FB; color:#0284C7; border-radius:6px; padding:4px 10px; font-weight:700; font-size:11px; text-transform:uppercase;">RANGE: ${escapeHtml(timeframeLabel.toUpperCase())}</span>
-          ${activityType !== 'all' ? `<span style="background:${activityType === 'classroom' ? '#FAF5FF' : '#EFF6FF'}; border:1px solid ${activityType === 'classroom' ? '#E9D5FF' : '#BBE8FB'}; color:${activityType === 'classroom' ? '#A855F7' : '#0284C7'}; border-radius:6px; padding:4px 10px; font-weight:700; font-size:11px; text-transform:uppercase;">SOURCE: ${activityType === 'classroom' ? 'CLASSROOM ONLY' : 'APP ONLY'}</span>` : ''}
-        </div>
+      <div class="report-head"><div><div class="brand"><img src="${parentReportIcon}" width="32" height="32" style="object-fit:contain"/><h1>AUTIVITY | Comprehensive Learner Progress Report</h1></div><div class="subtitle">Special Education &amp; Developmental Analytics</div></div><div style="text-align:right"><span class="report-pill">Student Report</span><div style="font-size:8px;color:#64748B;margin-top:3px">Reporting Date: ${generatedOn}</div></div></div>
+      <div style="display:flex;gap:14px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:12px;padding:18px;margin-bottom:14px;font-size:12px;line-height:1.6">
+        <div style="flex:1"><div class="subtitle">Learner Profile</div><strong>${escapeHtml(studentDetails.name)}</strong><div>Learner Code: ${escapeHtml(studentDetails.learnerCode || 'Not available')}</div></div>
+        <div style="flex:1"><div class="subtitle">Grade / Class</div><strong>${escapeHtml(studentDetails.grade || 'SPED')}</strong><div>${escapeHtml(studentDetails.className || 'No class assigned')}</div></div>
+        <div style="flex:1"><div class="subtitle">Evaluation Period</div><strong>${escapeHtml(timeframeLabel)}</strong><div>${escapeHtml(resolvedLabel)}</div></div>
+        <div style="flex:1"><div class="subtitle">Parent Portal</div><strong>${studentDetails.isLinked ? 'Linked' : 'Not linked'}</strong></div>
       </div>
 
-      ${benchmarkBannerHtml}
+      <div class="summary"><h2>Executive Developmental Summary</h2>
+        ${escapeHtml(studentDetails.name)} completed ${stats.totalSessions} sessions during this period.
+        ${avgRubricScore === null ? 'No scored evaluations were recorded.' : `The average evaluation score was ${avgRubricScore.toFixed(2)} out of 4.0.`}
+        ${independenceRate === null ? 'No validated sessions were available to assess recorded hints.' : `${independenceRate}% of sessions with recorded hint counts had zero hints.`}
+      </div>
 
       <div class="stat-row">
-        <div class="stat-box" style="border-color:#BBE8FB;">
-          <div class="stat-value" style="color:#62A9E6;">${formatDuration(stats.averageDuration)}</div>
-          <div class="stat-label">AVG SESSION</div>
-          <div style="font-size:10px; color:#9CA3AF; margin-top:2px;">Duration</div>
-        </div>
-        <div class="stat-box" style="border-color:${mistakesTier.borderColor};">
-          <div class="stat-value" style="color:${mistakesTier.accentColor};">${stats.averageMistakes.toFixed(1)}</div>
-          <div class="stat-label">AVG MISTAKES</div>
-          <div style="margin-top:3px;">
-            <span style="font-weight:800; font-size:9px; text-transform:uppercase; padding:2px 6px; border-radius:999px; border:1px solid ${mistakesTier.borderColor}; background:${mistakesTier.bgColor}; color:${mistakesTier.accentColor};">
-              ${mistakesTier.shortLabel}
-            </span>
-          </div>
-        </div>
+        <div class="stat-box" style="border-color:#86EFAC"><div class="stat-value" style="color:#15803D">${avgRubricScore===null?'N/A':avgRubricScore.toFixed(2)+' / 4.0'}</div><div class="stat-label">RUBRIC AVERAGE</div><span class="metric-pill" style="color:${rubricTier?.accentColor || '#64748B'};background:${rubricTier?.bgColor || '#F1F5F9'}">${rubricTier?.shortLabel || 'No score'}</span></div>
+        <div class="stat-box" style="border-color:#BBE8FB"><div class="stat-value" style="color:#0284C7">${independenceRate===null?'N/A':independenceRate+'%'}</div><div class="stat-label">SESSIONS WITHOUT HINTS</div><span class="metric-pill">${sessionsWithHintCounts.length} sessions with hint data</span></div>
         <div class="stat-box" style="border-color:${hintsTier.borderColor};">
           <div class="stat-value" style="color:${hintsTier.accentColor};">${stats.averageHints.toFixed(1)}</div>
           <div class="stat-label">AVG HINTS</div>
           <div style="margin-top:3px;">
             <span style="font-weight:800; font-size:9px; text-transform:uppercase; padding:2px 6px; border-radius:999px; border:1px solid ${hintsTier.borderColor}; background:${hintsTier.bgColor}; color:${hintsTier.accentColor};">
-              ${hintsTier.shortLabel}
+              ${stats.averageHints <= 1 ? 'Low dependency' : hintsTier.shortLabel}
             </span>
           </div>
         </div>
-        <div class="stat-box" style="border-color:#CBFAC4;">
-          <div class="stat-value" style="color:#15803D;">${stats.totalSessions}</div>
-          <div class="stat-label">SESSIONS</div>
-          <div style="font-size:10px; color:#9CA3AF; margin-top:2px;">Completed</div>
+        <div class="stat-box" style="border-color:#FED7AA;">
+          <div class="stat-value" style="color:#C2410C;">${formatDuration(stats.averageDuration)}</div>
+          <div class="stat-label">AVERAGE SESSION</div>
+          <span class="metric-pill" style="background:#FFF7ED;color:#C2410C;border:1px solid #FFEDD5">Session duration</span>
         </div>
       </div>
 
-      ${recommendations.length > 0 ? `
-        <div style="background:#FFFFFF; border:2px solid #E2E8F0; border-radius:16px; padding:18px; margin-bottom:20px; page-break-inside:avoid;">
-          <div style="font-weight:800; font-size:14px; color:#1E293B; margin-bottom:14px; text-transform:uppercase; letter-spacing:0.5px;">Actionable Recommendations</div>
-          ${recommendationsHtml}
-        </div>
-      ` : ''}
+      <h2>Level of Independence &amp; Support Needed</h2>
+      <div class="summary">${independenceRate === null ? 'No validated sessions are available for this period.' : `${independenceRate}% of sessions with recorded hint counts had zero hints. Hint counts do not identify the type of prompting used.`}</div>
+      <h2>Progress Trend &amp; Practice Across Skill Domains</h2>
+      <div style="display:flex;gap:10px;align-items:flex-start"><div style="width:50%;min-width:0">${trendChartHtml}</div><div style="width:50%;min-width:0">${domainPracticeHtml}</div></div>
 
       <div style="background:#FFFFFF; border:2px solid #E2E8F0; border-radius:16px; padding:18px; margin-bottom:20px; page-break-inside:avoid;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-          <div style="font-weight:800; font-size:14px; color:#1E293B; text-transform:uppercase; letter-spacing:0.5px;">Emotional Recognition & Self-Regulation</div>
+          <div style="font-weight:800; font-size:14px; color:#1E293B; text-transform:uppercase; letter-spacing:0.5px;">Mood & Focus During Activities</div>
           <span style="font-weight:800; font-size:11px; color:#179D33; background:#F0FDF4; border:1px solid #CBFAC4; border-radius:999px; padding:3px 10px; text-transform:uppercase;">
             ${emotionAnalytics.totalCheckIns} Total Check-Ins
           </span>
         </div>
-        
+
         <div style="display:flex; gap:8px; margin-bottom:14px;">
           ${emotionAnalytics.zoneDistribution.map((z) => `
             <div style="flex:1; background:${z.bgColor}; border:1.5px solid ${z.borderColor}; border-radius:12px; padding:10px; text-align:center;">
@@ -1538,17 +1481,17 @@ export const exportStudentAnalyticsReportPdf = async (
         </div>
       </div>
 
-      <h2>Developmental Milestones</h2>
-      ${milestonesHtml}
-
-      <h2>Evaluation Trend</h2>
-      ${trendChartHtml}
-
-      <h2>Developmental Domain Practice</h2>
-      ${domainPracticeHtml}
-
-      <h2>Validated Session Evaluations</h2>
+      <h2 style="font-size:17px">Session Evaluation Summary</h2>
+      ${spotlights ? `<h2>Key Session Highlights</h2><div class="spotlights">${spotlights}</div>` : ''}
       ${validatedSessionsHtml}
+
+      <h2>Recommended Activities for Home</h2>
+      <div class="summary">
+        <div><strong>Sort together:</strong> Invite ${escapeHtml(studentDetails.name)} to sort familiar household objects by color or shape.</div>
+        <div><strong>Practice turn-taking:</strong> Take turns choosing or counting items during a snack or game.</div>
+        <div><strong>Follow a routine:</strong> Use pictures or short instructions to practice a daily task, offering help when needed.</div>
+      </div>
+      <div class="signature-row"><div>SPED Teacher / Date</div><div>Therapist or Guidance / Date</div><div>Parent or Guardian / Date</div></div>
     </body>
   </html>`;
 
@@ -1727,9 +1670,10 @@ export const exportClassAnalyticsReportExcel = async (
 export const exportStudentAnalyticsReportExcel = async (
   studentId: string,
   studentDetails: StudentHeaderDetails,
-  filter: 'today' | 'week' | 'month' | 'overall' = 'overall',
+  filter: 'today' | 'week' | 'last_week' | 'month' | 'last_month' | 'overall' | string = 'overall',
   timeframeLabel: string = 'Overall',
-  activityType: ActivityTypeFilter = 'all'
+  activityType: ActivityTypeFilter = 'all',
+  customRange?: { startDate: Date | null; endDate: Date | null }
 ) => {
   const generatedOn = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
@@ -1742,12 +1686,12 @@ export const exportStudentAnalyticsReportExcel = async (
 
   try {
     const [statsRes, evalsRes, domRes, sessRes, milestonesRes, checkInsRes] = await Promise.all([
-      getStudentSessionStats(studentId, filter, activityType).catch(() => ({ averageDuration: 0, averageMistakes: 0, averageHints: 0, totalSessions: 0 })),
-      getStudentValidatedSessionsEvaluations(studentId, activityType).catch(() => []),
-      getStudentDevelopmentalSkillsExposure(studentId, filter, activityType).catch(() => []),
-      getStudentSessions(studentId, activityType).catch(() => []),
+      getStudentSessionStats(studentId, filter, activityType, customRange).catch(() => ({ averageDuration: 0, averageMistakes: 0, averageHints: 0, totalSessions: 0 })),
+      getStudentValidatedSessionsEvaluations(studentId, activityType, customRange).catch(() => []),
+      getStudentDevelopmentalSkillsExposure(studentId, filter, activityType, customRange).catch(() => []),
+      getStudentSessions(studentId, activityType, customRange).catch(() => []),
       getStudentMilestones(studentId).catch(() => []),
-      getStudentCheckInsForFilter(studentId, filter).catch(() => []),
+      getStudentCheckInsForFilter(studentId, filter, customRange).catch(() => []),
     ]);
     stats = statsRes || stats;
     evaluations = evalsRes || [];
@@ -1827,7 +1771,7 @@ export const exportStudentAnalyticsReportExcel = async (
   XLSX.utils.book_append_sheet(wb, wsMilestones, 'Milestones');
 
   const emotionAnalytics = calculateStudentEmotionRegulationAnalytics(checkIns, evaluations, studentDetails.name);
-  
+
   // Map evaluations by date for row-level score correlation
   const evalScoreByDateMap: Record<string, number> = {};
   evaluations.forEach((ev) => {
@@ -1974,7 +1918,8 @@ export const exportChildReportPdf = async (
   timeframeLabel?: string,
   activityType: ActivityTypeFilter = 'all',
   language: 'en' | 'tl' = 'en',
-  customCheckIns?: any[]
+  customCheckIns?: any[],
+  dateRange?: { startDate: Date | null; endDate: Date | null }
 ) => {
   let checkIns = customCheckIns;
   if (!checkIns && data.student?.id) {
@@ -1985,6 +1930,12 @@ export const exportChildReportPdf = async (
     }
   }
 
+  if (dateRange) {
+    const localDateKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    const start = dateRange.startDate && localDateKey(dateRange.startDate);
+    const end = dateRange.endDate && localDateKey(dateRange.endDate);
+    checkIns = (checkIns || []).filter((c) => c.check_in_date && (!start || c.check_in_date >= start) && (!end || c.check_in_date <= end));
+  }
   const html = buildReportHtml(data, stats, timeframeLabel, activityType, language, checkIns || []);
   const { uri } = await Print.printToFileAsync({ html });
 
@@ -2819,7 +2770,7 @@ const generateClassDevelopmentalDomainPracticeSvg = (
                   </linearGradient>
                 </defs>
                 ${gridLinesSvg}
-                ${barWidthPercent > 0 ? `<rect x="0" y="3" width="${Math.max(2, barWidthPercent)}%" height="18" rx="6" fill="url(#${gradientId})" />` : ''}
+                ${barWidthPercent > 0 ? `<rect x="0" y="3" width="${Math.max(2, barWidthPercent)}%" height="18" rx="6" fill="${theme.startColor}" />` : ''}
               </svg>
             </div>
             <div style="width:36px; text-align:right; font-weight:800; font-size:12px; color:${theme.accentText}; flex-shrink:0;">

@@ -176,6 +176,7 @@ export const speakInstruction = async (
         Speech.speak(cleaned, speechOptions);
     } catch (error) {
         console.warn('[Speech] Error speaking instruction:', error);
+        options?.onError?.(error);
     }
 };
 

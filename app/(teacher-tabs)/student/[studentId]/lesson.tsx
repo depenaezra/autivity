@@ -81,7 +81,7 @@ export default function LessonScreen() {
                             .eq('is_hidden', false);
                         pool = data || [];
                     }
-                    if (!pool || pool.length === 0) {
+                    if ((!pool || pool.length === 0) && !(activityType === 'pick-n-choose' && subcategories.length > 0)) {
                         pool = await getDefaultActivities(50);
                     }
                 }
@@ -188,6 +188,8 @@ export default function LessonScreen() {
                     let fallback = await getDefaultActivities(20);
                     if (activityType === 'counting' || activityType === 'count') {
                         fallback = getDefaultCountingPool();
+                    } else if (activityType === 'pick-n-choose' || activityType === 'pick') {
+                        fallback = [];
                     } else if (activityType === 'tracing') {
                         fallback = fallback.filter(a => {
                             const path = a.path || '';

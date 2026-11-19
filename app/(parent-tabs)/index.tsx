@@ -5,7 +5,9 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View, useWindowD
 import Animated, { FadeInRight } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { exportChildReportPdf } from '../../src/services/exportReport';
+import { exportParentReport } from '../../src/services/parentReportExport';
+import { ParentExportModal, ParentExportOptions } from '../../components/parent/parent-export-modal';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getUnreadNotificationCount } from '../../src/services/notifications';
 import { getParentDashboardData, ParentDashboardData } from '../../src/services/parentDashboard';
 import { getUserProfile } from '../../src/services/profile';
@@ -41,6 +43,8 @@ export default function ParentHomeScreen() {
   const [isLearnerInfoVisible, setLearnerInfoVisible] = useState(false);
   const [isGoalsVisible, setGoalsVisible] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [exportVisible, setExportVisible] = useState(false);
+  const [exportLanguage, setExportLanguage] = useState<'en' | 'tl'>('en');
   const [globalFilter, setGlobalFilter] = useState<FilterPeriod>('overall');
   const [isFilterModalVisible, setFilterModalVisible] = useState(false);
 
@@ -161,29 +165,20 @@ export default function ParentHomeScreen() {
     [filteredSessionsForStats]
   );
 
-  const handleExportPdf = async () => {
-    if (!dashboard || !dashboard.student) return;
+  const openExport = async () => {
+    const saved = await AsyncStorage.getItem('@parent_analytics_lang').catch(() => null);
+    setExportLanguage(saved === 'tl' ? 'tl' : 'en');
+    setExportVisible(true);
+  };
+
+  const handleExportPdf = async (options: ParentExportOptions) => {
+    if (!dashboard?.student) return;
     setIsExporting(true);
     try {
-      await exportChildReportPdf(
-        {
-          ...dashboard,
-          sessions: filteredSessionsForStats,
-        },
-        {
-          overallPerformance: stats.overallPerformance,
-          avgSessionMinutes: stats.avgSessionMinutes,
-          avgSessionSeconds: stats.avgSessionSeconds,
-          totalSessions: stats.totalSessions,
-          skillBreakdown: radarData,
-        },
-        getFilterLabel(globalFilter)
-      );
+      await exportParentReport(dashboard, options, exportLanguage);
+      setExportVisible(false);
     } catch (err: any) {
-      Alert.alert(
-        'Could not create PDF',
-        `${err.message}\n\nMake sure the "expo-print" package is installed (npx expo install expo-print).`
-      );
+      Alert.alert('Could not create PDF', err.message || 'Error exporting report');
     } finally {
       setIsExporting(false);
     }
@@ -239,6 +234,13 @@ export default function ParentHomeScreen() {
               />
             </Animated.View>
 
+            <Pressable accessibilityRole="button" accessibilityLabel="Download progress report" onPress={openExport}
+              className="flex-row items-center justify-center gap-2 bg-white border-2 border-[#BBE8FB] rounded-xl py-3 active:scale-95 transition-transform"
+              style={{ shadowColor: '#BBE8FB', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 1, shadowRadius: 0, elevation: 2 }}>
+              <Feather name="download" size={18} color="#62A9E6" />
+              <Text className="font-fredoka-one text-[#62A9E6] text-sm">DOWNLOAD PROGRESS REPORT</Text>
+            </Pressable>
+
             {/* LEARNER MILESTONES GRID */}
             <Animated.View key={`milestones-${focusKey}`} entering={FadeInRight.delay(75).duration(300)} className="w-full">
               <ParentMilestonesSection
@@ -261,6 +263,10 @@ export default function ParentHomeScreen() {
           </View>
         </View>
       </ScrollView>
+
+      <ParentExportModal visible={exportVisible} onClose={() => setExportVisible(false)}
+        isTablet={isTablet} studentName={student?.name} language={exportLanguage}
+        isExporting={isExporting} onConfirmExport={handleExportPdf} />
 
       {/* GLOBAL FILTER MODAL */}
       <ParentFilterModal

@@ -29,7 +29,7 @@ export interface PickChoiceActivityProps {
     };
     activityData?: any;
     onComplete?: (score: number, timeSpent: number, mistakes: number, hintsUsed?: number) => void;
-    onFeedback?: (message: string) => void;
+    onFeedback?: (message: string, onSpoken?: () => void, correct?: boolean) => void;
     onIncorrectAttempt?: () => void;
     hintSignal?: number;
 }

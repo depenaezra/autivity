@@ -255,7 +255,12 @@ export function ActivitiesSection({
       lower.includes('pick') ||
       lower.includes('choice') ||
       lower.includes('identification') ||
-      lower.includes('picture-word')
+      lower.includes('picture-word') ||
+      lower.includes('odd-one-out') ||
+      lower.includes('odd one out') ||
+      lower.includes('choose by clue') || lower.includes('choose-by-clue') ||
+      lower.includes('doesn\'t belong') ||
+      lower.includes('does not belong')
     );
   };
 
@@ -306,7 +311,7 @@ export function ActivitiesSection({
 
     {
       id: 'matching',
-      title: 'Drag and Drop',
+      title: 'Matching',
       imageSource: require('@/assets/images/activities/matching-header.png'),
       headerBgColor: '#FFF7ED',
       themeColor: '#F7890F',

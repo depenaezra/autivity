@@ -15,6 +15,7 @@ export interface StudentHeaderDetails {
   name: string;
   learnerCode: string;
   grade: string;
+  className?: string;
   lastSessionDate: string | null;
   theme?: string;
   isLinked?: boolean;
@@ -35,6 +36,7 @@ export const getStudentHeaderDetails = async (studentId: string): Promise<Studen
 
   // 2. Fetch class grade & theme using select('*') to prevent invalid column SQL errors
   let grade = 'Not Specified';
+  let className = '';
   let theme = 'blue';
   if (student.class_id) {
     const { data: classData, error: classError } = await supabase
@@ -45,6 +47,7 @@ export const getStudentHeaderDetails = async (studentId: string): Promise<Studen
 
     if (!classError && classData) {
       grade = classData.grade || 'Not Specified';
+      className = classData.name || classData.title || '';
       const rawTheme = (classData.theme_name || classData.theme || classData.themeColor || 'blue').toLowerCase();
       if (rawTheme.includes('yellow')) theme = 'yellow';
       else if (rawTheme.includes('green')) theme = 'green';
@@ -95,6 +98,7 @@ export const getStudentHeaderDetails = async (studentId: string): Promise<Studen
     name: student.name,
     learnerCode: student.learner_code || '',
     grade,
+    className,
     lastSessionDate,
     theme,
     isLinked: !!student.parent_id,
@@ -116,12 +120,13 @@ export interface StudentSessionStats {
 export const getStudentSessionStats = async (
   studentId: string,
   filter: FilterPeriod = 'overall',
-  activityType: ActivityTypeFilter = 'all'
+  activityType: ActivityTypeFilter = 'all',
+  customRange?: { startDate: Date | null; endDate: Date | null }
 ): Promise<StudentSessionStats> => {
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) throw new Error('User not logged in');
 
-  const { startDate, endDate } = getDateRangeForFilter(filter);
+  const { startDate, endDate } = customRange || getDateRangeForFilter(filter);
 
   let query = supabase
     .from('student_sessions')
@@ -191,12 +196,13 @@ export interface MasterDomainExposure {
 export const getStudentDevelopmentalSkillsExposure = async (
   studentId: string,
   filter: FilterPeriod = 'overall',
-  activityType: ActivityTypeFilter = 'all'
+  activityType: ActivityTypeFilter = 'all',
+  customRange?: { startDate: Date | null; endDate: Date | null }
 ): Promise<MasterDomainExposure[]> => {
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) throw new Error('User not logged in');
 
-  const { startDate, endDate } = getDateRangeForFilter(filter);
+  const { startDate, endDate } = customRange || getDateRangeForFilter(filter);
 
   // 2. Retrieve student sessions for the student and teacher
   let sessionsQuery = supabase
@@ -435,7 +441,8 @@ export interface SessionEvaluation {
 
 export const getStudentValidatedSessionsEvaluations = async (
   studentId: string,
-  activityType: ActivityTypeFilter = 'all'
+  activityType: ActivityTypeFilter = 'all',
+  range?: { startDate: Date | null; endDate: Date | null }
 ): Promise<SessionEvaluation[]> => {
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) throw new Error('User not logged in');
@@ -450,6 +457,8 @@ export const getStudentValidatedSessionsEvaluations = async (
   if (activityType !== 'all') {
     query = query.eq('activity_type', activityType);
   }
+  if (range?.startDate) query = query.gte('created_at', range.startDate.toISOString());
+  if (range?.endDate) query = query.lte('created_at', range.endDate.toISOString());
 
   const { data, error } = await query;
 
@@ -713,7 +722,8 @@ const normalizeDepEdScore = (rawScore: any): number => {
 
 export const getStudentSessions = async (
   studentId: string,
-  activityType: ActivityTypeFilter = 'all'
+  activityType: ActivityTypeFilter = 'all',
+  range?: { startDate: Date | null; endDate: Date | null }
 ): Promise<SessionRecord[]> => {
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) throw new Error('User not logged in');
@@ -728,6 +738,8 @@ export const getStudentSessions = async (
   if (activityType !== 'all') {
     query = query.eq('activity_type', activityType);
   }
+  if (range?.startDate) query = query.gte('created_at', range.startDate.toISOString());
+  if (range?.endDate) query = query.lte('created_at', range.endDate.toISOString());
 
   const { data, error } = await query;
 

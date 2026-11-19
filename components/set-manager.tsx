@@ -482,14 +482,21 @@ export default function SetManager({
             ? (() => { try { return JSON.parse(currentActivity.content_data); } catch { return {}; } })()
             : (currentActivity.content_data || {});
 
-        setBearMessage(parsedContent.instruction || "Let's play!");
+        if (!/choose[ -]by[ -]clue/i.test(`${currentActivity.path || ''} ${currentActivity.sub_category || ''} ${currentActivity.title || ''}`)) {
+            setBearMessage(parsedContent.instruction || "Let's play!");
+        }
         setErrorMode(false);
     }, [currentActivity]);
 
     // Handle feedback from activities
-    const handleFeedback = (message: string) => {
+    const speechCompletionRef = useRef<{ message: string; done: () => void } | undefined>(undefined);
+    const [feedbackReplayKey, setFeedbackReplayKey] = useState(0);
+    const handleFeedback = (message: string, onSpoken?: () => void, correct = false) => {
         if (isSetComplete || isSavingRef.current) return;
+        speechCompletionRef.current = onSpoken ? { message: translateInstruction(message, language), done: onSpoken } : undefined;
+        if (onSpoken) setFeedbackReplayKey(value => value + 1);
         setBearMessage(message);
+        setSuccessMode(correct);
         
         const isError = message.startsWith("Not quite") || 
                         message.startsWith("Give it another") || 
@@ -518,7 +525,8 @@ export default function SetManager({
         }
 
         // Choose a random praise message and update confirmation button UI state
-        setBearMessage(getRandomPraiseMessage(language));
+        const isOddOneOut = [currentActivity?.path, currentActivity?.sub_category, currentActivity?.title].some(value => typeof value === 'string' && /odd[ -]one[ -]out|doesn.t belong|choose[ -]by[ -]clue/i.test(value));
+        if (!isOddOneOut) setBearMessage(getRandomPraiseMessage(language));
         setIsActivityDone(true);
         setSuccessMode(true);
     };
@@ -1007,7 +1015,7 @@ export default function SetManager({
         (currentActivity.title || '').toLowerCase().includes('object identification');
 
     const displayActivityTitle = isPickActivity
-        ? 'Picture-Word Match'
+        ? (currentActivity.sub_category || 'Picture-Word Match')
         : (currentActivity.title || formatActivityTitle(currentActivity.path || ''));
 
     const isFrameless =
@@ -1054,6 +1062,8 @@ export default function SetManager({
                         <InstructionSpeakerButton
                             text={displayBearMessage}
                             language={language}
+                            replayKey={feedbackReplayKey}
+                            onSpeechComplete={() => { const pending = speechCompletionRef.current; if (pending?.message === displayBearMessage) { speechCompletionRef.current = undefined; pending.done(); } }}
                             autoPlay={!isSetComplete && (currentTask?.type !== 'counting' || displayBearMessage.startsWith('💡') || displayBearMessage.startsWith('Hint'))}
                             size={isTablet ? 44 : 36}
                             iconSize={isTablet ? 22 : 18}

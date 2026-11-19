@@ -27,6 +27,8 @@ interface BaseModalProps {
   isTablet: boolean;
   onSubmit?: () => void;
   submitLabel?: string;
+  additionalSubmitLabel?: string;
+  onAdditionalSubmit?: () => void;
   submitDisabled?: boolean;
   isSubmitting?: boolean;
   cancelLabel?: string;
@@ -41,6 +43,8 @@ export function BaseModal({
   isTablet,
   onSubmit,
   submitLabel = 'SAVE',
+  additionalSubmitLabel,
+  onAdditionalSubmit,
   submitDisabled = false,
   isSubmitting = false,
   cancelLabel = 'CANCEL',
@@ -197,7 +201,7 @@ export function BaseModal({
           </ScrollView>
 
           {/* Action Buttons Footer */}
-          <View className="flex-row gap-4 mt-4">
+          <View className={`flex-row ${onAdditionalSubmit ? 'gap-2' : 'gap-4'} mt-4`}>
             {/* Cancel Button */}
             <Pressable
               onPress={onClose}
@@ -233,10 +237,29 @@ export function BaseModal({
                 {isSubmitting ? (
                   <ActivityIndicator size="small" color="#62A9E6" />
                 ) : (
-                  <Text className="font-fredoka-one text-base" style={{ color: submitDisabled ? '#D9D9D9' : '#62A9E6' }}>
+                  <Text className={`font-fredoka-one ${onAdditionalSubmit ? 'text-[11px]' : 'text-base'} text-center`} style={{ color: submitDisabled ? '#D9D9D9' : '#62A9E6' }}>
                     {submitLabel}
                   </Text>
                 )}
+              </Pressable>
+            )}
+            {onAdditionalSubmit && additionalSubmitLabel && (
+              <Pressable
+                onPress={onAdditionalSubmit}
+                disabled={submitDisabled || isSubmitting}
+                className="flex-1 py-4 border-[2px] rounded-[8px] items-center justify-center bg-white active:scale-95 transition-transform"
+                style={{
+                  borderColor: submitDisabled ? '#F1F1F1' : '#BBE8FB',
+                  shadowColor: submitDisabled ? '#F1F1F1' : '#BBE8FB',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 1,
+                  shadowRadius: 0,
+                  elevation: 2,
+                }}
+              >
+                <Text className="font-fredoka-one text-[11px] text-center" style={{ color: submitDisabled ? '#D9D9D9' : '#62A9E6' }}>
+                  {additionalSubmitLabel}
+                </Text>
               </Pressable>
             )}
           </View>

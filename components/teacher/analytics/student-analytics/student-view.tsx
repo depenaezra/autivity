@@ -8,7 +8,7 @@ import {
   exportStudentAnalyticsReportPdf,
   exportStudentAnalyticsReportExcel,
 } from '../../../../src/services/exportReport';
-import { ExportFormatModal } from '../export-format-modal';
+import { ExportReportModal, TeacherExportOptions } from '../export-report-modal';
 import LogClassroomActivityModal from '../log-classroom-activity-modal';
 import { FilterPeriod, getFilterLabel } from '../../../../src/utils/dashboardFilters';
 import { ParentFilterModal } from '../../../parent/parent-filter-modal';
@@ -25,6 +25,7 @@ import Milestones from './milestones';
 import Sessions from './sessions';
 
 import { calculateRubricScore } from '../../../../src/services/classAnalyticsEngine';
+import { getDateRangeForFilter } from '../../../../src/utils/dashboardFilters';
 import { generateStudentRecommendations, StudentRecommendation } from '../../../../src/services/studentAnalyticsEngine';
 import StudentRecommendationsCard from './student-recommendations-card';
 import { UniversalLegendModal } from '../../../analytics/universal-legend-modal';
@@ -110,25 +111,30 @@ export default function StudentView({ studentId, onBack }: StudentViewProps) {
     fetchDetails();
   }, [studentId]);
 
-  const handleSelectExportFormat = async (format: 'pdf' | 'excel') => {
+  const handleSelectExportFormat = async (options: TeacherExportOptions) => {
     if (!studentData) return;
     setIsExporting(true);
     try {
-      if (format === 'pdf') {
+      const { startDate, endDate } = options.period === 'custom'
+        ? { startDate: options.startDate, endDate: options.endDate }
+        : getDateRangeForFilter(options.period);
+      if (options.format === 'pdf') {
         await exportStudentAnalyticsReportPdf(
           studentId,
           studentData,
-          globalFilter as any,
-          getFilterLabel(globalFilter),
-          activityType
+          (options.period === 'custom' || options.period === 'last_week') ? 'overall' : options.period as any,
+          options.label,
+          options.activityType,
+          { startDate, endDate }
         );
       } else {
         await exportStudentAnalyticsReportExcel(
           studentId,
           studentData,
-          globalFilter as any,
-          getFilterLabel(globalFilter),
-          activityType
+          (options.period === 'custom' || options.period === 'last_week') ? 'overall' : options.period as any,
+          options.label,
+          options.activityType,
+          { startDate, endDate }
         );
       }
       setExportModalVisible(false);
@@ -381,11 +387,13 @@ export default function StudentView({ studentId, onBack }: StudentViewProps) {
         initialStudentName={studentData?.name}
       />
       {/* EXPORT FORMAT MODAL */}
-      <ExportFormatModal
+      <ExportReportModal
         visible={isExportModalVisible}
         onClose={() => setExportModalVisible(false)}
-        onSelectFormat={handleSelectExportFormat}
-        isExporting={isExporting}
+        onGenerate={handleSelectExportFormat}
+        isLoading={isExporting}
+        isTablet={isTablet}
+        studentName={studentData?.name}
       />
       {/* UNIVERSAL BENCHMARK LEGEND MODAL */}
       <UniversalLegendModal
