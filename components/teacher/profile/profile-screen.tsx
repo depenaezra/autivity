@@ -28,7 +28,7 @@ import { ProfileActions } from './profile-actions';
 
 export default function ProfileScreen() {
   const { width } = useWindowDimensions();
-  const isTablet = width >= 768;
+  const isTablet = width >= 600;
 
   // [ADDED] State to hold the fetched profile data
   const [profile, setProfile] = useState<any>(null);

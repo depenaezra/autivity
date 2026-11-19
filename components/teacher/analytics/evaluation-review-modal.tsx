@@ -1,13 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Text, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, Text, View, useWindowDimensions } from 'react-native';
+import { Feather } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { BaseModal } from '../home/base-modal';
 import { getSessionEvaluation, SessionEvaluationDetails } from '../../../src/services/analytics';
+import { resetSessionEvaluation } from '../../../src/services/sessions';
 
 interface EvaluationReviewModalProps {
   visible: boolean;
   sessionId: string | null;
   onClose: () => void;
   isTablet?: boolean;
+  onResetSuccess?: () => void;
 }
 
 export const RUBRIC_CRITERIA = [
@@ -61,11 +65,13 @@ export function EvaluationReviewModal({
   sessionId,
   onClose,
   isTablet: isTabletProp,
+  onResetSuccess,
 }: EvaluationReviewModalProps) {
   const { width } = useWindowDimensions();
-  const isTablet = isTabletProp ?? width >= 768;
+  const isTablet = isTabletProp ?? width >= 600;
 
   const [isLoading, setIsLoading] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
   const [details, setDetails] = useState<SessionEvaluationDetails | null>(null);
 
   useEffect(() => {
@@ -88,6 +94,37 @@ export function EvaluationReviewModal({
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleResetEvaluation = () => {
+    if (!sessionId) return;
+
+    Alert.alert(
+      'Reset Evaluation?',
+      'Are you sure you want to reset this evaluation? All rubric scores and remarks will be removed, and the session will be returned to pending evaluation.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset',
+          style: 'destructive',
+          onPress: async () => {
+            setIsResetting(true);
+            try {
+              await resetSessionEvaluation(sessionId);
+              await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              Alert.alert('Evaluation Reset', 'The session has been reset to pending. You can re-evaluate it anytime.');
+              onResetSuccess?.();
+              onClose();
+            } catch (err: any) {
+              console.error('Failed to reset evaluation:', err);
+              Alert.alert('Error', err.message || 'Failed to reset evaluation.');
+            } finally {
+              setIsResetting(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   // Safe parsing helper for rubric evaluation JSON/object
@@ -232,6 +269,36 @@ export function EvaluationReviewModal({
                 </Text>
               )}
             </View>
+          </View>
+
+          {/* RESET EVALUATION ACTION */}
+          <View className="mt-4 pt-3 border-t border-[#F1F1F1]">
+            <Pressable
+              onPress={handleResetEvaluation}
+              disabled={isResetting}
+              className="w-full py-3.5 border-[2px] border-[#FED7AA] bg-[#FFF7ED] rounded-[12px] flex-row items-center justify-center gap-2 active:scale-95 transition-transform"
+              style={{
+                shadowColor: '#FED7AA',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 1,
+                shadowRadius: 0,
+                elevation: 2,
+              }}
+            >
+              {isResetting ? (
+                <ActivityIndicator size="small" color="#F97316" />
+              ) : (
+                <>
+                  <Feather name="rotate-ccw" size={16} color="#F97316" />
+                  <Text className="font-fredoka-one text-sm text-[#F97316]">
+                    RESET EVALUATION
+                  </Text>
+                </>
+              )}
+            </Pressable>
+            <Text className="font-quicksand-medium text-[11px] text-[#9CA3AF] text-center mt-1.5">
+              Clears rubric scores & remarks so this session can be evaluated afresh.
+            </Text>
           </View>
         </View>
       )}

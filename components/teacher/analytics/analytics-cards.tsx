@@ -18,7 +18,7 @@ interface AnalyticsCardsProps {
 
 export function AnalyticsCards({ refreshTrigger, activityType = 'all' }: AnalyticsCardsProps = {}) {
   const { width } = useWindowDimensions();
-  const isTablet = width >= 768;
+  const isTablet = width >= 600;
 
   const [kpi, setKpi] = useState<KpiData>({
     pendingEvaluations: 0,

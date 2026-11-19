@@ -17,7 +17,7 @@ import { FilterPeriod, getFilterLabel } from '../../../src/utils/dashboardFilter
 
 export default function AnalyticsDraftScreen() {
   const { width } = useWindowDimensions();
-  const isTablet = width >= 768;
+  const isTablet = width >= 600;
 
   const [focusKey, setFocusKey] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);

@@ -1,8 +1,8 @@
-import React from 'react';
-import { Image, Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import Animated, { useSharedValue, useAnimatedStyle, withSequence, withTiming, withSpring } from 'react-native-reanimated';
+import React from 'react';
+import { Image, Pressable, Text, View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 
 interface DashboardHeaderProps {
   firstName: string;
@@ -52,9 +52,8 @@ export function DashboardHeader({
       <View className="flex-row items-center flex-1">
         <Pressable
           onPress={onProfilePress}
-          className={`rounded-full border-[2px] border-[#D9D9D9] active:scale-95 transition-transform ${
-            isTablet ? 'w-24 h-24' : 'w-16 h-16'
-          }`}
+          className={`rounded-full border-[2px] border-[#D9D9D9] active:scale-95 transition-transform ${isTablet ? 'w-24 h-24' : 'w-16 h-16'
+            }`}
         >
           <View className="flex-1 rounded-full border-[2px] border-white overflow-hidden bg-white">
             <Image
@@ -75,14 +74,14 @@ export function DashboardHeader({
         </View>
       </View>
 
-      <Pressable 
+      <Pressable
         onPress={triggerBellSwing}
         className="active:scale-95 transition-transform p-1 relative"
       >
-        <AnimatedIonicons 
-          name="notifications" 
-          size={isTablet ? 36 : 28} 
-          color="#62A9E6" 
+        <AnimatedIonicons
+          name="notifications"
+          size={isTablet ? 36 : 28}
+          color="#62A9E6"
           style={animatedBellStyle}
         />
         {hasUnreadNotifications && (

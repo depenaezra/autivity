@@ -36,7 +36,8 @@ type ActivityType =
   | 'pick-n-choose'
   | 'sequencing'
   | 'turn-taking'
-  | 'counting';
+  | 'counting'
+  | 'copy-letters';
 
 export default function StudentHome() {
   const router = useRouter();
@@ -270,6 +271,11 @@ export default function StudentHome() {
     return lower.includes('count') || lower.includes('basket');
   };
 
+  const isCopyLetterPath = (path: string) => {
+    const lower = path.toLowerCase();
+    return lower === 'copy letters' || lower.includes('copy');
+  };
+
   const navigateToLesson = (
     activityType: ActivityType
   ) => {
@@ -304,6 +310,10 @@ export default function StudentHome() {
 
       if (activityType === 'counting') {
         return isCountingPath(path);
+      }
+
+      if (activityType === 'copy-letters') {
+        return isCopyLetterPath(path);
       }
 
       return false;

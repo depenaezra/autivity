@@ -66,8 +66,12 @@ export const speakElevenLabs = async (
         return false;
     }
 
-    const apiKey = process.env.EXPO_PUBLIC_ELEVENLABS_API_KEY;
-    const voiceId = process.env.EXPO_PUBLIC_ELEVENLABS_VOICE_ID;
+    const apiKey =
+        process.env.EXPO_PUBLIC_ELEVENLABS_API_KEY ||
+        'sk_f11012c436f7ea84711e853bd1f6ff4fceb153b2d4bf522f';
+    const voiceId =
+        process.env.EXPO_PUBLIC_ELEVENLABS_VOICE_ID ||
+        'EXAVITQu4vr4xnSDxMaL';
 
     console.log('[ElevenLabs] Preparing speech for:', text);
     console.log('[ElevenLabs] Key status:', apiKey ? 'FOUND' : 'MISSING', '| Voice ID status:', voiceId ? 'FOUND' : 'MISSING');

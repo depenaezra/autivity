@@ -27,7 +27,7 @@ import { Alert } from 'react-native';
 export default function HomeScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
-  const isTablet = width >= 768;
+  const isTablet = width >= 600;
 
   const [focusKey, setFocusKey] = useState(0);
   const [selectedWarmupVideo, setSelectedWarmupVideo] = useState<WarmupVideo | null>(null);

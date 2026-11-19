@@ -407,12 +407,10 @@ export default function TurnTakingActivity({
         );
       }
 
-      // Automatically launch the 2 student evaluation forms (1 for each student)
-      setIsEvalSequence(true);
-      setActiveEvalStudent('p1');
-      const evalPrompt = `Session finished! Teacher, please evaluate Player 1, ${player1?.name}.`;
-      setBearMessage(evalPrompt);
-      speakInstruction(evalPrompt);
+      setGameState('finished');
+      const finishMsg = 'Session finished! Great job playing together!';
+      setBearMessage(finishMsg);
+      speakInstruction(finishMsg);
       return;
     }
 
@@ -858,8 +856,63 @@ export default function TurnTakingActivity({
             />
           )}
         </View>
+      </SafeAreaView>
+    );
+  }
 
-        {renderEvaluationForms()}
+  /*
+   * =========================================================
+   * FINISHED CELEBRATION SCREEN
+   * =========================================================
+   */
+  if (gameState === 'finished' && player1 && player2) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.topBar}>
+          <HeaderButton
+            onPress={handleBack}
+            icon={<Ionicons name="caret-back" size={24} color="#62A9E6" />}
+          />
+          <Text style={styles.topBarTitle}>Turn-Taking Activity</Text>
+          <View style={styles.topBarSpacer} />
+        </View>
+
+        <View className="flex-1 items-center justify-center p-6">
+          <View className="bg-white rounded-[32px] p-8 items-center border-[3px] border-[#FDBA74] w-full max-w-[420px] shadow-2xl">
+            {/* Trophy badge */}
+            <View className="w-24 h-24 bg-[#FFF7ED] rounded-full items-center justify-center border-4 border-[#FDBA74] mb-6">
+              <Ionicons name="trophy" size={54} color="#FB923C" />
+            </View>
+
+            <Text className="font-fredoka-one text-3xl text-[#FB923C] text-center mb-2">
+              Session Complete!
+            </Text>
+            <Text className="font-quicksand-semibold text-lg text-[#6B7280] text-center mb-6 px-2">
+              Great teamwork, {player1.name} & {player2.name}! 🎉
+            </Text>
+
+            {/* Stars earned */}
+            <View className="flex-row items-center bg-[#FEF3C7] border border-[#FCD34D] rounded-full px-5 py-2 mb-8">
+              <Text className="text-xl mr-1.5">⭐</Text>
+              <Text className="font-quicksand-bold text-[#D97706] text-lg">
+                +15 Stars Each
+              </Text>
+            </View>
+
+            {/* Done Button */}
+            <View className="w-full">
+              <Pressable
+                onPress={handleFinish}
+                className="w-full h-14 bg-[#10B981] border-b-[4px] border-[#059669] rounded-full items-center justify-center flex-row gap-2 active:bg-[#059669]"
+              >
+                <Ionicons name="checkmark-circle" size={24} color="white" />
+                <Text className="text-white font-fredoka-regular text-2xl">
+                  Done!
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
       </SafeAreaView>
     );
   }

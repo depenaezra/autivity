@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from "react";
-import { Image, useWindowDimensions, View } from "react-native";
+import { Image, useWindowDimensions, View, type LayoutChangeEvent } from "react-native";
 import { GestureDetector } from "react-native-gesture-handler";
 import Animated, {
     Easing,
@@ -271,6 +271,7 @@ export default function TracingActivity({
     const startTimeRef = useRef(Date.now());
     const feedbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const lastMessageIndexRef = useRef<number>(-1);
+    const [containerSize, setContainerSize] = useState<{ width: number; height: number } | null>(null);
 
     const { isHintActive, hintLevel, hintsUsed, triggerHint, recordAttempt, resetForNextQuestion } = useActivityHint({
         getClueText: () => {
@@ -342,12 +343,26 @@ export default function TracingActivity({
     };
 
     // 3. Calculate how much to zoom in/out (Leaves 80px of padding so it never touches the edges)
-    const shortestScreenSide = Math.min(width, height);
-    const scaleFactor = (shortestScreenSide - 80) / 400;
+    const onContainerLayout = (event: LayoutChangeEvent) => {
+        const { width: w, height: h } = event.nativeEvent.layout;
+        if (w > 0 && h > 0) {
+            setContainerSize((prev) => {
+                if (prev && Math.abs(prev.width - w) < 2 && Math.abs(prev.height - h) < 2) return prev;
+                return { width: w, height: h };
+            });
+        }
+    };
+
+    const availWidth = containerSize?.width ?? width;
+    const availHeight = containerSize?.height ?? (height > width ? height * 0.55 : Math.max(300, height - 380));
+    const shortestSide = Math.min(availWidth, availHeight);
+    const scaleFactor = Math.max(0.55, Math.min(1.6, (shortestSide - 40) / 400));
+    const shortestScreenSide = shortestSide;
+
 
     return (
         // 4. Center everything in the middle of the screen
-        <View style={{ flex: 1, backgroundColor: "#E8F4FF", justifyContent: "center", alignItems: "center" }}>
+        <View onLayout={onContainerLayout} style={{ flex: 1, backgroundColor: "#E8F4FF", justifyContent: "center", alignItems: "center", overflow: "hidden" }}>
 
             {/* 5. The Responsive "Drawing Board" */}
             <View style={{

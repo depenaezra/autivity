@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Autivity — Child Learning Journey & Progress Report for Parents</title>
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 12mm 14mm 14mm 14mm;
+    }
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #1E293B;
+      background: #FFFFFF;
+      margin: 0;
+      padding: 0;
+      font-size: 11pt;
+      line-height: 1.5;
+    }
+
+    /* Header & Branding */
+    .report-header {
+      border-bottom: 2px solid #E2E8F0;
+      padding-bottom: 12px;
+      margin-bottom: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .brand-title {
+      font-size: 19pt;
+      font-weight: 800;
+      color: #0284C7;
+      letter-spacing: -0.5px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .brand-subtitle {
+      font-size: 9.5pt;
+      font-weight: 700;
+      color: #64748B;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-top: 2px;
+    }
+    .badge-parent {
+      background: #ECFDF5;
+      color: #059669;
+      border: 1.5px solid #86EFAC;
+      font-size: 8pt;
+      font-weight: 800;
+      text-transform: uppercase;
+      padding: 4px 12px;
+      border-radius: 999px;
+      display: inline-block;
+    }
+
+    /* Child Demographic Strip */
+    .student-card {
+      background: #F0F9FF;
+      border: 1.5px solid #BBE8FB;
+      border-radius: 14px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: 12px;
+    }
+    .info-label {
+      font-size: 7.5pt;
+      font-weight: 800;
+      color: #0369A1;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .info-value {
+      font-size: 11pt;
+      font-weight: 800;
+      color: #0F172A;
+      margin-top: 1px;
+    }
+    .info-sub {
+      font-size: 8pt;
+      color: #64748B;
+      font-weight: 600;
+    }
+
+    /* Celebration Box */
+    .celebration-box {
+      background: linear-gradient(135deg, #FEF9C3 0%, #FEF08A 100%);
+      border: 1.5px solid #FDE047;
+      border-radius: 14px;
+      padding: 14px 18px;
+      margin-bottom: 16px;
+    }
+    .celebration-title {
+      font-size: 12pt;
+      font-weight: 800;
+      color: #854D0E;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .celebration-text {
+      font-size: 9.5pt;
+      color: #713F12;
+      font-weight: 500;
+      line-height: 1.5;
+    }
+
+    /* KPI Highlights */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .kpi-card {
+      background: #FFFFFF;
+      border: 1.5px solid #E2E8F0;
+      border-radius: 12px;
+      padding: 12px;
+      text-align: center;
+    }
+    .kpi-val {
+      font-size: 18pt;
+      font-weight: 800;
+      line-height: 1;
+    }
+    .kpi-lbl {
+      font-size: 8pt;
+      font-weight: 800;
+      color: #475569;
+      margin-top: 4px;
+    }
+    .kpi-pill {
+      display: inline-block;
+      font-size: 7.5pt;
+      font-weight: 800;
+      text-transform: uppercase;
+      padding: 2px 8px;
+      border-radius: 999px;
+      margin-top: 4px;
+    }
+
+    /* Section Styling */
+    .section-title {
+      font-size: 11.5pt;
+      font-weight: 800;
+      color: #1E293B;
+      border-left: 4px solid #0284C7;
+      padding-left: 8px;
+      margin-top: 14px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .section-subtitle {
+      font-size: 8pt;
+      color: #64748B;
+      font-weight: 600;
+    }
+
+    /* Charts Row */
+    .charts-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .chart-box {
+      background: #FFFFFF;
+      border: 1.5px solid #E2E8F0;
+      border-radius: 12px;
+      padding: 12px 14px;
+    }
+    .chart-title {
+      font-size: 9.5pt;
+      font-weight: 800;
+      color: #1E293B;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Emotion Cards */
+    .emotion-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .emotion-card {
+      border-radius: 12px;
+      padding: 12px;
+      text-align: center;
+    }
+    .emotion-pct {
+      font-size: 17pt;
+      font-weight: 800;
+      line-height: 1;
+    }
+    .emotion-name {
+      font-size: 9pt;
+      font-weight: 800;
+      margin-top: 4px;
+    }
+    .emotion-sub {
+      font-size: 7.5pt;
+      font-weight: 600;
+      margin-top: 2px;
+    }
+    .emotion-desc {
+      font-size: 8pt;
+      font-weight: 500;
+      margin-top: 6px;
+      line-height: 1.35;
+      background: rgba(255, 255, 255, 0.7);
+      padding: 6px;
+      border-radius: 8px;
+    }
+
+    /* Parent Activity & Notes Table */
+    .activity-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 8pt;
+      margin-bottom: 14px;
+    }
+    .activity-table th {
+      background: #F1F5F9;
+      color: #475569;
+      font-weight: 800;
+      text-align: left;
+      padding: 7px 8px;
+      border-bottom: 1.5px solid #CBD5E1;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    .activity-table td {
+      padding: 6px 8px;
+      border-bottom: 1px solid #E2E8F0;
+      color: #334155;
+      font-weight: 500;
+      vertical-align: middle;
+    }
+    .activity-table tr:nth-child(even) td {
+      background: #F8FAFC;
+    }
+      border: 1.5px solid #E2E8F0;
+      border-radius: 12px;
+      padding: 12px 14px;
+    }
+    .feedback-date {
+      font-size: 7.5pt;
+      font-weight: 800;
+      color: #0284C7;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .feedback-activity {
+      font-size: 9pt;
+      font-weight: 800;
+      color: #1E293B;
+      margin-top: 2px;
+    }
+    .feedback-quote {
+      font-size: 8.5pt;
+      color: #334155;
+      font-weight: 500;
+      font-style: italic;
+      margin-top: 6px;
+      line-height: 1.4;
+      background: #FFFFFF;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid #E2E8F0;
+    }
+
+    /* Home Activities Card */
+    .home-card {
+      background: #F0FDF4;
+      border: 1.5px solid #86EFAC;
+      border-radius: 14px;
+      padding: 14px 16px;
+      margin-bottom: 14px;
+    }
+    .home-header {
+      font-size: 10.5pt;
+      font-weight: 800;
+      color: #166534;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    .home-item {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 8px;
+      font-size: 8.5pt;
+      color: #1E293B;
+      line-height: 1.45;
+    }
+    .home-icon {
+      font-size: 13pt;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+
+    /* Warm Footer */
+    .footer-box {
+      border-top: 1.5px solid #E2E8F0;
+      padding-top: 12px;
+      margin-top: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 8pt;
+      color: #64748B;
+    }
+
+    .page-break {
+      page-break-before: always;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- PAGE 1: CELEBRATION, CORE HIGHLIGHTS & LEARNING CHARTS -->
+  <div class="report-header">
+    <div>
+      <div class="brand-title">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0284C7" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+        </svg>
+        AUTIVITY &nbsp;|&nbsp; Child Learning Journey & Progress
+      </div>
+      <div class="brand-subtitle">A Monthly Progress Update for Parents & Guardians</div>
+    </div>
+    <div style="text-align: right;">
+      <span class="badge-parent">Parent Progress Report</span>
+      <div style="font-size: 8pt; color: #64748B; font-weight: 600; margin-top: 4px;">November 19, 2026</div>
+    </div>
+  </div>
+
+  <!-- Child Demographic Strip -->
+  <div class="student-card">
+    <div>
+      <div class="info-label">Learner</div>
+      <div class="info-value">Liam Noah S. Garcia</div>
+      <div class="info-sub">Learner Code: #AUT-104 &bull; Age: 7 yrs</div>
+    </div>
+    <div>
+      <div class="info-label">Class & Grade</div>
+      <div class="info-value">SPED Primary</div>
+      <div class="info-sub">Transition Cohort A</div>
+    </div>
+    <div>
+      <div class="info-label">Class Teacher</div>
+      <div class="info-value">Teacher Maria</div>
+      <div class="info-sub">SPED Specialist</div>
+    </div>
+    <div>
+      <div class="info-label">Timeframe</div>
+      <div class="info-value" style="color: #0284C7;">Last 30 Days</div>
+      <div class="info-sub">Oct 20 – Nov 19, 2026</div>
+    </div>
+  </div>
+
+  <!-- 1. Warm Celebration Summary -->
+  <div class="celebration-box">
+    <div class="celebration-title">
+      <span>🌟</span> Celebrating Liam's Progress this Month!
+    </div>
+    <div class="celebration-text">
+      Liam has had a wonderful, productive month at school! He completed <strong>24 learning activities</strong> across hands-on classroom play and interactive tablet sessions. Liam made huge strides in his <strong>object sorting and puzzle skills</strong>, and he is doing much more on his own without needing constant reminders (<strong>68% completed with full independence!</strong>). When Liam arrives feeling calm and happy (which was true for 13 out of 20 school days), his concentration and enthusiasm are amazing. Here is an overview of what Liam accomplished and how we can continue supporting him together!
+    </div>
+  </div>
+
+  <!-- 2. Four Friendly Core Highlights -->
+  <div class="kpi-grid">
+    <div class="kpi-card" style="border-color: #86EFAC;">
+      <div class="kpi-val" style="color: #15803D;">86.4%</div>
+      <div class="kpi-lbl">Mastery Level</div>
+      <span class="kpi-pill" style="background: #DCFCE7; color: #166534; border: 1px solid #86EFAC;">Great Job! ⭐</span>
+    </div>
+    <div class="kpi-card" style="border-color: #BBE8FB;">
+      <div class="kpi-val" style="color: #0284C7;">68%</div>
+      <div class="kpi-lbl">Did It On His Own</div>
+      <span class="kpi-pill" style="background: #E0F2FE; color: #0369A1; border: 1px solid #BBE8FB;">Independent 🚀</span>
+    </div>
+    <div class="kpi-card" style="border-color: #FED7AA;">
+      <div class="kpi-val" style="color: #C2410C;">~7 mins</div>
+      <div class="kpi-lbl">Focus Time / Session</div>
+      <span class="kpi-pill" style="background: #FFF7ED; color: #C2410C; border: 1px solid #FFEDD5;">Great Attention ⏱️</span>
+    </div>
+    <div class="kpi-card" style="border-color: #E9D5FF;">
+      <div class="kpi-val" style="color: #7E22CE;">24</div>
+      <div class="kpi-lbl">Completed Activities</div>
+      <span class="kpi-pill" style="background: #FAF5FF; color: #7E22CE; border: 1px solid #E9D5FF;">Active Learner 🏆</span>
+    </div>
+  </div>
+
+  <!-- 3. Learning Progress & Trajectory (The Charts Parents Love) -->
+  <div class="section-title">
+    <span>Liam's Learning Growth & Skills Explored</span>
+    <span class="section-subtitle">Visual Progress Over the Past 30 Days</span>
+  </div>
+
+  <div class="charts-row">
+    <!-- Chart 1: Evaluation Trend Line -->
+    <div class="chart-box">
+      <div class="chart-title">
+        <span>Learning Score Over Time</span>
+        <span style="background: #DCFCE7; color: #15803D; font-size: 7.5pt; font-weight: 800; padding: 2px 8px; border-radius: 999px; border: 1px solid #86EFAC;">▲ +34% Improvement!</span>
+      </div>
+      <svg width="100%" height="150" viewBox="0 0 320 150">
+        <!-- Grid Lines -->
+        <line x1="30" y1="20" x2="310" y2="20" stroke="#F1F5F9" stroke-width="1"/>
+        <line x1="30" y1="55" x2="310" y2="55" stroke="#F1F5F9" stroke-width="1"/>
+        <line x1="30" y1="90" x2="310" y2="90" stroke="#F1F5F9" stroke-width="1"/>
+        <line x1="30" y1="125" x2="310" y2="125" stroke="#E2E8F0" stroke-width="1"/>
+
+        <!-- Goal Reference Line -->
+        <line x1="30" y1="45" x2="310" y2="45" stroke="#10B981" stroke-width="1.5" stroke-dasharray="4,4"/>
+        <text x="312" y="47" font-size="7" font-weight="700" fill="#10B981">Goal Line</text>
+
+        <!-- Y Axis Labels -->
+        <text x="12" y="23" font-size="7" font-weight="700" fill="#94A3B8">100%</text>
+        <text x="12" y="58" font-size="7" font-weight="700" fill="#94A3B8">75%</text>
+        <text x="12" y="93" font-size="7" font-weight="700" fill="#94A3B8">50%</text>
+        <text x="12" y="128" font-size="7" font-weight="700" fill="#94A3B8">25%</text>
+
+        <!-- Historical Trend Path -->
+        <path d="M 40,105 L 80,95 L 120,95 L 160,88 L 200,68 L 240,48 L 270,38" fill="none" stroke="#0284C7" stroke-width="3" stroke-linecap="round"/>
+        
+        <!-- Forecast Trajectory (Dashed) -->
+        <path d="M 270,38 L 295,30" fill="none" stroke="#93C5FD" stroke-width="2.5" stroke-dasharray="3,3" stroke-linecap="round"/>
+        
+        <!-- Plot Points -->
+        <circle cx="40" cy="105" r="3.5" fill="#0284C7"/>
+        <circle cx="80" cy="95" r="3.5" fill="#0284C7"/>
+        <circle cx="120" cy="95" r="3.5" fill="#0284C7"/>
+        <circle cx="160" cy="88" r="3.5" fill="#0284C7"/>
+        <circle cx="200" cy="68" r="3.5" fill="#0284C7"/>
+        <circle cx="240" cy="48" r="3.5" fill="#0284C7"/>
+        <circle cx="270" cy="38" r="4.5" fill="#15803D" stroke="#FFFFFF" stroke-width="1.5"/>
+        <circle cx="295" cy="30" r="3.5" fill="#93C5FD"/>
+
+        <!-- X Axis Labels -->
+        <text x="32" y="140" font-size="7" fill="#64748B">Start (Oct 21)</text>
+        <text x="120" y="140" font-size="7" fill="#64748B">Nov 03</text>
+        <text x="250" y="140" font-size="7" fill="#0284C7" font-weight="700">Today (Nov 19)</text>
+      </svg>
+      <div style="font-size: 7.5pt; color: #15803D; font-weight: 700; text-align: center; margin-top: 4px;">
+        🌱 2-Week Outlook: Liam is on pace to master his next 3 milestone targets!
+      </div>
+    </div>
+
+    <!-- Chart 2: Domain Exposure Bar Chart -->
+    <div class="chart-box">
+      <div class="chart-title">
+        <span>Skills Liam Practiced</span>
+        <span style="font-size: 7.5pt; color: #64748B; font-weight: 700;">24 Total Activities</span>
+      </div>
+      <div style="margin-top: 6px;">
+        <!-- Domain 1: Cognitive -->
+        <div style="display: flex; align-items: center; justify-content: space-between; font-size: 7.5pt; font-weight: 700; margin-bottom: 2px;">
+          <span>🧩 Thinking & Sorting Skills</span>
+          <span style="color: #0284C7;">10 Activities &bull; Confident</span>
+        </div>
+        <div style="height: 10px; background: #F1F5F9; border-radius: 5px; overflow: hidden; margin-bottom: 8px;">
+          <div style="height: 100%; width: 100%; background: #0284C7; border-radius: 5px;"></div>
+        </div>
+
+        <!-- Domain 2: Motor -->
+        <div style="display: flex; align-items: center; justify-content: space-between; font-size: 7.5pt; font-weight: 700; margin-bottom: 2px;">
+          <span>🖐️ Hands & Movement Skills</span>
+          <span style="color: #10B981;">6 Activities &bull; Confident</span>
+        </div>
+        <div style="height: 10px; background: #F1F5F9; border-radius: 5px; overflow: hidden; margin-bottom: 8px;">
+          <div style="height: 100%; width: 60%; background: #10B981; border-radius: 5px;"></div>
+        </div>
+
+        <!-- Domain 3: Social-Emotional -->
+        <div style="display: flex; align-items: center; justify-content: space-between; font-size: 7.5pt; font-weight: 700; margin-bottom: 2px;">
+          <span>💬 Sharing & Communication</span>
+          <span style="color: #F59E0B;">5 Activities &bull; Growing</span>
+        </div>
+        <div style="height: 10px; background: #F1F5F9; border-radius: 5px; overflow: hidden; margin-bottom: 8px;">
+          <div style="height: 100%; width: 50%; background: #F59E0B; border-radius: 5px;"></div>
+        </div>
+
+        <!-- Domain 4: Adaptive -->
+        <div style="display: flex; align-items: center; justify-content: space-between; font-size: 7.5pt; font-weight: 700; margin-bottom: 2px;">
+          <span>🧘 Calming & Daily Routines</span>
+          <span style="color: #8B5CF6;">3 Activities &bull; Steady</span>
+        </div>
+        <div style="height: 10px; background: #F1F5F9; border-radius: 5px; overflow: hidden;">
+          <div style="height: 100%; width: 30%; background: #8B5CF6; border-radius: 5px;"></div>
+        </div>
+      </div>
+      <div style="font-size: 7.5pt; color: #475569; font-weight: 600; margin-top: 10px; background: #F8FAFC; padding: 6px; border-radius: 6px; text-align: center;">
+        💡 Next Classroom Focus: We are doing more sharing and turn-taking games next week!
+      </div>
+    </div>
+  </div>
+
+  <!-- CLEAN PAGE BREAK -->
+  <div class="page-break"></div>
+
+  <!-- PAGE 2: EMOTIONS, TEACHER NOTES & HOME ACTIVITIES -->
+  <div class="report-header">
+    <div>
+      <div class="brand-title" style="font-size: 15pt;">
+        AUTIVITY &nbsp;|&nbsp; Liam's Learning Journey (Continued)
+      </div>
+      <div class="brand-subtitle">Teacher Notes, Feelings & Home Collaboration &bull; Oct 20 – Nov 19, 2026</div>
+    </div>
+    <div style="text-align: right; font-size: 8pt; color: #64748B; font-weight: 700;">
+      Page 2 of 2
+    </div>
+  </div>
+
+  <!-- 4. How Liam Felt at School (Emotional Check-Ins) -->
+  <div class="section-title">
+    <span>How Liam Felt During Daily Check-Ins</span>
+    <span class="section-subtitle">20 School Days Recorded</span>
+  </div>
+
+  <div class="emotion-grid">
+    <div class="emotion-card" style="background: #F0FDF4; border: 1.5px solid #86EFAC;">
+      <div class="emotion-pct" style="color: #15803D;">65%</div>
+      <div class="emotion-name" style="color: #166534;">🟢 Calm & Happy</div>
+      <div class="emotion-sub" style="color: #15803D;">13 of 20 Days (Optimal)</div>
+      <div class="emotion-desc" style="color: #166534;">
+        Liam was in high spirits and did his best, most focused work on these days!
+      </div>
+    </div>
+    <div class="emotion-card" style="background: #FEFCE8; border: 1.5px solid #FDE047;">
+      <div class="emotion-pct" style="color: #A16207;">20%</div>
+      <div class="emotion-name" style="color: #854D0E;">🟡 Energetic or Anxious</div>
+      <div class="emotion-sub" style="color: #A16207;">4 of 20 Days (Heightened)</div>
+      <div class="emotion-desc" style="color: #854D0E;">
+        Usually right after lively recess. A 2-minute calming squeeze toy helped him settle.
+      </div>
+    </div>
+    <div class="emotion-card" style="background: #EFF6FF; border: 1.5px solid #BFDBFE;">
+      <div class="emotion-pct" style="color: #1D4ED8;">15%</div>
+      <div class="emotion-name" style="color: #1E40AF;">🔵 Tired or Low Energy</div>
+      <div class="emotion-sub" style="color: #1D4ED8;">3 of 20 Days (Low Energy)</div>
+      <div class="emotion-desc" style="color: #1E40AF;">
+        Liam was a bit sleepy. We kept activities shorter and gave encouraging verbal praise.
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. Recent Learning Activities & Teacher Notes Log -->
+  <div class="section-title">
+    <span>Recent Learning Activities & Teacher Notes</span>
+    <span class="section-subtitle">Chronological Activity Log with Teacher Remarks</span>
+  </div>
+
+  <table class="activity-table">
+    <thead>
+      <tr>
+        <th style="width: 55px;">Date</th>
+        <th style="width: 140px;">Activity & Domain</th>
+        <th style="width: 75px;">Where</th>
+        <th style="width: 95px;">Result</th>
+        <th>Teacher Note / Observation</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Nov 19</strong></td>
+        <td>
+          <div style="font-weight: 700; color: #1E293B;">Turn-Taking Circle Game</div>
+          <div style="font-size: 7pt; color: #64748B;">Sharing & Social</div>
+        </td>
+        <td><span style="background:#FAF5FF; color:#7E22CE; padding:2px 6px; border-radius:4px; font-weight:700; font-size:7pt;">🏫 CLASS</span></td>
+        <td><span style="color:#15803D; font-weight:800;">⭐⭐⭐⭐ Mastered</span></td>
+        <td style="font-style: italic; color: #334155;">"Waited calmly with the timer; shared game piece with Aaron. Big sharing milestone!"</td>
+      </tr>
+      <tr>
+        <td><strong>Nov 18</strong></td>
+        <td>
+          <div style="font-weight: 700; color: #1E293B;">Daily Routine Sequencing</div>
+          <div style="font-size: 7pt; color: #64748B;">Thinking & Sorting</div>
+        </td>
+        <td><span style="background:#EFF6FF; color:#0369A1; padding:2px 6px; border-radius:4px; font-weight:700; font-size:7pt;">📱 APP</span></td>
+        <td><span style="color:#15803D; font-weight:800;">⭐⭐⭐⭐ Mastered</span></td>
+        <td style="font-style: italic; color: #334155;">"Completed the morning routine sequence independently on the very first try."</td>
+      </tr>
+      <tr>
+        <td><strong>Nov 17</strong></td>
+        <td>
+          <div style="font-weight: 700; color: #1E293B;">Sorting Living Tools</div>
+          <div style="font-size: 7pt; color: #64748B;">Thinking & Sorting</div>
+        </td>
+        <td><span style="background:#FAF5FF; color:#7E22CE; padding:2px 6px; border-radius:4px; font-weight:700; font-size:7pt;">🏫 CLASS</span></td>
+        <td><span style="color:#15803D; font-weight:800;">⭐⭐⭐⭐ Mastered</span></td>
+        <td style="font-style: italic; color: #334155;">"Sorted spoons from toothbrushes; self-corrected misplaced comb with a proud smile."</td>
+      </tr>
+      <tr>
+        <td><strong>Nov 14</strong></td>
+        <td>
+          <div style="font-weight: 700; color: #1E293B;">Buttoning & Zipper Board</div>
+          <div style="font-size: 7pt; color: #64748B;">Hands & Movement</div>
+        </td>
+        <td><span style="background:#FAF5FF; color:#7E22CE; padding:2px 6px; border-radius:4px; font-weight:700; font-size:7pt;">🏫 CLASS</span></td>
+        <td><span style="color:#15803D; font-weight:800;">⭐⭐⭐⭐ Mastered</span></td>
+        <td style="font-style: italic; color: #334155;">"Fastened 2 jacket buttons without help today; pincer grip is noticeably firmer."</td>
+      </tr>
+      <tr>
+        <td><strong>Nov 11</strong></td>
+        <td>
+          <div style="font-weight: 700; color: #1E293B;">Geometric Shape Sorter</div>
+          <div style="font-size: 7pt; color: #64748B;">Thinking & Sorting</div>
+        </td>
+        <td><span style="background:#FAF5FF; color:#7E22CE; padding:2px 6px; border-radius:4px; font-weight:700; font-size:7pt;">🏫 CLASS</span></td>
+        <td><span style="color:#15803D; font-weight:800;">⭐⭐⭐⭐ Mastered</span></td>
+        <td style="font-style: italic; color: #334155;">"Matched star and hexagon slots accurately without trial-and-error rotation."</td>
+      </tr>
+      <tr>
+        <td><strong>Nov 08</strong></td>
+        <td>
+          <div style="font-weight: 700; color: #1E293B;">Story Sequencing Game</div>
+          <div style="font-size: 7pt; color: #64748B;">Sharing & Social</div>
+        </td>
+        <td><span style="background:#EFF6FF; color:#0369A1; padding:2px 6px; border-radius:4px; font-weight:700; font-size:7pt;">📱 APP</span></td>
+        <td><span style="color:#D97706; font-weight:800;">⭐⭐⭐ Growing</span></td>
+        <td style="font-style: italic; color: #334155;">"A bit sleepy after recess. Took a brief sensory pause with squish toy, then finished."</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- 6. Fun Activities to Try at Home ("Bridge to Home") -->
+  <div class="home-card">
+    <div class="home-header">
+      <span>🏡</span> Fun Activities to Try Together at Home
+    </div>
+    <div class="home-item">
+      <div class="home-icon">🧦</div>
+      <div>
+        <strong>Laundry Match-Up:</strong> Ask Liam to help match clean socks or sort spoons from forks during meal setup. This reinforces the exact 2-group categorization he excelled at in school!
+      </div>
+    </div>
+    <div class="home-item">
+      <div class="home-icon">⏱️</div>
+      <div>
+        <strong>"My Turn, Your Turn" Game:</strong> While snacking or playing with blocks, practice passing an item with a friendly 5-count ("Mom's turn... 1, 2, 3... now Liam's turn!").
+      </div>
+    </div>
+    <div class="home-item" style="margin-bottom: 0;">
+      <div class="home-icon">🌙</div>
+      <div>
+        <strong>Visual 3-Minute Warning:</strong> Before turning off favorite shows or heading to bed, give a friendly 3-minute visual heads-up. This keeps Liam in his calm green zone during bedtime transitions.
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. Warm Sign-Off Footer -->
+  <div class="footer-box">
+    <div>
+      <strong>St. Bernadette Inclusive Learning Center</strong> &bull; SPED Transition Department<br/>
+      Teacher Maria Santos, LPT, SPED &bull; Contact via Autivity Parent Portal
+    </div>
+    <div style="text-align: right;">
+      <div style="font-weight: 800; color: #0284C7;">Prepared with care for Elena Garcia & Liam</div>
+      <div>Thank you for being our partner in Liam's learning! 💙</div>
+    </div>
+  </div>
+
+</body>
+</html>

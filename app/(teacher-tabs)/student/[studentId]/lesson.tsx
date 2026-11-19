@@ -24,20 +24,15 @@ export default function LessonScreen() {
     const [activityPool, setActivityPool] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const isTurnTaking =
-  activityType === 'turn-taking' ||
-  activityType === 'turntaking' ||
-  activityType === 'turn_taking';
-
-if (isTurnTaking) {
-  return (
-    <TurnTakingActivity
-      assignedStudentId={studentId}
-      classId={classId || undefined}
-    />
-  );
-}
+        activityType === 'turn-taking' ||
+        activityType === 'turntaking' ||
+        activityType === 'turn_taking';
 
     useEffect(() => {
+        if (isTurnTaking) {
+            setIsLoading(false);
+            return;
+        }
         const loadAssigned = async () => {
             setIsLoading(true);
             try {
@@ -165,6 +160,12 @@ if (isTurnTaking) {
                         return path.includes('count') || cat.includes('count') || sub.includes('count') || type.includes('count') || path.includes('basket');
                     });
                     pool = filtered.length > 0 ? filtered : getDefaultCountingPool();
+                } else if (activityType === 'copy' || activityType === 'copy-letters' || activityType === 'copy-letter') {
+                    pool = pool.filter(a => {
+                        const path = (a.path || '').toLowerCase();
+                        const sub = (a.sub_category || '').toLowerCase();
+                        return path.includes('copy') || sub.includes('copy');
+                    });
                 }
 
                 setActivityPool(pool);
@@ -217,6 +218,15 @@ if (isTurnTaking) {
         };
         loadAssigned();
     }, [params.assignedActivities, studentId, initialClassId, initialTeacherId, activityType]);
+
+    if (isTurnTaking) {
+        return (
+            <TurnTakingActivity
+                assignedStudentId={studentId}
+                classId={classId || undefined}
+            />
+        );
+    }
 
     if (isLoading) {
         return (

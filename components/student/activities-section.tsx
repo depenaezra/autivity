@@ -27,7 +27,8 @@ export interface ActivityCardItem {
     | 'pick-n-choose'
     | 'sequencing'
     | 'turn-taking'
-    | 'counting';
+    | 'counting'
+    | 'copy-letters';
   title: string;
   imageSource: any;
   headerBgColor: string;
@@ -182,6 +183,7 @@ interface ActivitiesSectionProps {
       | 'sequencing'
       | 'turn-taking'
       | 'counting'
+      | 'copy-letters'
   ) => void;
 }
 
@@ -281,6 +283,12 @@ export function ActivitiesSection({
     return lower.includes('count') || lower.includes('basket');
   };
 
+  // NEW: Copy Letters detector
+  const isCopyLetterPath = (path: string) => {
+    const lower = path.toLowerCase();
+    return lower === 'copy letters' || lower.includes('copy');
+  };
+
   /* =========================
      ALL ACTIVITY CARDS
   ========================= */
@@ -352,10 +360,21 @@ export function ActivitiesSection({
       id: 'counting',
       title: 'Counting',
       imageSource: require('@/assets/images/activities/counting-header.png'),
-      headerBgColor: '#FEF3C7',
+      headerBgColor: '#C7EAFD',
       themeColor: '#D97706',
       themeFontColor: '#B45309',
       themeFillColor: '#FFFBEB',
+    },
+
+    // NEW: COPY LETTERS
+    {
+      id: 'copy-letters',
+      title: 'Copy Letters',
+      imageSource: require('@/assets/images/activities/tracing-header.png'),
+      headerBgColor: '#E0F2FE',
+      themeColor: '#62A9E6',
+      themeFontColor: '#2563EB',
+      themeFillColor: '#EFF6FF',
     },
   ];
 
@@ -392,6 +411,11 @@ export function ActivitiesSection({
     // NEW: Counting
     if (item.id === 'counting') {
       return assignedPaths.some(isCountingPath);
+    }
+
+    // NEW: Copy Letters
+    if (item.id === 'copy-letters') {
+      return assignedPaths.some(isCopyLetterPath);
     }
 
     return false;

@@ -15,7 +15,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
-import { RubricEvaluation, validateSession } from '../src/services/sessions';
+import { RubricEvaluation, validateSession, resetSessionEvaluation } from '../src/services/sessions';
 
 interface FeedbackModalProps {
   visible: boolean;
@@ -187,6 +187,38 @@ export default function FeedbackModal({
       setIsSubmitting(false);
       Alert.alert('Submission Failed', error.message || 'Could not save feedback to database.');
     }
+  };
+
+  const handleResetEvaluation = () => {
+    if (!sessionId) return;
+
+    Alert.alert(
+      'Reset Evaluation?',
+      'Are you sure you want to reset this evaluation? All rubric scores and remarks will be removed, and this session will return to pending evaluation.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset',
+          style: 'destructive',
+          onPress: async () => {
+            setIsSubmitting(true);
+            try {
+              if (!sessionId.startsWith('mock-') && !sessionId.startsWith('local-')) {
+                await resetSessionEvaluation(sessionId);
+              }
+              Alert.alert('Evaluation Reset', 'This session has been returned to pending evaluation.');
+              onSuccess?.({} as any, '');
+              onClose();
+            } catch (err: any) {
+              console.error('Failed to reset evaluation:', err);
+              Alert.alert('Error', err.message || 'Failed to reset evaluation.');
+            } finally {
+              setIsSubmitting(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const totalPoints = Object.values(scores).reduce((sum, val) => sum + val, 0);
@@ -490,6 +522,20 @@ export default function FeedbackModal({
               </Pressable>
             ) : step === 'draft' ? (
               <>
+                {/* Reset Evaluation Button (When Editing) */}
+                {isEditing && (
+                  <Pressable
+                    onPress={handleResetEvaluation}
+                    disabled={isSubmitting}
+                    className="h-13 px-4 py-3.5 bg-[#FFF7ED] border border-[#FDBA74] border-b-[3px] rounded-full items-center justify-center flex-row gap-1.5 active:bg-[#FFEDD5]"
+                  >
+                    <Feather name="rotate-ccw" size={16} color="#EA580C" />
+                    <Text className="font-quicksand-bold text-[#EA580C] text-sm">
+                      Reset
+                    </Text>
+                  </Pressable>
+                )}
+
                 {/* Do Later / Cancel Button */}
                 <Pressable
                   onPress={onClose}

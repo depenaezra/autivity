@@ -23,7 +23,8 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { LogBox } from 'react-native';
+import * as NavigationBar from 'expo-navigation-bar';
+import { LogBox, Platform } from 'react-native';
 import { configureReanimatedLogger, ReanimatedLogLevel } from 'react-native-reanimated';
 
 configureReanimatedLogger({
@@ -66,6 +67,20 @@ export default function RootLayout() {
     }
   }, [fontsLoaded, fontError]);
 
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      NavigationBar.setVisibilityAsync('hidden').catch(() => {});
+      NavigationBar.setBehaviorAsync('overlay-swipe').catch(() => {});
+
+      const sub = NavigationBar.addVisibilityListener(({ visibility }) => {
+        if (visibility === 'visible') {
+          NavigationBar.setVisibilityAsync('hidden').catch(() => {});
+        }
+      });
+      return () => sub.remove();
+    }
+  }, []);
+
   if (!fontsLoaded && !fontError) {
     return null;
   }
@@ -80,7 +95,7 @@ export default function RootLayout() {
           <Stack.Screen name="(teacher-tabs)" />
           <Stack.Screen name="(parent-tabs)" />
         </Stack>
-        <StatusBar style="auto" />
+        <StatusBar style="auto" hidden={Platform.OS === 'android'} />
       </ThemeProvider>
     </GestureHandlerRootView>
   );

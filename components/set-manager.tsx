@@ -117,7 +117,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import AchievementUnlockScreen, { UnlockedBadge } from '@/components/achievement-unlock-screen';
 import ActivityRenderer from '@/components/activity-renderer';
-import FeedbackModal from '@/components/feedback-modal';
 import InstructionSpeakerButton from '@/components/ui/instruction-speaker-button';
 import HintButton from '@/components/ui/hint-button';
 import { HeaderButton } from '@/components/header-button';
@@ -250,7 +249,6 @@ export default function SetManager({
     const [isActivityDone, setIsActivityDone] = useState(false);
     const [completedMetrics, setCompletedMetrics] = useState<{ score: number; timeSpent: number; mistakes: number; hintsUsed?: number } | null>(null);
     const [savedSetSessionId, setSavedSetSessionId] = useState<string | null>(null);
-    const [showFeedbackModal, setShowFeedbackModal] = useState(false);
     const [unlockedBadges, setUnlockedBadges] = useState<UnlockedBadge[]>([]);
     const [showAchievementScreen, setShowAchievementScreen] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
@@ -293,16 +291,18 @@ export default function SetManager({
     const hasWarnedAlmostUpRef = useRef(false);
     const hasWarnedTimeUpRef = useRef(false);
 
+    const effectiveCompleted = isSetComplete ? 3 : (completedCount + (isActivityDone ? 1 : 0));
+
     // Microanimation for smooth progress bar fill (500ms easing slide)
     const progressAnim = useSharedValue(0);
 
     useEffect(() => {
-        const targetPercent = Math.min(100, (completedCount / 3) * 100);
+        const targetPercent = Math.min(100, (effectiveCompleted / 3) * 100);
         progressAnim.value = withTiming(targetPercent, {
             duration: 500,
             easing: Easing.out(Easing.quad),
         });
-    }, [completedCount]);
+    }, [effectiveCompleted]);
 
     const animatedProgressStyle = useAnimatedStyle(() => {
         return {
@@ -810,28 +810,27 @@ export default function SetManager({
         setIsSaving(false);
     };
 
-    // Auto-advance for counting activity after the praise word is spoken ("after every count it it will prompt a good job word then proceed to next number")
+    // Auto-advance for ALL activities after praise and positive reinforcement are presented.
+    // 2500ms (2.5s) is clinically recommended for students with ASD:
+    // 1. Gives sufficient time to process auditory feedback (success chime + spoken praise)
+    // 2. Gives time to process visual feedback (green praise banner, incremented progress bar)
+    // 3. Prevents sensory overload / disorientation caused by abrupt scene changes
+    const ASD_TRANSITION_DELAY_MS = 2500;
+
     useEffect(() => {
-        const isCounting =
-            currentActivity?.category?.toLowerCase().includes('count') ||
-            currentActivity?.path?.toLowerCase().includes('count');
-        if (isCounting && isActivityDone && successMode && !isSetComplete) {
+        if (isActivityDone && successMode && !isSetComplete) {
             const timer = setTimeout(() => {
-                handleCheckPress();
-            }, 2200);
+                advanceToNextActivity();
+            }, ASD_TRANSITION_DELAY_MS);
             return () => clearTimeout(timer);
         }
-    }, [isActivityDone, successMode, isSetComplete, currentActivity, completedMetrics]);
+    }, [isActivityDone, successMode, isSetComplete, completedMetrics]);
 
-    // CHECK / Next Activity double-click transition logic
-    const handleCheckPress = async () => {
+    // Automatic transition logic to next activity or session completion
+    const advanceToNextActivity = async () => {
         if (!isActivityDone || !completedMetrics || !currentActivity || isSavingRef.current || isSetComplete) return;
 
-        // successMode will be true because it's immediately set on completion.
-        if (!successMode) {
-            setSuccessMode(true);
-            setBearMessage(SUCCESS_MESSAGES[Math.floor(Math.random() * SUCCESS_MESSAGES.length)]);
-        } else {
+        {
             const { score, timeSpent, mistakes } = completedMetrics;
             const currentDiff = currentActivity.difficulty_level;
 
@@ -987,8 +986,6 @@ export default function SetManager({
     }
 
     const formattedTime = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-
-    const effectiveCompleted = isSetComplete ? 3 : (completedCount + (isActivityDone ? 1 : 0));
     const progressPercent = `${Math.round((effectiveCompleted / 3) * 100)}%`;
 
     const handleExitSession = () => {
@@ -1094,7 +1091,10 @@ export default function SetManager({
 
                 {/* Tracing / Matching Area */}
                 <View className="flex-1 px-6 pb-6 mt-1">
-                    <View className={isFrameless ? "flex-1" : "flex-1 bg-[#FCFCFC] border-[1.5px] border-[#EBE5E5] rounded-2xl overflow-hidden"}>
+                    <View
+                        pointerEvents={isActivityDone ? 'none' : 'auto'}
+                        className={isFrameless ? "flex-1" : "flex-1 bg-[#FCFCFC] border-[1.5px] border-[#EBE5E5] rounded-2xl overflow-hidden"}
+                    >
                         {!isSetComplete && (
                             <ActivityRenderer
                                 key={`${currentActivity.id}-${completedCount}`}
@@ -1106,25 +1106,6 @@ export default function SetManager({
                         )}
                     </View>
                 </View>
-
-                {/* CHECK / NEXT ACTIVITY Button */}
-                {!isSetComplete && currentTask?.type !== 'counting' && (
-                    <View className="px-6 pb-4">
-                        <Pressable
-                            disabled={!isActivityDone || isSaving}
-                            onPress={handleCheckPress}
-                            className={`w-full flex items-center justify-center border-b-[4px] p-[10px] h-[60px] rounded-full ${isActivityDone && !isSaving ? 'bg-[#62A9E6] border-[#5298D4]' : 'bg-[#D1D5DB] border-[#9CA3AF]'}`}
-                        >
-                            {isSaving ? (
-                                <ActivityIndicator color="white" size="small" />
-                            ) : (
-                                <Text className="text-white font-fredoka-regular text-2xl">
-                                    {successMode ? (language === 'tl' ? 'Susunod na Gawain' : 'Next Activity') : 'CHECK'}
-                                </Text>
-                            )}
-                        </Pressable>
-                    </View>
-                )}
 
             </SafeAreaView>
 
@@ -1155,38 +1136,21 @@ export default function SetManager({
                             </Text>
                         </View>
 
-                        {/* Action Buttons */}
-                        <View className="w-full gap-4">
-                            <Pressable
-                                onPress={() => setShowFeedbackModal(true)}
-                                className="w-full h-14 bg-[#10B981] border-b-[4px] border-[#059669] rounded-full items-center justify-center flex-row gap-2 active:bg-[#059669]"
-                            >
-                                <Feather name="check-circle" size={22} color="white" />
-                                <Text className="text-white font-fredoka-regular text-xl">
-                                    Add Feedback Now
-                                </Text>
-                            </Pressable>
-
+                        {/* Action Button */}
+                        <View className="w-full">
                             <Pressable
                                 onPress={handleExitSession}
-                                className="w-full h-14 bg-[#F3F4F6] border-b-[4px] border-[#D1D5DB] rounded-full items-center justify-center active:bg-[#E5E7EB]"
+                                className="w-full h-14 bg-[#10B981] border-b-[4px] border-[#059669] rounded-full items-center justify-center flex-row gap-2 active:bg-[#059669]"
                             >
-                                <Text className="text-[#4B5563] font-fredoka-regular text-xl">
-                                    Maybe Later
+                                <Ionicons name="checkmark-circle" size={24} color="white" />
+                                <Text className="text-white font-fredoka-regular text-2xl">
+                                    {language === 'tl' ? 'Tapos Na!' : 'Done!'}
                                 </Text>
                             </Pressable>
                         </View>
                     </View>
                 </View>
             )}
-
-            <FeedbackModal
-                visible={showFeedbackModal}
-                sessionId={savedSetSessionId}
-                activityTitle={`Set of 3 Activities`}
-                onClose={() => { setShowFeedbackModal(false); handleExitSession(); }}
-                onSuccess={() => { setShowFeedbackModal(false); handleExitSession(); }}
-            />
 
             <AchievementUnlockScreen
                 visible={showAchievementScreen}

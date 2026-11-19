@@ -44,7 +44,7 @@ export function StatsCard({ type, count, isTablet, onPress }: StatsCardProps) {
       className={`border-[4px] bg-white justify-center items-center ${
         onPress ? 'active:opacity-90 active:scale-95' : ''
       } ${
-        isTablet ? 'rounded-[32px] p-4 flex-1 min-w-[160px]' : 'rounded-[20px] p-3 flex-1 min-w-[100px]'
+        isTablet ? 'rounded-[32px] p-4 flex-1 min-w-[160px]' : 'rounded-[20px] px-2 py-3.5 flex-1 min-w-[95px]'
       }`}
       style={{
         borderColor,
@@ -53,32 +53,32 @@ export function StatsCard({ type, count, isTablet, onPress }: StatsCardProps) {
         shadowOpacity: 1,
         shadowRadius: 0,
         elevation: 2,
-        ...(!isTablet ? { aspectRatio: 1 } : { height: 155 }),
+        height: isTablet ? 155 : 125,
       }}
     >
       {/* Label */}
       <Text
         className={`font-fredoka-one tracking-[0.06em] text-center ${
-          isTablet ? 'text-sm mt-2' : 'text-[10px] mt-2'
+          isTablet ? 'text-sm mt-1' : 'text-xs mt-0.5'
         }`}
-        style={{ color: labelColor, letterSpacing: isTablet ? 1.2 : 0.6 }}
+        style={{ color: labelColor, letterSpacing: isTablet ? 1.2 : 0.8 }}
         numberOfLines={1}
       >
         {label}
       </Text>
 
       {/* Icon */}
-      <View className={`justify-center items-center ${isTablet ? 'my-2' : 'my-1.5'}`}>
+      <View className={`justify-center items-center ${isTablet ? 'my-2' : 'my-1'}`}>
         <Icon
-          width={isTablet ? 48 : 32}
-          height={isTablet ? 48 : 32}
+          width={isTablet ? 48 : 38}
+          height={isTablet ? 48 : 38}
         />
       </View>
 
       {/* Count */}
       <Text
         className={`font-fredoka-one text-[#484A4B] text-center ${
-          isTablet ? 'text-4xl mb-2' : 'text-[26px] mb-2'
+          isTablet ? 'text-4xl' : 'text-[28px]'
         }`}
       >
         {count}

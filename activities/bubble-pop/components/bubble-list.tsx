@@ -12,6 +12,7 @@ type Props = {
     isHintActive?: boolean;
     hintLevel?: number;
     targetColor?: BubbleColor;
+    containerHeight?: number;
 };
 
 export default function BubbleList({
@@ -23,6 +24,7 @@ export default function BubbleList({
     isHintActive = false,
     hintLevel = 1,
     targetColor,
+    containerHeight,
 }: Props) {
     return (
         <>
@@ -42,6 +44,7 @@ export default function BubbleList({
                         onPopFinished={() => onPopFinished?.(bubble.id)}
                         onRecycle={() => onRecycle(bubble.id)}
                         isHighlighted={isHighlighted}
+                        containerHeight={containerHeight}
                     />
                 );
             })}

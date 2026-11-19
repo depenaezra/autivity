@@ -33,6 +33,7 @@ export default function Bubble({
     onPopFinished,
     onRecycle,
     isHighlighted = false,
+    containerHeight,
 }: BubbleProps) {
 
     const [isPopped, setIsPopped] = useState(false);
@@ -43,8 +44,8 @@ export default function Bubble({
 
     // Deep clone Lottie JSON source so lottie-web mutations don't corrupt subsequent bubbles
     const lottieSource = useMemo(
-        () => JSON.parse(JSON.stringify(bubblePopAnimation)),
-        []
+        () => (isPopped ? JSON.parse(JSON.stringify(bubblePopAnimation)) : null),
+        [isPopped]
     );
 
     const translateY = useSharedValue(y);
@@ -68,13 +69,14 @@ export default function Bubble({
     };
 
     useEffect(() => {
-        const screenHeight = Dimensions.get("window").height;
-        const totalDistance = screenHeight + 250; // Distance from bottom (screenHeight+50) to -200
-        const distance = y - (-200); // Remaining distance for this bubble
-        const duration = Math.max(1000, Math.round((distance / totalDistance) * speed));
+        const screenHeight = containerHeight && containerHeight > 0 ? containerHeight : Dimensions.get("window").height;
+        const targetY = -120;
+        const totalDistance = screenHeight + 130;
+        const distance = y - targetY;
+        const duration = Math.max(800, Math.round((distance / totalDistance) * speed));
 
         translateY.value = withTiming(
-            -200,
+            targetY,
             {
                 duration,
                 easing: Easing.linear,
@@ -112,7 +114,10 @@ export default function Bubble({
 
     const animatedStyle = useAnimatedStyle(() => {
         return {
-            top: translateY.value,
+            transform: [
+                { translateY: translateY.value },
+                ...(scale ? [{ scale }] : []),
+            ],
         };
     });
 
@@ -122,7 +127,7 @@ export default function Bubble({
                 styles.container,
                 {
                     left: x,
-                    transform: scale ? [{ scale }] : undefined,
+
                 },
                 animatedStyle,
             ]}
@@ -150,7 +155,7 @@ export default function Bubble({
                     />
                 )}
 
-                {isPopped && (
+                {isPopped && lottieSource && (
                     <LottieView
                         ref={lottieRef}
                         source={lottieSource}
@@ -172,16 +177,15 @@ export default function Bubble({
 
 
 const styles = StyleSheet.create({
-
     container: {
         position: "absolute",
+        top: 0,
+        left: 0,
     },
-
     pressable: {
         width: 100,
         height: 100,
     },
-
     lottie: {
         position: "absolute",
         width: 180,
@@ -189,5 +193,4 @@ const styles = StyleSheet.create({
         left: -40,
         top: -40,
     },
-
 });

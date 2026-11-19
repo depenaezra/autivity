@@ -1,4 +1,5 @@
-import { TracingActivity } from '@/activities/tracing';
+import { TracingActivity, getTracingActivityByPath } from '@/activities/tracing';
+import { CopyLetterActivity } from '@/activities/copy-letter';
 import React from 'react';
 import DragDropActivity from '@/activities/drag-drop/components/dragdrop-activity';
 import BubbleActivity from '@/activities/bubble-pop/components/bubble-activity';
@@ -82,11 +83,44 @@ export default function ActivityRenderer({ activity, onComplete, onFeedback, onI
                 />
             );
 
+        case 'copy':
+        case 'copying':
+        case 'copy-letter':
+        case 'copy-letters':
+            return (
+                <CopyLetterActivity
+                    activity={activity}
+                    onComplete={onComplete}
+                    onFeedback={onFeedback}
+                    onIncorrectAttempt={onIncorrectAttempt}
+                    hintSignal={hintSignal}
+                />
+            );
+
         case 'tracing':
+            if (
+                activity?.sub_category === 'Copy Letters' ||
+                activity?.sub_category?.toLowerCase()?.includes('copy') ||
+                (typeof activity?.path === 'string' && activity.path.includes('copy'))
+            ) {
+                return (
+                    <CopyLetterActivity
+                        activity={activity}
+                        onComplete={onComplete}
+                        onFeedback={onFeedback}
+                        onIncorrectAttempt={onIncorrectAttempt}
+                        hintSignal={hintSignal}
+                    />
+                );
+            }
             // Pass the specific data into your reusable engine
             return (
                 <TracingActivity
-                    activity={activity.data}
+                    activity={(() => {
+                        const pathId = activity?.path || activity?.data?.activity_id || activity?.content_data?.activity_id;
+                        const local = pathId ? getTracingActivityByPath(pathId) : undefined;
+                        return local || activity.data;
+                    })()}
                     onComplete={onComplete}
                     onFeedback={onFeedback}
                     onIncorrectAttempt={onIncorrectAttempt}

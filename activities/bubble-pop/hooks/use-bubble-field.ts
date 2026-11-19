@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Dimensions } from "react-native";
 
 import { BubbleColor } from "../utils/bubble-assets";
@@ -10,9 +10,12 @@ type Props = {
     speed: number;
     availableColors: BubbleColor[];
 
-    // [ADDED]: Used for Color Pop.
+    // Used for Color Pop.
     targetColor?: BubbleColor;
     distractorColors?: BubbleColor[];
+    fieldWidth?: number;
+    fieldHeight?: number;
+    resetKey?: string;
 };
 
 export default function useBubbleField({
@@ -21,14 +24,19 @@ export default function useBubbleField({
     availableColors,
     targetColor,
     distractorColors,
+    fieldWidth,
+    fieldHeight,
+    resetKey,
 }: Props) {
-    const { width, height } = Dimensions.get("window");
+    const { width: windowWidth, height: windowHeight } = Dimensions.get("window");
+    const width = fieldWidth && fieldWidth > 0 ? fieldWidth : (windowWidth || 800);
+    const height = fieldHeight && fieldHeight > 0 ? fieldHeight : (windowHeight > windowWidth ? windowHeight * 0.55 : Math.max(350, windowHeight - 380));
 
     const [bubbles, setBubbles] = useState<BubbleData[]>(() => {
         return spawnInitialBubbles({
             bubbleCount,
-            screenWidth: width || 800,
-            screenHeight: height || 600,
+            screenWidth: width,
+            screenHeight: height,
             speed,
             availableColors,
             targetColor,
@@ -36,8 +44,29 @@ export default function useBubbleField({
         });
     });
 
+    const hasInitializedRef = useRef(true);
+    const lastResetKeyRef = useRef(resetKey);
+
     useEffect(() => {
-        if (width > 0 && height > 0) {
+        const isReset = resetKey !== undefined && resetKey !== lastResetKeyRef.current;
+        if (isReset) {
+            lastResetKeyRef.current = resetKey;
+            setBubbles(
+                spawnInitialBubbles({
+                    bubbleCount,
+                    screenWidth: width,
+                    screenHeight: height,
+                    speed,
+                    availableColors,
+                    targetColor,
+                    distractorColors,
+                })
+            );
+            return;
+        }
+
+        if (!hasInitializedRef.current) {
+            hasInitializedRef.current = true;
             setBubbles(
                 spawnInitialBubbles({
                     bubbleCount,
@@ -50,7 +79,7 @@ export default function useBubbleField({
                 })
             );
         }
-    }, [bubbleCount, speed, width, height, targetColor]);
+    }, [resetKey, width, height, bubbleCount, speed, targetColor]);
 
     const recycleBubble = (id: string) => {
         setBubbles((current) => {

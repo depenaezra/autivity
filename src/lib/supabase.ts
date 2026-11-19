@@ -86,8 +86,12 @@ const ExpoSecureStoreAdapter = {
   },
 };
 
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL as string;
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY as string;
+const supabaseUrl =
+  process.env.EXPO_PUBLIC_SUPABASE_URL ||
+  'https://gvigzpdogneimcftgdmt.supabase.co';
+const supabaseAnonKey =
+  process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+  'sb_publishable_2VCENx-Jd9xKhLmS38W-rQ_vRl3eLR_';
 
 if (!supabaseUrl || !supabaseAnonKey) {
   console.warn('Supabase URL or Publishable Key is missing in process.env!');

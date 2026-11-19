@@ -2,23 +2,17 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, Alert, Pressable, Text, useWindowDimensions, View, ActivityIndicator } from 'react-native';
+import { ActivityIndicator, Alert, Animated, Pressable, Text, useWindowDimensions, View } from 'react-native';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { HeaderButton } from './header-button';
 import { ScreenLayout } from './screen-layout';
 
-import DeleteIcon from '../assets/images/teacher/class/icon-button-delete.svg';
-import HeaderDefaultBg from '../assets/images/teacher/students/header-default-bg.svg';
 import IconClear from '../assets/images/parent/icon-clear.svg';
 import IconRead from '../assets/images/parent/icon-read.svg';
 import IconUnread from '../assets/images/parent/icon-unread.svg';
+import DeleteIcon from '../assets/images/teacher/class/icon-button-delete.svg';
+import HeaderDefaultBg from '../assets/images/teacher/students/header-default-bg.svg';
 
-import ParentEvaluationReviewModal from './parent/parent-evaluation-review-modal';
-import ParentMilestoneDetailModal, { ParentMilestoneItem } from './parent/parent-milestone-detail-modal';
-import { ParentEmotionModal, ParentEmotionData } from './parent/parent-emotion-modal';
-import { EvaluationReviewModal } from './teacher/analytics/evaluation-review-modal';
-import FeedbackModal from './feedback-modal';
-import { getUserProfile } from '../src/services/profile';
 import { supabase } from '../src/lib/supabase';
 import {
   clearAllNotifications,
@@ -27,6 +21,12 @@ import {
   markNotificationRead,
   markNotificationUnread,
 } from '../src/services/notifications';
+import { getUserProfile } from '../src/services/profile';
+import FeedbackModal from './feedback-modal';
+import { ParentEmotionData, ParentEmotionModal } from './parent/parent-emotion-modal';
+import ParentEvaluationReviewModal from './parent/parent-evaluation-review-modal';
+import ParentMilestoneDetailModal, { ParentMilestoneItem } from './parent/parent-milestone-detail-modal';
+import { EvaluationReviewModal } from './teacher/analytics/evaluation-review-modal';
 
 export interface NotificationItem {
   id: string;
@@ -135,7 +135,7 @@ function NotificationCard({
             onPress={() => {
               try {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              } catch {}
+              } catch { }
               swipeableRef.current?.close();
               onMarkRead(item.id);
             }}
@@ -146,9 +146,8 @@ function NotificationCard({
               <IconRead width={isTablet ? 31 : 25} height={isTablet ? 31 : 25} />
             </View>
             <Text
-              className={`font-fredoka-one text-[#62A9E6] text-center w-full px-1 ${
-                isTablet ? 'text-[12px] mt-2' : 'text-[10px] mt-1.5'
-              }`}
+              className={`font-fredoka-one text-[#62A9E6] text-center w-full px-1 ${isTablet ? 'text-[12px] mt-2' : 'text-[10px] mt-1.5'
+                }`}
               numberOfLines={1}
               adjustsFontSizeToFit
             >
@@ -168,7 +167,7 @@ function NotificationCard({
             onPress={() => {
               try {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              } catch {}
+              } catch { }
               swipeableRef.current?.close();
               onMarkUnread(item.id);
             }}
@@ -179,9 +178,8 @@ function NotificationCard({
               <IconUnread width={isTablet ? 34 : 28} height={isTablet ? 34 : 28} />
             </View>
             <Text
-              className={`font-fredoka-one text-[#62A9E6] text-center w-full px-1 ${
-                isTablet ? 'text-[12px] mt-2' : 'text-[10px] mt-1.5'
-              }`}
+              className={`font-fredoka-one text-[#62A9E6] text-center w-full px-1 ${isTablet ? 'text-[12px] mt-2' : 'text-[10px] mt-1.5'
+                }`}
               numberOfLines={1}
               adjustsFontSizeToFit
             >
@@ -201,7 +199,7 @@ function NotificationCard({
             onPress={() => {
               try {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              } catch {}
+              } catch { }
               swipeableRef.current?.close();
               onDelete(item.id);
             }}
@@ -212,9 +210,8 @@ function NotificationCard({
               <DeleteIcon width={isTablet ? 26 : 22} height={isTablet ? 26 : 22} />
             </View>
             <Text
-              className={`font-fredoka-one text-[#FF3B3F] text-center w-full px-1 ${
-                isTablet ? 'text-[12px] mt-2' : 'text-[10px] mt-1.5'
-              }`}
+              className={`font-fredoka-one text-[#FF3B3F] text-center w-full px-1 ${isTablet ? 'text-[12px] mt-2' : 'text-[10px] mt-1.5'
+                }`}
               numberOfLines={1}
               adjustsFontSizeToFit
             >
@@ -241,9 +238,8 @@ function NotificationCard({
           swipeableRef.current?.close();
           onPress?.();
         }}
-        className={`bg-white border-[4px] active:scale-[0.98] transition-transform ${
-          isTablet ? 'rounded-[32px] p-6' : 'rounded-[20px] p-4'
-        } ${item.isRead ? 'border-[#F1F1F1]' : 'border-[#BBE8FB]'}`}
+        className={`bg-white border-[4px] active:scale-[0.98] transition-transform ${isTablet ? 'rounded-[32px] p-6' : 'rounded-[20px] p-4'
+          } ${item.isRead ? 'border-[#F1F1F1]' : 'border-[#BBE8FB]'}`}
         style={{
           shadowColor: item.isRead ? '#F1F1F1' : '#BBE8FB',
           shadowOffset: { width: 0, height: 2 },
@@ -269,27 +265,24 @@ function NotificationCard({
                   <View className="w-2.5 h-2.5 rounded-full bg-[#62A9E6]" />
                 )}
                 <Text
-                  className={`font-fredoka-one text-[#484A4B] flex-1 ${
-                    isTablet ? 'text-xl' : 'text-lg'
-                  }`}
+                  className={`font-fredoka-one text-[#484A4B] flex-1 ${isTablet ? 'text-xl' : 'text-lg'
+                    }`}
                   numberOfLines={1}
                 >
                   {item.title}
                 </Text>
               </View>
               <Text
-                className={`font-quicksand-medium text-[#9CA3AF] ${
-                  isTablet ? 'text-sm' : 'text-xs'
-                }`}
+                className={`font-quicksand-medium text-[#9CA3AF] ${isTablet ? 'text-sm' : 'text-xs'
+                  }`}
               >
                 {item.timestamp}
               </Text>
             </View>
 
             <Text
-              className={`font-quicksand-medium text-[#4B5563] leading-relaxed ${
-                isTablet ? 'text-base' : 'text-sm'
-              }`}
+              className={`font-quicksand-medium text-[#4B5563] leading-relaxed ${isTablet ? 'text-base' : 'text-sm'
+                }`}
             >
               {item.message}
             </Text>
@@ -310,8 +303,8 @@ export function NotificationsScreen({
   const { width } = useWindowDimensions();
   const isTablet = width >= 600;
 
-  const [items, setItems] = useState<NotificationItem[]>(notifications);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [items, setItems] = useState<NotificationItem[]>(notifications || []);
+  const [isLoading, setIsLoading] = useState<boolean>(!notifications || notifications.length === 0);
   const [userRole, setUserRole] = useState<'parent' | 'teacher' | null>(null);
 
   // Parent Modals
@@ -334,7 +327,6 @@ export function NotificationsScreen({
   const openSwipeableRef = useRef<any>(null);
 
   const fetchUserNotifications = async () => {
-    setIsLoading(true);
     try {
       const [data, profile] = await Promise.all([
         getNotificationsForUser(),
@@ -353,15 +345,16 @@ export function NotificationsScreen({
 
   useFocusEffect(
     useCallback(() => {
-      fetchUserNotifications();
-    }, [])
+      if (!notifications || notifications.length === 0) {
+        fetchUserNotifications();
+      }
+    }, [notifications])
   );
 
   useEffect(() => {
     if (notifications && notifications.length > 0) {
       setItems(notifications);
-    } else {
-      fetchUserNotifications();
+      setIsLoading(false);
     }
   }, [notifications]);
 
@@ -698,12 +691,18 @@ export function NotificationsScreen({
       stickyHeader={true}
     >
       <View className={`flex-1 ${isTablet ? 'p-8' : 'p-5'}`}>
-        {items.length === 0 ? (
+        {isLoading ? (
+          <View className="flex-1 items-center justify-center py-24">
+            <ActivityIndicator size="large" color="#62A9E6" />
+            <Text className="font-quicksand-bold text-[#9CA3AF] text-sm mt-3">
+              Loading notifications...
+            </Text>
+          </View>
+        ) : items.length === 0 ? (
           <View className="flex-1 items-center justify-center py-20 px-6">
             <View
-              className={`rounded-full bg-[#EBF5FF] items-center justify-center mb-6 border-[3px] border-[#BBE8FB] ${
-                isTablet ? 'w-28 h-28' : 'w-24 h-24'
-              }`}
+              className={`rounded-full bg-[#EBF5FF] items-center justify-center mb-6 border-[3px] border-[#BBE8FB] ${isTablet ? 'w-28 h-28' : 'w-24 h-24'
+                }`}
             >
               <Ionicons
                 name="notifications-off-outline"
@@ -712,16 +711,14 @@ export function NotificationsScreen({
               />
             </View>
             <Text
-              className={`font-fredoka-one text-[#484A4B] text-center mb-2 ${
-                isTablet ? 'text-3xl' : 'text-2xl'
-              }`}
+              className={`font-fredoka-one text-[#484A4B] text-center mb-2 ${isTablet ? 'text-3xl' : 'text-2xl'
+                }`}
             >
               You have no notifications yet.
             </Text>
             <Text
-              className={`font-quicksand-medium text-[#9CA3AF] text-center max-w-md ${
-                isTablet ? 'text-xl' : 'text-base'
-              }`}
+              className={`font-quicksand-medium text-[#9CA3AF] text-center max-w-md ${isTablet ? 'text-xl' : 'text-base'
+                }`}
             >
               You're all caught up! Check back later for new updates.
             </Text>

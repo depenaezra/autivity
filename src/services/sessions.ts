@@ -195,6 +195,27 @@ export const validateSession = async (
     return data;
 };
 
+export const resetSessionEvaluation = async (sessionId: string) => {
+    const { data, error } = await supabase
+        .from('student_sessions')
+        .update({
+            rubric_evaluation: null,
+            teacher_feedback: null,
+            status: 'pending',
+            validated_at: null,
+        })
+        .eq('id', sessionId)
+        .select()
+        .single();
+
+    if (error) {
+        console.error("Error resetting session evaluation:", error);
+        throw new Error(error.message || "Failed to reset session evaluation");
+    }
+
+    return data;
+};
+
 // Fetch the very latest session for a specific student
 export const getLatestStudentSession = async (studentId: string) => {
     const { data, error } = await supabase

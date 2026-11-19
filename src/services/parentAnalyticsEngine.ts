@@ -682,3 +682,147 @@ export function getStatsInsights(stats: {
   return { performanceBadge, staminaBadge, consistencyBadge };
 }
 
+export interface HomeActivitySuggestion {
+  id: string;
+  icon: string;
+  title: string;
+  description: string;
+  domainName: string;
+}
+
+/**
+ * Deterministic SPED At-Home Activity Engine:
+ * Generates tailored, evidence-based home activities based on:
+ * 1. Child's lowest-scoring or focus developmental domain.
+ * 2. Emotional regulation check-in trends (Yellow/Blue zones vs. Green).
+ * 3. Daily routine and functional living independence.
+ */
+export function generateHomeActivities(
+  sessions: ParentSessionRecord[] = [],
+  masterDomains: { name: string; subSkills: string[] }[] = [],
+  checkIns: { emotion: string; check_in_date?: string }[] = [],
+  childName: string = 'Learner',
+  language: 'en' | 'tl' = 'en'
+): HomeActivitySuggestion[] {
+  const isTl = language === 'tl';
+  const firstName = childName.split(' ')[0] || childName;
+
+  // 1. Identify Lowest Performing or Least Practiced Domain
+  const domainScores: Record<string, { totalScore: number; count: number }> = {};
+  sessions.forEach((s) => {
+    if (s.status === 'validated' && s.rubricEvaluation) {
+      const r = s.rubricEvaluation;
+      const sum =
+        (r.looking_at_objects || 0) +
+        (r.concentrating || 0) +
+        (r.performing_task || 0) +
+        (r.following_instructions || 0) +
+        (r.completed_work || 0);
+      const score = sum / 5;
+      (s.skill_domain || []).forEach((dom) => {
+        const key = dom.trim().toLowerCase();
+        if (!domainScores[key]) domainScores[key] = { totalScore: 0, count: 0 };
+        domainScores[key].totalScore += score;
+        domainScores[key].count += 1;
+      });
+    }
+  });
+
+  let lowestDomain = 'social';
+  let minAvg = 999;
+  Object.entries(domainScores).forEach(([key, val]) => {
+    const avg = val.count > 0 ? val.totalScore / val.count : 0;
+    if (avg < minAvg) {
+      minAvg = avg;
+      lowestDomain = key;
+    }
+  });
+
+  // Home Activity 1: Targeted Developmental Domain
+  let activity1: HomeActivitySuggestion;
+  if (lowestDomain.includes('cog') || lowestDomain.includes('sort') || lowestDomain.includes('think')) {
+    activity1 = {
+      id: 'cog_laundry',
+      icon: '🧦',
+      title: isTl ? 'Pares-Pares ng Medyas at Kubyertos' : 'Laundry Match-Up',
+      description: isTl
+        ? `Hikayatin si ${firstName} na magpares ng malilinis na medyas o magbukod ng kutsara at tinidor bago kumain. Pinatitibay nito ang visual categorization nang walang screen time!`
+        : `Ask ${firstName} to help match clean socks into pairs or group spoons from forks during meal setup. This reinforces 2-attribute visual categorization without screen time!`,
+      domainName: isTl ? 'Kaisipan at Pagbubukod' : 'Thinking & Sorting',
+    };
+  } else if (lowestDomain.includes('motor') || lowestDomain.includes('hand') || lowestDomain.includes('movement')) {
+    activity1 = {
+      id: 'motor_pinch',
+      icon: '🪙',
+      title: isTl ? 'Pinch at Hulog ng Barya' : 'Pinch & Drop Play',
+      description: isTl
+        ? `Maghulog ng malalaking barya o buttons sa alkansya, o magbilog ng playdough gamit ang hinlalaki at hintuturo upang patatagin ang pincer grasp na kailangan sa pagsulat.`
+        : `Drop large coins or buttons into a piggy bank slot, or roll small playdough balls using thumb and index fingers to strengthen the pincer grasp used for handwriting.`,
+      domainName: isTl ? 'Kamay at Paggalaw' : 'Hands & Movement',
+    };
+  } else if (lowestDomain.includes('comm') || lowestDomain.includes('aac') || lowestDomain.includes('speech')) {
+    activity1 = {
+      id: 'comm_snack_choice',
+      icon: '🍽️',
+      title: isTl ? 'Pagpili sa Oras ng Merienda' : 'Choice Board Snack Time',
+      description: isTl
+        ? `Magpakita ng dalawang pagpipiliang pagkain o larawan at hikayatin si ${firstName} na ituro o sabihin ang nais bago ibigay. Nagpapatibay ng malinaw na pagpapahayag.`
+        : `Present two real snack items or picture cards and encourage ${firstName} to point, vocalize, or tap their preferred item before receiving it. Builds functional communication.`,
+      domainName: isTl ? 'Komunikasyon' : 'Communication & Speech',
+    };
+  } else {
+    // Default Social / Turn-Taking
+    activity1 = {
+      id: 'soc_turn_taking',
+      icon: '⏱️',
+      title: isTl ? 'Larong "Salitang Pagkakataon"' : '"My Turn, Your Turn" Game',
+      description: isTl
+        ? `Habang nagmemerienda o naglalaro ng blocks, magpalitan sa paghawak ng gamit na may masayang 5-segundong bilang ("Pagkakataon ni Nanay... 1, 2, 3... ngayon si ${firstName} naman!").`
+        : `While snacking or playing with blocks, practice passing an item back and forth with a friendly 5-count ("Mom's turn... 1, 2, 3... now ${firstName}'s turn!"). Teaches patience and joint attention.`,
+      domainName: isTl ? 'Pakikipagkapwa' : 'Sharing & Social',
+    };
+  }
+
+  // Home Activity 2: Emotional Regulation & State Transition
+  const yellowBlueCount = checkIns.filter((c) => {
+    const e = (c.emotion || '').toLowerCase();
+    return e.includes('nervous') || e.includes('anxious') || e.includes('excited') || e.includes('tired') || e.includes('sad');
+  }).length;
+
+  let activity2: HomeActivitySuggestion;
+  if (yellowBlueCount > 0) {
+    activity2 = {
+      id: 'sensory_transition_timer',
+      icon: '🌙',
+      title: isTl ? '3-Minutong Babala sa Oras' : 'Visual 3-Minute Warning',
+      description: isTl
+        ? `Bago patayin ang paboritong palabas o maghanda sa pagtulog, magbigay ng 3-minutong paalala gamit ang daliri o orasan. Nakatutulong ito upang manatiling kalmado si ${firstName} sa paglipat ng gawain.`
+        : `Before turning off favorite shows or heading to bed, give a consistent 3-minute visual heads-up timer. This keeps ${firstName} in the calm green zone during bedtime transitions.`,
+      domainName: isTl ? 'Pang-unawa sa Pandama' : 'Sensory & Routine',
+    };
+  } else {
+    activity2 = {
+      id: 'sensory_deep_breathing',
+      icon: '🎈',
+      title: isTl ? 'Pahingang Paghihip ng Lobo' : 'Deep Belly Balloon Breathing',
+      description: isTl
+        ? `Magsanay ng mabagal at malalim na paghinga bago mag-aral—kunwaring nagpapalobo sa tiyan at marahang ibinubuga ang hangin nang may ngiti. Nagpapanatili ng sigla at pokus!`
+        : `Practice gentle deep breaths together before study time—pretend to slowly inflate a colorful belly balloon and gently release it with a smile. Keeps focus and emotional stamina high!`,
+      domainName: isTl ? 'Pagpapakalma' : 'Emotional Regulation',
+    };
+  }
+
+  // Home Activity 3: Functional Independence Routine
+  const activity3: HomeActivitySuggestion = {
+    id: 'adaptive_backpack_routine',
+    icon: '🎒',
+    title: isTl ? 'Gawain sa Pag-aayos ng Bag' : 'Independent Backpack Routine',
+    description: isTl
+      ? `Anyayahan si ${firstName} na buksan ang sariling bag, ilabas ang tumbler ng tubig, at ilagay sa mesa tuwing hapon. Nagbubuo ng tiwala sa sarili at kalayaan sa pang-araw-araw na gawi.`
+      : `Invite ${firstName} to unzip their own school bag, take out their water tumbler, and place it on the counter each afternoon. Builds confidence and self-direction in daily living skills.`,
+    domainName: isTl ? 'Pang-araw-araw na Gawi' : 'Daily Life Independence',
+  };
+
+  return [activity1, activity2, activity3];
+}
+

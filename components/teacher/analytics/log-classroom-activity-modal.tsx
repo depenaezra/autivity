@@ -46,7 +46,7 @@ export function LogClassroomActivityModal({
   isTablet: isTabletProp,
 }: LogClassroomActivityModalProps) {
   const { width } = useWindowDimensions();
-  const isTablet = isTabletProp ?? width >= 768;
+  const isTablet = isTabletProp ?? width >= 600;
 
   // Form State
   const [students, setStudents] = useState<StudentOption[]>([]);

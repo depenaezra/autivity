@@ -50,6 +50,7 @@ export type BubbleProps = {
     onPopFinished?: () => void;
     onRecycle: () => void;
     isHighlighted?: boolean;
+    containerHeight?: number;
 };
 
 export type BubbleContentData = {

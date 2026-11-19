@@ -15,12 +15,13 @@ import {
   getParentDashboardData,
   ParentDashboardData,
 } from '../../src/services/parentDashboard';
-import { filterSessionsByPeriod, FilterPeriod, getFilterLabel } from '../../src/utils/dashboardFilters';
+import { filterSessionsByPeriod, filterSessionsByCustomRange, FilterPeriod, getFilterLabel } from '../../src/utils/dashboardFilters';
 
 import { ParentActivityPerformance } from '../../components/parent/parent-activity-performance';
 import { ParentCompareAnalytics } from '../../components/parent/parent-compare-analytics';
 import { ParentDashboardSkeleton } from '../../components/parent/parent-dashboard-skeleton';
 import { ParentDomainExplainers } from '../../components/parent/parent-domain-explainers';
+import { ParentExportModal, ParentExportOptions } from '../../components/parent/parent-export-modal';
 import { ParentFilterModal } from '../../components/parent/parent-filter-modal';
 import { ParentNarrativeSummary } from '../../components/parent/parent-narrative-summary';
 import { ParentProgressTrend } from '../../components/parent/parent-progress-trend';
@@ -47,6 +48,7 @@ export default function ParentAnalyticsScreen() {
   const [language, setLanguage] = useState<'en' | 'tl'>('en');
   const [isFilterModalVisible, setFilterModalVisible] = useState(false);
   const [isLegendModalVisible, setLegendModalVisible] = useState(false);
+  const [isExportModalVisible, setExportModalVisible] = useState(false);
 
   // Load language preference from AsyncStorage
   useEffect(() => {
@@ -198,25 +200,70 @@ export default function ParentAnalyticsScreen() {
     });
   }, [filteredSessionsForStats, dashboard]);
 
-  const handleExportPdf = async () => {
+  const handleOpenExportModal = () => {
+    setExportModalVisible(true);
+  };
+
+  const handleConfirmExport = async (options: ParentExportOptions) => {
     if (!dashboard || !dashboard.student) return;
     setIsExporting(true);
     try {
+      // 1. Filter sessions strictly within chosen timeframe and activity source
+      let targetSessions = dashboard.sessions || [];
+      if (options.activityType !== 'all') {
+        targetSessions = targetSessions.filter((s) => s.activityType === options.activityType);
+      }
+
+      if (options.period === 'custom') {
+        targetSessions = filterSessionsByCustomRange(
+          targetSessions,
+          options.startDate || null,
+          options.endDate || null
+        );
+      } else {
+        targetSessions = filterSessionsByPeriod(targetSessions, options.period);
+      }
+
+      // 2. Recompute metrics for the filtered subset
+      const evaluated = targetSessions.filter((s) => s.status === 'validated' && s.rubricEvaluation);
+      let totalScoreSum = 0;
+      evaluated.forEach((s) => {
+        const r = s.rubricEvaluation!;
+        const sum =
+          (r.looking_at_objects || 0) +
+          (r.concentrating || 0) +
+          (r.performing_task || 0) +
+          (r.following_instructions || 0) +
+          (r.completed_work || 0);
+        totalScoreSum += Math.round((sum / 25) * 100);
+      });
+      const computedPerformance =
+        evaluated.length > 0 ? Math.round(totalScoreSum / evaluated.length) : stats.overallPerformance;
+      const computedTotalSessions = targetSessions.length;
+      const totalDurationSeconds = targetSessions.reduce((acc, s) => acc + (s.durationSeconds || 0), 0);
+      const computedAvgSeconds =
+        computedTotalSessions > 0
+          ? Math.round(totalDurationSeconds / computedTotalSessions)
+          : stats.avgSessionSeconds || 0;
+
+      // 3. Export PDF with revised 2-page family progress bulletin
       await exportChildReportPdf(
         {
           ...dashboard,
-          sessions: filteredSessionsForStats,
+          sessions: targetSessions,
         },
         {
-          overallPerformance: stats.overallPerformance,
-          avgSessionMinutes: stats.avgSessionMinutes,
-          avgSessionSeconds: stats.avgSessionSeconds,
-          totalSessions: stats.totalSessions,
+          overallPerformance: computedPerformance,
+          avgSessionMinutes: Math.round(computedAvgSeconds / 60),
+          avgSessionSeconds: computedAvgSeconds,
+          totalSessions: computedTotalSessions,
           skillBreakdown: radarData,
         },
-        getFilterLabel(globalFilter),
-        activityType
+        options.timeframeLabel,
+        options.activityType,
+        language
       );
+      setExportModalVisible(false);
     } catch (err: any) {
       Alert.alert('Could not create PDF', err.message || 'Error exporting report');
     } finally {
@@ -286,7 +333,7 @@ export default function ParentAnalyticsScreen() {
               {/* Master Download Report Button */}
               {!isCompareMode && (
                 <HeaderButton
-                  onPress={handleExportPdf}
+                  onPress={handleOpenExportModal}
                   disabled={isExporting}
                   icon={
                     isExporting ? (
@@ -525,6 +572,17 @@ export default function ParentAnalyticsScreen() {
         onClose={() => setLegendModalVisible(false)}
         isTablet={isTablet}
         role="parent"
+      />
+
+      {/* PARENT LEARNING REPORT EXPORT MODAL */}
+      <ParentExportModal
+        visible={isExportModalVisible}
+        onClose={() => setExportModalVisible(false)}
+        isTablet={isTablet}
+        studentName={dashboard?.student?.name}
+        language={language}
+        isExporting={isExporting}
+        onConfirmExport={handleConfirmExport}
       />
     </SafeAreaView>
   );

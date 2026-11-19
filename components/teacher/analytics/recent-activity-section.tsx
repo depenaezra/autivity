@@ -68,7 +68,7 @@ interface RecentActivitySectionProps {
 
 export function RecentActivitySection({ onEvaluationValidated, activityType = 'all' }: RecentActivitySectionProps = {}) {
   const { width } = useWindowDimensions();
-  const isTablet = width >= 768;
+  const isTablet = width >= 600;
 
   const [filter, setFilter] = useState<FilterType>('today');
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
@@ -316,6 +316,7 @@ export function RecentActivitySection({ onEvaluationValidated, activityType = 'a
       <EvaluationReviewModal
         visible={isModalVisible}
         sessionId={selectedSessionId}
+        onResetSuccess={handleFeedbackSuccess}
         onClose={() => {
           setIsModalVisible(false);
           setSelectedSessionId(null);

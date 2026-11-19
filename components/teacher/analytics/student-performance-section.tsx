@@ -65,7 +65,7 @@ function StudentAvatarSkeleton({ isTablet }: { isTablet: boolean }) {
 
 export function StudentPerformanceSection() {
   const { width } = useWindowDimensions();
-  const isTablet = width >= 768;
+  const isTablet = width >= 600;
   const router = useRouter();
 
   const [students, setStudents] = useState<StudentPerformanceOverview[]>([]);

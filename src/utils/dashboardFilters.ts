@@ -167,6 +167,15 @@ export function filterSessionsByPeriod(
 
   const { startDate, endDate } = getDateRangeForFilter(period);
 
+  return filterSessionsByCustomRange(sessions, startDate, endDate);
+}
+
+export function filterSessionsByCustomRange(
+  sessions: ParentSessionRecord[],
+  startDate: Date | null,
+  endDate: Date | null
+): ParentSessionRecord[] {
+  if (!sessions || sessions.length === 0) return [];
   return sessions.filter((s) => {
     const d = s.date instanceof Date ? s.date : new Date(s.date);
     if (startDate && d < startDate) return false;

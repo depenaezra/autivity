@@ -15,42 +15,37 @@ type SpawnOptions = {
 
     availableColors: BubbleColor[];
 
-    // [ADDED]: Used by Color Pop.
     targetColor?: BubbleColor;
     distractorColors?: BubbleColor[];
 
     isInitial?: boolean;
+    forceTarget?: boolean;
 };
 
 const createContent = ({
     availableColors = ["default"],
     targetColor,
     distractorColors = ["white"],
+    forceTarget = false,
 }: SpawnOptions): BubbleContent => {
-
-    // [ADDED]: Color Pop generation.
     if (targetColor) {
-        const shouldSpawnTarget =
-            Math.random() < 0.4;
+        const shouldSpawnTarget = forceTarget || Math.random() < 0.45;
 
         const distractors =
             distractorColors.length > 0
                 ? distractorColors
                 : availableColors.filter(
-                    (color) =>
-                        color !== targetColor
+                    (color) => color !== targetColor
                 );
 
         return {
             type: "color",
-
             color: shouldSpawnTarget
                 ? targetColor
                 : randomItem(distractors.length > 0 ? distractors : ["white"]),
         };
     }
 
-    // [ADDED]: Default Free Pop generation.
     return {
         type: "free",
         color: randomItem(availableColors),
@@ -79,8 +74,20 @@ export const spawnInitialBubbles = ({
     return Array.from({ length: bubbleCount }, (_, i) => {
         const lane = lanes[i];
         const x = lane * laneWidth + Math.random() * (laneWidth * 0.5) + 10;
-        // Start all initial bubbles below screenHeight, staggered so they float up from outside view
-        const y = screenHeight + 15 + (i * 75) + (Math.random() * 20);
+
+        // Start all initial bubbles right at or just beneath the bottom edge.
+        // Bubble 0 is right at the bottom edge (top 15px emerging into view), immediately floating up.
+        // Successive bubbles follow closely so there is zero initial blank screen delay,
+        // and bubbles naturally rise up from the bottom instead of appearing in the middle of the screen.
+        let y: number;
+        if (i === 0) {
+            y = screenHeight - 15;
+        } else {
+            y = screenHeight + 15 + ((i - 1) * 35) + (Math.random() * 10);
+        }
+
+        // For color pop mode, guarantee at least the first bubble has targetColor
+        const forceTarget = Boolean(targetColor && i === 0);
 
         return {
             id: Date.now().toString() + Math.random() + i,
@@ -94,6 +101,7 @@ export const spawnInitialBubbles = ({
                 screenWidth,
                 screenHeight,
                 speed,
+                forceTarget,
             }),
         };
     });
@@ -114,7 +122,8 @@ export const spawnBubble = ({
     // Pick best x coordinate that maximizes distance from existing bubbles near bottom
     let bestX = Math.random() * usableWidth + 10;
     let maxMinDist = -1;
-    const candY = screenHeight + 15;
+    // Spawn just 5px below bottom edge so it emerges within ~0.05s
+    const candY = screenHeight + 5;
 
     for (let attempt = 0; attempt < 8; attempt++) {
         const candX = Math.random() * usableWidth + 10;
@@ -133,10 +142,15 @@ export const spawnBubble = ({
         }
     }
 
+    // In color pop mode, if there are currently no target bubbles in the field, force spawn target
+    const hasTargetInField = targetColor
+        ? existingBubbles.some((b) => b.content.color === targetColor)
+        : true;
+
     return {
         id: Date.now().toString() + Math.random(),
         x: bestX,
-        y: candY + Math.random() * 20,
+        y: candY + Math.random() * 10,
         speed,
         content: createContent({
             availableColors,
@@ -145,6 +159,7 @@ export const spawnBubble = ({
             screenWidth,
             screenHeight,
             speed,
+            forceTarget: targetColor ? !hasTargetInField : false,
         }),
     };
 };

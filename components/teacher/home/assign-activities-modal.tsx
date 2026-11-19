@@ -8,6 +8,7 @@ export const ALL_TRACING_CATEGORIES = [
   { id: 'Shapes', title: 'Shapes Tracing', icon: 'shapes-outline' },
   { id: 'Letters', title: 'Letters Tracing', icon: 'text-outline' },
   { id: 'Numbers', title: 'Numbers Tracing', icon: 'calculator-outline' },
+  { id: 'Copy Letters', title: 'Copy Letters', icon: 'pencil-outline' },
 ];
 
 export const ALL_MATCHING_CATEGORIES = [

@@ -121,7 +121,8 @@ export const traceN: TracingActivityData = {
 export const traceO: TracingActivityData = {
     id: "letter-O",
     paths: [
-        "M 200 50 C 310 50, 310 350, 200 350 C 90 350, 90 50, 200 50" // Circle
+        "M 200 60 C 123 60, 60 123, 60 200 C 60 277, 123 340, 200 340", // Stroke 1: Left arc top-to-bottom
+        "M 200 340 C 277 340, 340 277, 340 200 C 340 123, 277 60, 200 60"  // Stroke 2: Right arc bottom-to-top
     ],
 };
 

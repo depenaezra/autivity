@@ -35,9 +35,20 @@ export function getTracingActivityByPath(path: string): TracingActivityData | un
     if (!path) return undefined;
 
     // Normalize path by stripping optional prefixes and splitting
-    const cleanPath = path.toLowerCase().replace(/^activity\/tracing\//, "");
+    let cleanPath = path.toLowerCase().replace(/^activity\/tracing\//, "");
+    if (!cleanPath.includes("/") && cleanPath.includes("-")) {
+        const hyphenIdx = cleanPath.indexOf("-");
+        cleanPath = `${cleanPath.slice(0, hyphenIdx)}/${cleanPath.slice(hyphenIdx + 1)}`;
+    }
     const parts = cleanPath.split("/");
-    if (parts.length < 2) return undefined;
+    if (parts.length < 2) {
+        const term = cleanPath.replace(/^trace/, "");
+        for (const cat of [TracingActivities.shapes, TracingActivities.lines, TracingActivities.letters, TracingActivities.numbers]) {
+            const matchKey = Object.keys(cat).find((key) => key.replace(/^trace/, "").toLowerCase() === term || key.toLowerCase() === term);
+            if (matchKey) return (cat as any)[matchKey];
+        }
+        return undefined;
+    }
 
     const category = parts[0];
     const name = parts[1];

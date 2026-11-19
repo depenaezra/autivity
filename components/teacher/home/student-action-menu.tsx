@@ -37,10 +37,10 @@ export function StudentActionMenu({
   coords,
 }: StudentActionMenuProps) {
   const insets = useSafeAreaInsets();
+  const { width: screenWidth } = useWindowDimensions();
 
   if (!visible) return null;
 
-  const { width: screenWidth } = useWindowDimensions();
   const margin = 16;
 
   // Make menu wider to fit 4 buttons nicely

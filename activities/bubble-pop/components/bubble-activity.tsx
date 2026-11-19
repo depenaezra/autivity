@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View, useWindowDimensions, type LayoutChangeEvent } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import BubbleList from "./bubble-list";
@@ -26,6 +26,15 @@ type Props = {
     hintSignal?: number;
 };
 
+// Normalize bubble floating duration so bubbles never move sluggishly or take seconds to appear
+const normalizeBubbleSpeed = (rawSpeed?: number): number => {
+    if (!rawSpeed) return 5000;
+    if (rawSpeed >= 11000) return 5000; // Easy: 5.0 seconds
+    if (rawSpeed >= 8000) return 4000;  // Medium: 4.0 seconds
+    if (rawSpeed >= 5500) return 3200;  // Hard: 3.2 seconds
+    return Math.max(2500, Math.min(rawSpeed, 5000));
+};
+
 export default function BubbleActivity({
     contentData,
     bubbleCount: directBubbleCount,
@@ -39,7 +48,8 @@ export default function BubbleActivity({
 }: Props) {
     const mode = contentData?.mode || (contentData?.target_color || directTargetColor ? "color" : "free");
     const bubbleCount = contentData?.bubble_count || directBubbleCount || 5;
-    const speed = contentData?.speed || directSpeed || 12000;
+    const rawSpeed = contentData?.speed || directSpeed || 5000;
+    const speed = normalizeBubbleSpeed(rawSpeed);
     const bubbleScale = contentData?.bubble_scale || 1.0;
     const targetCount = contentData?.target_count || 5;
 
@@ -54,6 +64,21 @@ export default function BubbleActivity({
     const completionDetailsRef = useRef<{ score: number; timeSpent: number; mistakes: number } | null>(null);
     const feedbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const lastMessageIndexRef = useRef<number>(-1);
+    const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+    const [containerSize, setContainerSize] = useState<{ width: number; height: number } | null>(null);
+
+    const onContainerLayout = (event: LayoutChangeEvent) => {
+        const { width: w, height: h } = event.nativeEvent.layout;
+        if (w > 0 && h > 0) {
+            setContainerSize((prev) => {
+                if (prev && Math.abs(prev.width - w) < 2 && Math.abs(prev.height - h) < 2) return prev;
+                return { width: w, height: h };
+            });
+        }
+    };
+
+    const fieldWidth = containerSize?.width ?? windowWidth;
+    const fieldHeight = containerSize?.height ?? (windowHeight > windowWidth ? windowHeight * 0.55 : Math.max(350, windowHeight - 380));
 
     const { isHintActive, hintLevel, hintsUsed, triggerHint, recordAttempt, resetForNextQuestion } = useActivityHint({
         getClueText: () => {
@@ -103,6 +128,9 @@ export default function BubbleActivity({
         availableColors,
         targetColor,
         distractorColors,
+        fieldWidth,
+        fieldHeight,
+        resetKey: contentDataKey,
     });
 
     const handleUserPop = (id: string) => {
@@ -188,8 +216,8 @@ export default function BubbleActivity({
     };
 
     return (
-        <View style={styles.container}>
-            {/* Appealing Progress Counter Badge */}
+        <View style={[styles.container, { overflow: 'hidden' }]} onLayout={onContainerLayout}>
+            {/* Progress Counter Badge */}
             <View style={styles.counterBadge}>
                 <Ionicons name="disc" size={20} color="#62A9E6" style={{ marginRight: 6 }} />
                 <Text style={styles.counterText}>
@@ -208,6 +236,7 @@ export default function BubbleActivity({
                     isHintActive={isHintActive}
                     hintLevel={hintLevel}
                     targetColor={targetColor}
+                    containerHeight={fieldHeight}
                 />
             )}
         </View>

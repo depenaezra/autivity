@@ -1,6 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, Pressable, Text, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, Alert, Animated, Pressable, Text, useWindowDimensions, View } from 'react-native';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import * as Haptics from 'expo-haptics';
 import AnimatedReanimated, {
@@ -14,6 +14,7 @@ import AnimatedReanimated, {
 } from 'react-native-reanimated';
 import { ActivityTypeFilter } from '../../../../src/services/analytics';
 import { getStudentSessions, SessionRecord } from '../../../../src/services/student-analytics';
+import { resetSessionEvaluation } from '../../../../src/services/sessions';
 import { filterSessionsByPeriod } from '../../../../src/utils/dashboardFilters';
 import FeedbackModal from '../../../feedback-modal';
 import EvaluationReviewModal from '../evaluation-review-modal';
@@ -164,6 +165,31 @@ export default function Sessions({
     setIsEditingSession(session);
   };
 
+  const handleResetPress = (session: SessionRecord) => {
+    Alert.alert(
+      'Reset Evaluation?',
+      `Are you sure you want to reset the evaluation for "${session.activityName}"? All rubric scores and remarks will be removed, and this session will be marked as pending.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await resetSessionEvaluation(session.id);
+              await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              fetchSessions();
+              onEvaluationValidated?.();
+            } catch (err: any) {
+              console.error('Failed to reset evaluation:', err);
+              Alert.alert('Error', err.message || 'Failed to reset evaluation.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const handleValidationSuccess = () => {
     fetchSessions();
     onEvaluationValidated?.();
@@ -261,6 +287,22 @@ export default function Sessions({
       extrapolate: 'clamp',
     });
 
+    const resetScale = progress.interpolate({
+      inputRange: [0.2, 0.6, 1],
+      outputRange: [0.5, 1.1, 1],
+      extrapolate: 'clamp',
+    });
+    const resetOpacity = progress.interpolate({
+      inputRange: [0.2, 0.5, 1],
+      outputRange: [0, 0.8, 1],
+      extrapolate: 'clamp',
+    });
+    const resetTransX = progress.interpolate({
+      inputRange: [0, 1],
+      outputRange: [10, 0],
+      extrapolate: 'clamp',
+    });
+
     return (
       <View className="flex-row items-center justify-end pl-4 pr-1 bg-white" style={{ height: '100%' }}>
         {/* EDIT */}
@@ -289,6 +331,36 @@ export default function Sessions({
               adjustsFontSizeToFit
             >
               EDIT
+            </Text>
+          </Pressable>
+        </Animated.View>
+
+        {/* RESET */}
+        <Animated.View
+          style={{
+            opacity: resetOpacity,
+            transform: [{ scale: resetScale }, { translateX: resetTransX }],
+          }}
+        >
+          <Pressable
+            onPress={() => {
+              swipeableRef?.close();
+              handleResetPress(session);
+            }}
+            className="flex-col items-center justify-center active:scale-95 transition-transform"
+            style={{ width: isTablet ? 72 : 56 }}
+          >
+            <View className="items-center justify-center" style={{ height: isTablet ? 32 : 26 }}>
+              <Feather name="rotate-ccw" size={isTablet ? 24 : 20} color="#F97316" />
+            </View>
+            <Text
+              className={`font-fredoka-one text-[#F97316] text-center w-full px-1 ${
+                isTablet ? 'text-xs mt-2' : 'text-[11px] mt-1.5'
+              }`}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+            >
+              RESET
             </Text>
           </Pressable>
         </Animated.View>
@@ -375,7 +447,7 @@ export default function Sessions({
                 • <Text className="font-quicksand-bold text-[#62A9E6]">Rubric Scoring:</Text> Fill in 5-criterion rubric evaluations to capture concentration, instruction-following, and completion quality.
               </Text>
               <Text className={`font-quicksand-medium text-[#484A4B] leading-relaxed ${isTablet ? 'text-xs' : 'text-[11px]'}`}>
-                • <Text className="font-quicksand-bold text-[#62A9E6]">Editing Feedback:</Text> Tap or swipe left on evaluated sessions to revise rubrics, notes, or classroom observations.
+                • <Text className="font-quicksand-bold text-[#62A9E6]">Editing & Resetting:</Text> Tap or swipe left on evaluated sessions to revise rubrics, or reset an evaluation back to pending status.
               </Text>
             </View>
           </AnimatedReanimated.View>
@@ -648,6 +720,7 @@ export default function Sessions({
       <EvaluationReviewModal
         visible={isReviewModalVisible}
         sessionId={selectedReviewSessionId}
+        onResetSuccess={handleValidationSuccess}
         onClose={() => {
           setIsReviewModalVisible(false);
           setSelectedReviewSessionId(null);

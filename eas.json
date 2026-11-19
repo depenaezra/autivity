@@ -1,0 +1,37 @@
+{
+  "cli": {
+    "version": ">= 12.0.0"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://gvigzpdogneimcftgdmt.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_2VCENx-Jd9xKhLmS38W-rQ_vRl3eLR_",
+        "EXPO_PUBLIC_ELEVENLABS_API_KEY": "sk_f11012c436f7ea84711e853bd1f6ff4fceb153b2d4bf522f",
+        "EXPO_PUBLIC_ELEVENLABS_VOICE_ID": "EXAVITQu4vr4xnSDxMaL"
+      }
+    },
+    "production": {
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://gvigzpdogneimcftgdmt.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_2VCENx-Jd9xKhLmS38W-rQ_vRl3eLR_",
+        "EXPO_PUBLIC_ELEVENLABS_API_KEY": "sk_f11012c436f7ea84711e853bd1f6ff4fceb153b2d4bf522f",
+        "EXPO_PUBLIC_ELEVENLABS_VOICE_ID": "EXAVITQu4vr4xnSDxMaL"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}
