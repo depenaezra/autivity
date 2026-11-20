@@ -2,6 +2,7 @@
 # NOTE: .env is intentionally NOT ignored here so it uploads to EAS builds
 
 node_modules/
+node_modules-backup/
 .expo/
 dist/
 web-build/

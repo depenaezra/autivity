@@ -47,11 +47,11 @@ function StudentPerformanceCardsSkeleton({ isTablet }: { isTablet: boolean }) {
   }));
 
   return (
-    <Animated.View style={animatedStyle} className="flex-row gap-2.5 sm:gap-4">
+    <Animated.View style={animatedStyle} className="flex-row flex-wrap gap-2.5 sm:gap-4">
       {[1, 2, 3].map((cardKey) => (
         <View
           key={cardKey}
-          className={`border-[4px] bg-white justify-between items-center flex-1 ${
+          className={`border-[4px] bg-white justify-between items-center grow basis-[30%] min-w-[140px] ${
             isTablet ? 'rounded-[32px] p-4 min-h-[175px]' : 'rounded-[20px] p-2.5 min-h-[148px]'
           }`}
           style={{
@@ -272,7 +272,7 @@ export default function StudentPerformanceCards({
           </Text>
         </View>
       ) : (
-        <View className="flex-row gap-2.5 sm:gap-4">
+        <View className="flex-row flex-wrap gap-2.5 sm:gap-4">
           {CARDS.map((card) => {
             const value = hasNoSessions
               ? 'No sessions'
@@ -289,7 +289,7 @@ export default function StudentPerformanceCards({
               <Pressable
                 key={card.key}
                 onPress={() => setSelectedCardForModal(card.key)}
-                className={`border-[4px] bg-white justify-between items-center flex-1 active:scale-95 transition-transform ${
+                className={`border-[4px] bg-white justify-between items-center grow basis-[30%] min-w-[140px] active:scale-95 transition-transform ${
                   isTablet ? 'rounded-[32px] p-4 min-h-[175px]' : 'rounded-[20px] p-2.5 min-h-[155px]'
                 }`}
                 style={{
@@ -304,7 +304,7 @@ export default function StudentPerformanceCards({
                 {/* Label */}
                 <Text
                   className={`font-fredoka-one tracking-[0.06em] text-center ${
-                    isTablet ? 'text-xs mt-1' : 'text-[11px] mt-0.5'
+                    isTablet ? 'text-sm mt-1' : 'text-sm mt-0.5'
                   }`}
                   style={{ color: card.accentColor, letterSpacing: isTablet ? 1.2 : 0.6 }}
                   numberOfLines={1}
@@ -322,7 +322,7 @@ export default function StudentPerformanceCards({
                   <Text
                     className="font-fredoka-one text-[#484A4B] text-center"
                     style={{
-                      fontSize: hasNoSessions ? (isTablet ? 13 : 11) : (isTablet ? 28 : 22),
+                      fontSize: hasNoSessions ? (isTablet ? 16 : 14) : (isTablet ? 28 : 22),
                       lineHeight: hasNoSessions ? undefined : (isTablet ? 32 : 24),
                     }}
                     numberOfLines={1}
@@ -332,7 +332,7 @@ export default function StudentPerformanceCards({
                   {!hasNoSessions && (
                     <Text
                       className={`font-quicksand-bold text-[#9CA3AF] text-center ${
-                        isTablet ? 'text-xs mt-0.5' : 'text-[11px] mt-0.5'
+                        isTablet ? 'text-sm mt-0.5' : 'text-sm mt-0.5'
                       }`}
                     >
                       per session
@@ -349,7 +349,7 @@ export default function StudentPerformanceCards({
                 >
                   <Text
                     className={`font-fredoka-one text-center uppercase ${
-                      isTablet ? 'text-xs' : 'text-[11px]'
+                      isTablet ? 'text-sm' : 'text-sm'
                     }`}
                     style={{ color: badge.color }}
                     numberOfLines={1}

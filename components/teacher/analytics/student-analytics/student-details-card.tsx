@@ -9,10 +9,18 @@ interface StudentDetailsCardProps {
   needsIntervention?: boolean;
 }
 
+const classColors: Record<string, { background: string; text: string }> = {
+  blue: { background: '#BBE8FB', text: '#62A9E6' },
+  green: { background: '#CBFAC4', text: '#179D33' },
+  orange: { background: '#FFDBD4', text: '#FF8870' },
+  yellow: { background: '#FFF3C4', text: '#FFAE02' },
+};
+
 export default function StudentDetailsCard({ student, needsIntervention }: StudentDetailsCardProps) {
   const { width } = useWindowDimensions();
   const isTablet = width >= 600;
   const [isParentInfoExpanded, setIsParentInfoExpanded] = useState(false);
+  const classColor = classColors[student.theme?.toLowerCase() || 'blue'] || classColors.blue;
 
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr);
@@ -95,6 +103,16 @@ export default function StudentDetailsCard({ student, needsIntervention }: Stude
               </Text>
             </View>
           )}
+          {student.className ? (
+            <View className="px-3 py-1.5 rounded-xl" style={{ backgroundColor: classColor.background }}>
+              <Text
+                className="font-fredoka-one uppercase"
+                style={{ color: classColor.text, fontSize: isTablet ? 13 : 11 }}
+              >
+                {student.className}
+              </Text>
+            </View>
+          ) : null}
         </View>
 
         {/* Far Right: Parent Info Tactile Toggle Button */}

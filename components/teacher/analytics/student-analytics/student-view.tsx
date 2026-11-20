@@ -30,18 +30,7 @@ import { generateStudentRecommendations, StudentRecommendation } from '../../../
 import StudentRecommendationsCard from './student-recommendations-card';
 import { UniversalLegendModal } from '../../../analytics/universal-legend-modal';
 
-// SVGs for themed headers matching class color
 import HeaderClassBlue from '../../../../assets/images/teacher/class/header-class-blue.svg';
-import HeaderClassGreen from '../../../../assets/images/teacher/class/header-class-green.svg';
-import HeaderClassOrange from '../../../../assets/images/teacher/class/header-class-orange.svg';
-import HeaderClassYellow from '../../../../assets/images/teacher/class/header-class-yellow.svg';
-
-const headerSvgs: Record<string, React.FC<any>> = {
-  blue: HeaderClassBlue,
-  green: HeaderClassGreen,
-  orange: HeaderClassOrange,
-  yellow: HeaderClassYellow,
-};
 
 interface StudentViewProps {
   studentId: string;
@@ -148,9 +137,6 @@ export default function StudentView({ studentId, onBack }: StudentViewProps) {
     }
   };
 
-  const themeKey = (studentData?.theme || 'blue').toLowerCase();
-  const HeaderBgSvg = headerSvgs[themeKey] || headerSvgs.blue;
-
   const renderHeaderBackground = () => {
     if (isLoading || !studentData) {
       return <View className="flex-1 w-full h-full bg-[#E5E7EB]/50" />;
@@ -159,7 +145,7 @@ export default function StudentView({ studentId, onBack }: StudentViewProps) {
     return (
       <View className="flex-1 w-full h-full relative">
         <View className="absolute inset-0">
-          <HeaderBgSvg width="100%" height="100%" preserveAspectRatio="xMidYMax slice" />
+          <HeaderClassBlue width="100%" height="100%" preserveAspectRatio="xMidYMax slice" />
         </View>
       </View>
     );
@@ -237,7 +223,7 @@ export default function StudentView({ studentId, onBack }: StudentViewProps) {
               {/* Range Filter Selector */}
               <Pressable
                 onPress={() => setFilterModalVisible(true)}
-                className="flex-row items-center justify-center gap-1.5 bg-white border-[2px] border-[#BBE8FB] px-3 h-[36px] rounded-xl active:scale-95 transition-transform"
+                className="flex-row items-center justify-center gap-1.5 bg-white border-[2px] border-[#BBE8FB] px-3 min-h-[44px] rounded-xl active:scale-95 transition-transform"
                 style={{
                   borderColor: '#BBE8FB',
                   shadowColor: '#BBE8FB',
@@ -247,17 +233,17 @@ export default function StudentView({ studentId, onBack }: StudentViewProps) {
                   elevation: 2,
                 }}
               >
-                <Feather name="calendar" size={13} color="#62A9E6" />
-                <Text className="font-fredoka-one text-[#62A9E6] text-[11px] uppercase" numberOfLines={1}>
+                <Feather name="calendar" size={16} color="#62A9E6" />
+                <Text className="font-fredoka-one text-[#62A9E6] text-sm uppercase" numberOfLines={1}>
                   {getFilterLabel(globalFilter).toUpperCase()}
                 </Text>
-                <Feather name="chevron-down" size={13} color="#62A9E6" />
+                <Feather name="chevron-down" size={16} color="#62A9E6" />
               </Pressable>
 
               {/* Log Classroom Activity Button */}
               <Pressable
                 onPress={() => setLogModalVisible(true)}
-                className="flex-row items-center justify-center gap-1.5 bg-white border-[2px] border-[#CBFAC4] px-3 h-[36px] rounded-xl active:scale-95 transition-transform"
+                className="flex-row items-center justify-center gap-1.5 bg-white border-[2px] border-[#CBFAC4] px-3 min-h-[44px] rounded-xl active:scale-95 transition-transform"
                 style={{
                   borderColor: '#CBFAC4',
                   shadowColor: '#CBFAC4',
@@ -267,8 +253,8 @@ export default function StudentView({ studentId, onBack }: StudentViewProps) {
                   elevation: 2,
                 }}
               >
-                <Feather name="plus-circle" size={13} color="#179D33" />
-                <Text className="font-fredoka-one text-[#179D33] text-[11px] uppercase" numberOfLines={1}>
+                <Feather name="plus-circle" size={16} color="#179D33" />
+                <Text className="font-fredoka-one text-[#179D33] text-sm uppercase" numberOfLines={1}>
                   + LOG CLASSROOM ACTIVITY
                 </Text>
               </Pressable>
