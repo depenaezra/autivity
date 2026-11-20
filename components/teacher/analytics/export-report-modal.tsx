@@ -17,6 +17,7 @@ interface ExportReportModalProps {
   onClose: () => void;
   onGenerate: (options: TeacherExportOptions) => void;
   isLoading?: boolean;
+  exportingFormat?: 'pdf' | 'excel' | null;
   isTablet: boolean;
   studentName?: string;
 }
@@ -26,6 +27,7 @@ export function ExportReportModal({
   onClose,
   onGenerate,
   isLoading = false,
+  exportingFormat = null,
   isTablet,
   studentName = 'Student',
 }: ExportReportModalProps) {
@@ -49,6 +51,7 @@ export function ExportReportModal({
       title="Download Student Report"
       description={`Select the date range and activity source for ${studentName}'s official progress report.`}
       isExporting={isLoading}
+      exportingFormat={exportingFormat}
       showExcelDownload
       onConfirmExport={handleConfirm}
     />

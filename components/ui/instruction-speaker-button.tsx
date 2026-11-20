@@ -65,10 +65,6 @@ export default function InstructionSpeakerButton({
     const playSpeech = async (textToSpeak: string) => {
         if (!textToSpeak) return;
 
-        try {
-            await stopSpeech();
-        } catch {}
-
         setIsPlaying(true);
         startPulseAnimation();
 

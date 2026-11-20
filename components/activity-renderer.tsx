@@ -7,6 +7,7 @@ import PickChoiceActivity from '@/activities/pick-n-choose/components/pick-n-cho
 import OddOneOutActivity from '@/activities/pick-n-choose/components/odd-one-out-activity';
 import ChooseByClueActivity from '@/activities/pick-n-choose/components/choose-by-clue-activity';
 import SequencingActivity from '@/activities/sequencing/components/sequencing-activity';
+import WhatComesNextActivity from '@/activities/sequencing/components/what-comes-next-activity';
 import CountingActivity from '@/activities/counting/components/counting-activity';
 
 type ActivityRendererProps = {
@@ -21,6 +22,7 @@ export default function ActivityRenderer({ activity, onComplete, onFeedback, onI
     const activityType = (activity.type || activity.content_data?.type || activity.category || '').toLowerCase();
 
     const activityIdentity = [activityType, activity.path, activity.sub_category, activity.title, activity.name, activity.content_data?.activity_id].filter(Boolean).join(' ').toLowerCase();
+    if (activityIdentity.includes('what-comes-next') || activityIdentity.includes('what comes next')) return <WhatComesNextActivity contentData={activity.content_data} onComplete={onComplete} onFeedback={onFeedback} onIncorrectAttempt={onIncorrectAttempt} hintSignal={hintSignal} />;
     if (activityIdentity.includes('choose-by-clue') || activityIdentity.includes('choose by clue')) {
         return <ChooseByClueActivity contentData={activity.content_data} onComplete={onComplete} onFeedback={onFeedback} onIncorrectAttempt={onIncorrectAttempt} hintSignal={hintSignal} />;
     }

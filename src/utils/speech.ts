@@ -120,6 +120,7 @@ getBestVoice('tl').catch(() => {});
  * Speaks an instruction text using ElevenLabs API (with local caching),
  * falling back gracefully to native Expo Speech.
  */
+let speechRequest = 0;
 export const speakInstruction = async (
     text: string,
     options?: Speech.SpeechOptions & { 
@@ -129,12 +130,14 @@ export const speakInstruction = async (
         onError?: (error: any) => void;
     }
 ): Promise<void> => {
+    const request = ++speechRequest;
     try {
         const cleaned = cleanTextForSpeech(text);
         if (!cleaned) return;
 
         // Stop previous speech if any
-        await stopSpeech();
+        await stopCurrentSpeech();
+        if (request !== speechRequest) return;
 
         // 1. Try ElevenLabs express AI voice (cached locally) - Disabled during testing to conserve API credits
         const handledByElevenLabs = await speakElevenLabs(
@@ -143,11 +146,12 @@ export const speakInstruction = async (
             options?.onError
         );
 
-        if (handledByElevenLabs) return;
+        if (request !== speechRequest || handledByElevenLabs) return;
 
         // 2. Native Expo system voice
         const isTagalog = options?.langMode === 'tl' || options?.language === 'fil-PH' || options?.language === 'tl-PH' || options?.language === 'fil' || options?.language === 'tl';
         const bestVoice = await getBestVoice(isTagalog ? 'tl' : 'en');
+        if (request !== speechRequest) return;
 
         const speechOptions: Speech.SpeechOptions = {
             rate: isTagalog ? 0.90 : 0.90,  // Natural pacing
@@ -156,7 +160,7 @@ export const speakInstruction = async (
             language: isTagalog ? 'fil-PH' : 'en-US',
             onDone: options?.onDone,
             onError: options?.onError,
-            onStopped: options?.onDone,
+            onStopped: options?.onStopped,
         };
 
         if (isTagalog) {
@@ -183,7 +187,7 @@ export const speakInstruction = async (
 /**
  * Stops any ongoing speech synthesis (ElevenLabs or native).
  */
-export const stopSpeech = async (): Promise<void> => {
+const stopCurrentSpeech = async (): Promise<void> => {
     try {
         await stopElevenLabsSpeech();
         const isSpeaking = await Speech.isSpeakingAsync();
@@ -193,6 +197,11 @@ export const stopSpeech = async (): Promise<void> => {
     } catch (error) {
         console.warn('[Speech] Error stopping speech:', error);
     }
+};
+
+export const stopSpeech = async (): Promise<void> => {
+    speechRequest++;
+    await stopCurrentSpeech();
 };
 
 /**

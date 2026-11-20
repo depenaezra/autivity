@@ -61,6 +61,7 @@ export default function StudentView({ studentId, onBack }: StudentViewProps) {
   const [isLogModalVisible, setLogModalVisible] = useState(false);
   const [isExportModalVisible, setExportModalVisible] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [exportingFormat, setExportingFormat] = useState<'pdf' | 'excel' | null>(null);
   const [isLegendModalVisible, setLegendModalVisible] = useState(false);
   const [recommendations, setRecommendations] = useState<StudentRecommendation[]>([]);
   const [needsIntervention, setNeedsIntervention] = useState(false);
@@ -114,6 +115,7 @@ export default function StudentView({ studentId, onBack }: StudentViewProps) {
   const handleSelectExportFormat = async (options: TeacherExportOptions) => {
     if (!studentData) return;
     setIsExporting(true);
+    setExportingFormat(options.format);
     try {
       const { startDate, endDate } = options.period === 'custom'
         ? { startDate: options.startDate, endDate: options.endDate }
@@ -142,6 +144,7 @@ export default function StudentView({ studentId, onBack }: StudentViewProps) {
       Alert.alert('Could not export child report', err.message || 'Error creating report file.');
     } finally {
       setIsExporting(false);
+      setExportingFormat(null);
     }
   };
 
@@ -392,6 +395,7 @@ export default function StudentView({ studentId, onBack }: StudentViewProps) {
         onClose={() => setExportModalVisible(false)}
         onGenerate={handleSelectExportFormat}
         isLoading={isExporting}
+        exportingFormat={exportingFormat}
         isTablet={isTablet}
         studentName={studentData?.name}
       />

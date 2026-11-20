@@ -256,7 +256,7 @@ export default function StudentHome() {
     const lower = path.toLowerCase();
 
     return (
-      lower.includes('sequenc') ||
+      lower.includes('what comes next') || lower.includes('what-comes-next') || lower.includes('sequenc') ||
       lower.includes('picture sequencing')
     );
   };

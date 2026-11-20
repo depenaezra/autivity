@@ -1,0 +1,5 @@
+export const NEXT_SEQUENCES = [
+  { title: 'Chicken growth', steps: [require('../../../assets/images/activities/sequencing/chicken growth/egg.jpg'), require('../../../assets/images/activities/sequencing/chicken growth/hatching.jpg'), require('../../../assets/images/activities/sequencing/chicken growth/chick.jpg'), require('../../../assets/images/activities/sequencing/chicken growth/chicken.jpg')] },
+  { title: 'Plant growth', steps: [require('../../../assets/images/activities/sequencing/plant growth/seed.jpg'), require('../../../assets/images/activities/sequencing/plant growth/sprout.jpg'), require('../../../assets/images/activities/sequencing/plant growth/small plant.jpg'), require('../../../assets/images/activities/sequencing/plant growth/plant.jpg')] },
+  { title: 'Baking a cake', steps: [require('../../../assets/images/activities/sequencing/bake/mix ingredients.jpg'), require('../../../assets/images/activities/sequencing/bake/pour into pan.jpg'), require('../../../assets/images/activities/sequencing/bake/bake.jpg'), require('../../../assets/images/activities/sequencing/bake/finished cake.jpg')] },
+];

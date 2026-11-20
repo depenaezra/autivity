@@ -31,6 +31,7 @@ interface ParentExportModalProps {
   language?: 'en' | 'tl';
   isExporting?: boolean;
   showExcelDownload?: boolean;
+  exportingFormat?: 'pdf' | 'excel' | null;
   onConfirmExport: (options: ParentExportOptions) => Promise<void> | void;
 }
 
@@ -52,6 +53,7 @@ export function ParentExportModal({
   language = 'en',
   isExporting = false,
   showExcelDownload = false,
+  exportingFormat = null,
   onConfirmExport,
 }: ParentExportModalProps) {
   const isTl = language === 'tl';
@@ -141,12 +143,13 @@ export function ParentExportModal({
         </View>
       }
       isTablet={isTablet}
-      submitLabel={isExporting ? (isTl ? 'GUMAGAWA...' : 'GENERATING...') : isTl ? 'I-DOWNLOAD ANG PDF' : 'DOWNLOAD PDF'}
+      submitLabel={isExporting && exportingFormat !== 'excel' ? (isTl ? 'GUMAGAWA...' : 'GENERATING...') : isTl ? 'I-DOWNLOAD ANG PDF' : 'DOWNLOAD PDF'}
       onSubmit={() => handleDownloadPress('pdf')}
       additionalSubmitLabel={showExcelDownload ? 'DOWNLOAD EXCEL' : undefined}
       onAdditionalSubmit={showExcelDownload ? () => handleDownloadPress('excel') : undefined}
       submitDisabled={isDateRangeInvalid || isExporting}
-      isSubmitting={isExporting}
+      isSubmitting={isExporting && exportingFormat !== 'excel'}
+      additionalSubmitLoading={isExporting && exportingFormat === 'excel'}
       cancelLabel={isTl ? 'ISARA' : 'CANCEL'}
       heightClassName={isTablet ? 'h-[75%]' : 'h-[78%]'}
     >

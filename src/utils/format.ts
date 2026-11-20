@@ -7,6 +7,15 @@
  */
 export const formatActivityTitle = (path: string): string => {
     if (!path) return 'Unknown Activity';
+
+    const formatWords = (value: string) => value
+        .split(/[-_]/)
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+    const withSet = (value: string) => {
+        const match = value.match(/^(.*?)[-_](\d+)$/);
+        return match ? `${formatWords(match[1])} (Set ${match[2]})` : formatWords(value);
+    };
     
     // Remove optional prefixes
     const clean = path.replace(/^activity\/tracing\//, "");
@@ -17,10 +26,7 @@ export const formatActivityTitle = (path: string): string => {
         const item = parts[1];
         
         // Split by hyphen/underscore, capitalize each word, and join with a space
-        const formattedItem = item
-            .split(/[-_]/)
-            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-            .join(' ');
+        const formattedItem = withSet(item);
             
         if (cat.startsWith('line')) return `${formattedItem} Lines`;
         if (cat.startsWith('shape')) return `${formattedItem} Shape`;
@@ -30,8 +36,8 @@ export const formatActivityTitle = (path: string): string => {
     
     // Fallback: capitalize each word of the last part of the path
     const lastPart = parts[parts.length - 1] || path;
-    return lastPart
-        .split(/[-_]/)
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' ');
+    if (/^\d+$/.test(lastPart) && parts.length > 1) {
+        return `${withSet(parts[parts.length - 2])} (Set ${lastPart})`;
+    }
+    return withSet(lastPart);
 };

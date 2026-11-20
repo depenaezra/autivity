@@ -38,6 +38,7 @@ export const ALL_PICK_CHOOSE_CATEGORIES = [
 ];
 
 export const ALL_SEQUENCING_CATEGORIES = [
+  { id: 'What Comes Next', title: 'What Comes Next?', icon: 'arrow-forward-outline' },
   {
     id: 'Picture Sequencing',
     title: 'Picture Sequencing',

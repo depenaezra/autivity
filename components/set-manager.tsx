@@ -482,7 +482,7 @@ export default function SetManager({
             ? (() => { try { return JSON.parse(currentActivity.content_data); } catch { return {}; } })()
             : (currentActivity.content_data || {});
 
-        if (!/choose[ -]by[ -]clue/i.test(`${currentActivity.path || ''} ${currentActivity.sub_category || ''} ${currentActivity.title || ''}`)) {
+        if (!/choose[ -]by[ -]clue|what[ -]comes[ -]next/i.test(`${currentActivity.path || ''} ${currentActivity.sub_category || ''} ${currentActivity.title || ''}`)) {
             setBearMessage(parsedContent.instruction || "Let's play!");
         }
         setErrorMode(false);
@@ -525,7 +525,7 @@ export default function SetManager({
         }
 
         // Choose a random praise message and update confirmation button UI state
-        const isOddOneOut = [currentActivity?.path, currentActivity?.sub_category, currentActivity?.title].some(value => typeof value === 'string' && /odd[ -]one[ -]out|doesn.t belong|choose[ -]by[ -]clue/i.test(value));
+        const isOddOneOut = [currentActivity?.path, currentActivity?.sub_category, currentActivity?.title].some(value => typeof value === 'string' && /odd[ -]one[ -]out|doesn.t belong|choose[ -]by[ -]clue|what[ -]comes[ -]next/i.test(value));
         if (!isOddOneOut) setBearMessage(getRandomPraiseMessage(language));
         setIsActivityDone(true);
         setSuccessMode(true);
@@ -920,7 +920,7 @@ export default function SetManager({
                         ? (() => { try { return JSON.parse(nextActivity.content_data); } catch { return {}; } })()
                         : (nextActivity.content_data || {});
 
-                    setBearMessage(parsedContent.instruction || "Let's play!");
+                    if (!/what[ -]comes[ -]next/i.test(`${nextActivity.path || ''} ${nextActivity.sub_category || ''} ${nextActivity.title || ''}`)) setBearMessage(parsedContent.instruction || "Let's play!");
                     setCurrentActivity(nextActivity);
                     setPlayedActivityIds((prev) => [...prev, nextActivity.id]);
                     setPlayedActivityPaths((prev) => [...prev, nextActivity.path || '']);

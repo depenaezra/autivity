@@ -1,3 +1,8 @@
+import { getEmotionMeta } from '../utils/emotionZones';
+import { formatActivityTitle } from '../utils/format';
+import { Platform } from 'react-native';
+import * as StyledXLSX from 'xlsx-js-style';
+import { supabase } from '../lib/supabase';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as XLSX from 'xlsx';
@@ -1670,244 +1675,212 @@ export const exportClassAnalyticsReportExcel = async (
 export const exportStudentAnalyticsReportExcel = async (
   studentId: string,
   studentDetails: StudentHeaderDetails,
-  filter: 'today' | 'week' | 'last_week' | 'month' | 'last_month' | 'overall' | string = 'overall',
+  filter: string = 'overall',
   timeframeLabel: string = 'Overall',
   activityType: ActivityTypeFilter = 'all',
   customRange?: { startDate: Date | null; endDate: Date | null }
 ) => {
-  const generatedOn = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-
-  let stats = { averageDuration: 0, averageMistakes: 0, averageHints: 0, totalSessions: 0 };
-  let evaluations: SessionEvaluation[] = [];
-  let domainExposure: MasterDomainExposure[] = [];
-  let rawSessions: any[] = [];
-  let milestones: Milestone[] = [];
-  let checkIns: any[] = [];
-
-  try {
-    const [statsRes, evalsRes, domRes, sessRes, milestonesRes, checkInsRes] = await Promise.all([
-      getStudentSessionStats(studentId, filter, activityType, customRange).catch(() => ({ averageDuration: 0, averageMistakes: 0, averageHints: 0, totalSessions: 0 })),
-      getStudentValidatedSessionsEvaluations(studentId, activityType, customRange).catch(() => []),
-      getStudentDevelopmentalSkillsExposure(studentId, filter, activityType, customRange).catch(() => []),
-      getStudentSessions(studentId, activityType, customRange).catch(() => []),
-      getStudentMilestones(studentId).catch(() => []),
-      getStudentCheckInsForFilter(studentId, filter, customRange).catch(() => []),
-    ]);
-    stats = statsRes || stats;
-    evaluations = evalsRes || [];
-    domainExposure = domRes || [];
-    rawSessions = sessRes || [];
-    milestones = milestonesRes || [];
-    checkIns = checkInsRes || [];
-  } catch (err) {
-    console.error('exportStudentAnalyticsReportExcel: error loading student data', err);
-  }
-
-  const validScores = evaluations
-    .map((e) => calculateRubricScore(e.rubric_evaluation))
-    .filter((s): s is number => s !== null);
-  const avgRubricScore = validScores.length > 0 ? validScores.reduce((a, b) => a + b, 0) / validScores.length : null;
-  const rubricTier = avgRubricScore !== null ? getRubricTier(avgRubricScore) : null;
-  const mistakesTier = getMistakesTier(stats.averageMistakes);
-  const hintsTier = getHintsTier(stats.averageHints);
-
-  const wb = XLSX.utils.book_new();
-
-  const formatDuration = (avgSec: number) => {
-    if (!avgSec || avgSec <= 0) return '0s';
-    const min = Math.floor(avgSec / 60);
-    const sec = Math.round(avgSec % 60);
-    return min > 0 ? `${min}m ${sec}s` : `${sec}s`;
+  type Session = {
+    created_at: string; activity_type: string | null; skill_domain: unknown;
+    category: string | null; title: string | null; activity_path: unknown;
+    duration_seconds: number | null; mistakes: number | null; hints_used: number | null;
+    status: string | null; rubric_evaluation: unknown; teacher_feedback: string | null;
   };
-
-  const forecastResult = calculateStudentProgressForecast(evaluations, filter);
-
-  const overviewData = [
-    ['Student Analytics Report'],
-    ['Generated On', generatedOn],
-    ['Student Name', studentDetails.name],
-    ['Learner Code', studentDetails.learnerCode || 'AUT-000'],
-    ['Grade', studentDetails.grade || 'SPED'],
-    ['Parent Account Linked', studentDetails.isLinked ? 'YES' : 'NO'],
-    ['Timeframe Range', timeframeLabel],
-    ['Activity Source Filter', activityType === 'all' ? 'All Activities' : activityType === 'classroom' ? 'Classroom Only' : 'App Only'],
-    ['Overall Rubric Score Average', avgRubricScore !== null ? `${avgRubricScore.toFixed(2)} / 4.0` : 'No evaluations'],
-    ['Benchmark Mastery Status', rubricTier ? `${rubricTier.label} (${rubricTier.shortLabel})` : 'No evaluations'],
-    ['Universal Target Mastery Benchmark', '≥ 3.2 / 4.0 (80% Mastery Goal)'],
-    [''],
-    ['Metric', 'Value', 'Benchmark Tier Status'],
-    ['Average Session Duration', formatDuration(stats.averageDuration), 'Standard'],
-    ['Average Mistakes per Session', stats.averageMistakes.toFixed(1), mistakesTier.shortLabel],
-    ['Average Hints per Session', stats.averageHints.toFixed(1), hintsTier.shortLabel],
-    ['Total Recorded Sessions', stats.totalSessions, 'Active Logs'],
-    ['2-Week Forecast Projected Score', forecastResult.projected14DayScore !== null ? `~${forecastResult.projected14DayScore} / 4.0 Predicted` : 'N/A', 'Predicted Trajectory'],
-    ['2-Week Forecast Outlook', forecastResult.estimatedDaysToMastery ? `~${forecastResult.estimatedDaysToMastery} days to ${forecastResult.targetBenchmark} benchmark` : 'Based on current trajectory', 'Outlook'],
-  ];
-  const wsOverview = XLSX.utils.aoa_to_sheet(overviewData);
-  XLSX.utils.book_append_sheet(wb, wsOverview, 'Overview');
-
-  const recommendations = generateStudentRecommendations(evaluations, domainExposure, studentDetails.name);
-  const recRows = [
-    ['Title', 'Category / Badge', 'Recommendation Description'],
-    ...recommendations.map((rec) => [
-      rec.title,
-      rec.badgeLabel,
-      rec.description,
-    ]),
-  ];
-  const wsRecs = XLSX.utils.aoa_to_sheet(recRows);
-  XLSX.utils.book_append_sheet(wb, wsRecs, 'Recommendations');
-
-  const milestoneRows = [
-    ['Milestone Title', 'Target Date', 'Start Date', 'Status'],
-    ...milestones.map((m) => [
-      m.title,
-      m.targetDate || 'No Target Date',
-      m.startDate || 'N/A',
-      m.status,
-    ]),
-  ];
-  const wsMilestones = XLSX.utils.aoa_to_sheet(milestoneRows);
-  XLSX.utils.book_append_sheet(wb, wsMilestones, 'Milestones');
-
-  const emotionAnalytics = calculateStudentEmotionRegulationAnalytics(checkIns, evaluations, studentDetails.name);
-
-  // Map evaluations by date for row-level score correlation
-  const evalScoreByDateMap: Record<string, number> = {};
-  evaluations.forEach((ev) => {
-    const score = calculateRubricScore(ev.rubric_evaluation);
-    if (score !== null && ev.created_at) {
-      const d = new Date(ev.created_at).toISOString().split('T')[0];
-      evalScoreByDateMap[d] = score;
+  type CellValue = string | number | null;
+  const range = customRange || getDateRangeForFilter(filter);
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) throw new Error('User not logged in');
+  let query = supabase.from('student_sessions').select('*').eq('student_id', studentId)
+    .eq('teacher_id', user.id).order('created_at', { ascending: true });
+  if (activityType !== 'all') query = query.eq('activity_type', activityType);
+  if (range.startDate) query = query.gte('created_at', range.startDate.toISOString());
+  if (range.endDate) query = query.lte('created_at', range.endDate.toISOString());
+  const localDate = (value: Date) => `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`;
+  const [sessionResult, domains, checkIns, milestones, templateResult] = await Promise.all([
+    query,
+    getStudentDevelopmentalSkillsExposure(studentId, filter, activityType, range),
+    getStudentCheckInsHistory(studentId, range.startDate ? localDate(range.startDate) : undefined, range.endDate ? localDate(range.endDate) : undefined),
+    getStudentMilestones(studentId),
+    supabase.from('teacher_milestone_templates').select('id, category').eq('teacher_id', user.id),
+  ]);
+  if (sessionResult.error) throw sessionResult.error;
+  if (templateResult.error) throw templateResult.error;
+  const sessions = (sessionResult.data || []) as Session[];
+  const evaluated = sessions.filter(s => s.status === 'validated' && s.rubric_evaluation);
+  const templates = new Map((templateResult.data || []).map(t => [t.id, t.category]));
+  const wb = StyledXLSX.utils.book_new();
+  const border = { style: 'thin', color: { rgb: 'CBD5E1' } };
+  const header = { fill: { fgColor: { rgb: '0284C7' } }, font: { name: 'Segoe UI', bold: true, color: { rgb: 'FFFFFF' } }, alignment: { wrapText: true, vertical: 'center', horizontal: 'center' }, border: { top: border, bottom: border, left: border, right: border } };
+  const table = (name: string, rows: CellValue[][], widths: number[], headerRows = [0]) => {
+    const ws = StyledXLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = widths.map(wch => ({ wch }));
+    ws['!rows'] = rows.map((_, i) => ({ hpt: headerRows.includes(i) ? 34 : 30 }));
+    const bounds = StyledXLSX.utils.decode_range(ws['!ref'] || 'A1');
+    for (let r = 0; r <= bounds.e.r; r++) for (let c = 0; c < widths.length; c++) {
+      const address = StyledXLSX.utils.encode_cell({ r, c });
+      const cell = ws[address] || (ws[address] = { t: 's', v: '' });
+      cell.s = headerRows.includes(r) ? header : {
+        font: { name: 'Segoe UI', sz: 10, color: { rgb: '1E293B' } },
+        fill: { fgColor: { rgb: r % 2 ? 'F8FAFC' : 'FFFFFF' } },
+        alignment: { vertical: 'center', wrapText: true, horizontal: cell.t === 'n' ? 'right' : 'left' },
+        border: { top: border, bottom: border, left: border, right: border },
+      };
     }
+    StyledXLSX.utils.book_append_sheet(wb, ws, name);
+    return ws;
+  };
+  const formula = (ws: StyledXLSX.WorkSheet, address: string, expression: string, value: number | null, format = '0.00') => {
+    const existing = ws[address];
+    ws[address] = { t: value === null ? 's' : 'n', v: value === null ? '' : value, f: expression, z: format, s: existing?.s };
+  };
+  const average = (values: (number | null | undefined)[]) => {
+    const valid = values.filter((v): v is number => typeof v === 'number' && Number.isFinite(v));
+    return valid.length ? valid.reduce((a, b) => a + b, 0) / valid.length : null;
+  };
+  const asNumber = (value: unknown): number | null => typeof value === 'number' && Number.isFinite(value) ? value : null;
+  const parseRubric = (value: unknown): Record<string, unknown> => {
+    if (typeof value === 'string') { try { value = JSON.parse(value); } catch { return {}; } }
+    return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+  };
+  const rubricValue = (value: unknown): number | null => {
+    if (value === null || value === undefined || value === '') return null;
+    const n = Number(value);
+    return Number.isFinite(n) && n >= 0 && n <= 4 ? n : null;
+  };
+  const score = (s: Session) => s.status === 'validated' ? average(RUBRIC_CRITERIA.map(c => rubricValue(parseRubric(s.rubric_evaluation)[c.key]))) : null;
+  const sessionDate = (s: Session) => s.created_at && !Number.isNaN(new Date(s.created_at).getTime()) ? localDate(new Date(s.created_at)) : '';
+  const domain = (s: Session) => {
+    const v = s.skill_domain;
+    if (Array.isArray(v)) return v.join(', ');
+    if (typeof v === 'string') {
+      try { const parsed = JSON.parse(v); if (Array.isArray(parsed)) return parsed.join(', '); } catch { /* plain text */ }
+      return v.replace(/^\{|\}$/g, '').replace(/"/g, '');
+    }
+    return s.category || '';
+  };
+  const title = (s: Session) => {
+    if (s.title?.trim()) return s.title.trim();
+    if (Array.isArray(s.activity_path) && s.activity_path.length) {
+      return s.activity_path.map((path: string) => formatActivityTitle(path)).join(', ');
+    }
+    if (typeof s.activity_path === 'string' && s.activity_path.trim()) return formatActivityTitle(s.activity_path);
+    return s.category || 'Classroom Activity';
+  };
+  const status = (v: number | null) => v === null ? '' : getRubricTier(v).shortLabel;
+  const prompt = (hints: number | null) => hints === null ? '' : hints === 0 ? '0 hints: Independent' : hints <= 2 ? '1–2 hints: Low Prompting' : '3+ hints: High Prompting';
+  const masterRows: CellValue[][] = [['Session Date','Activity Source','Skill Domain','Activity Title','Duration (Sec)','Duration (Formatted)','Mistakes','Hints Used','Prompt Fading (Hint Count)','Prompt-Free Rate','Rubric Score (0-4)','Mastery Status','Teacher Remarks'],
+    ...sessions.map(s => { const duration = asNumber(s.duration_seconds); const hints = asNumber(s.hints_used); const result = score(s); return [sessionDate(s), s.activity_type === 'classroom' ? 'Classroom' : 'App', domain(s), title(s), duration, duration === null ? '' : `${Math.floor(duration / 60)}m ${duration % 60}s`, asNumber(s.mistakes), hints, prompt(hints), hints === null ? null : hints === 0 ? 1 : 0, result, status(result), s.teacher_feedback || '']; }),
+    ['AVERAGE / TOTAL SUMMARY']];
+  const master = table('All Sessions Master Log', masterRows, [13,15,20,25,16,16,14,14,25,16,18,20,45]);
+  const last = sessions.length + 1;
+  const masterSummary = sessions.length + 2;
+  master['!autofilter'] = { ref: `A1:M${Math.max(1, last)}` };
+  const masterAverage = (column: string, values: (number | null)[], format: string) => {
+    if (sessions.length) formula(master, `${column}${masterSummary}`, `IFERROR(AVERAGE(${column}2:${column}${last}),"")`, average(values), format);
+  };
+  masterAverage('E', sessions.map(s => asNumber(s.duration_seconds)), '0');
+  masterAverage('G', sessions.map(s => asNumber(s.mistakes)), '0.0');
+  masterAverage('H', sessions.map(s => asNumber(s.hints_used)), '0.0');
+  masterAverage('J', sessions.map(s => s.hints_used == null ? null : s.hints_used === 0 ? 1 : 0), '0.0%');
+  masterAverage('K', sessions.map(score), '0.00');
+  const rubricRows: CellValue[][] = [['Session Date','Activity Source','Skill Domain','Activity Title',...RUBRIC_CRITERIA.map(c => c.title),'Rubric Score (0-4)','Mastery Status','Teacher Remarks'],
+    ...evaluated.map(s => [sessionDate(s), s.activity_type === 'classroom' ? 'Classroom' : 'App', domain(s), title(s), ...RUBRIC_CRITERIA.map(c => rubricValue(parseRubric(s.rubric_evaluation)[c.key])), score(s), status(score(s)), s.teacher_feedback || '']), ['AVERAGE']];
+  const rubric = table('Rubric Criteria Matrix', rubricRows, [13,14,20,24,18,18,18,20,18,16,18,42]);
+  rubric['!autofilter'] = { ref: `A1:L${evaluated.length + 1}` };
+  if (evaluated.length) ['E','F','G','H','I','J'].forEach((col, i) => {
+    const values = evaluated.map(s => i === 5 ? score(s) : rubricValue(parseRubric(s.rubric_evaluation)[RUBRIC_CRITERIA[i].key]));
+    formula(rubric, `${col}${evaluated.length + 2}`, `IFERROR(AVERAGE(${col}2:${col}${evaluated.length + 1}),"")`, average(values));
   });
-
-  const emotionRows = [
-    ['Emotional Recognition & Performance Correlation Summary'],
-    ['Zone', 'Distribution (%)', 'Total Days', 'Average Evaluation Score (0–4)', 'Mastery Level'],
-    ...emotionAnalytics.zoneDistribution.map((z) => [
-      z.title,
-      `${z.percentage}%`,
-      z.count,
-      z.averageScore !== null ? z.averageScore.toFixed(1) : 'No evaluations',
-      z.averageScore !== null ? `${Math.round((z.averageScore / 4) * 100)}%` : 'N/A',
-    ]),
-    [''],
-    ['Daily Emotional Check-Ins & Day Activity Evaluation Log'],
-    ['Date', 'Reported Emotion', 'Tagalog Label', 'Regulation Zone', 'Day Evaluation Score (0–4)', 'Evaluation Status'],
-    ...checkIns.map((c) => {
-      const e = (c.emotion || '').toLowerCase();
-      let zoneTitle = 'Optimal Learning';
-      let tagalog = 'Masaya';
-      if (e === 'calm') { zoneTitle = 'Optimal Learning'; tagalog = 'Kalmado'; }
-      else if (e === 'excited') { zoneTitle = 'Heightened State'; tagalog = 'Masigla'; }
-      else if (e === 'nervous') { zoneTitle = 'Heightened State'; tagalog = 'Kinakabahan'; }
-      else if (e === 'tired') { zoneTitle = 'Low Energy'; tagalog = 'Pagod'; }
-      else if (e === 'sad') { zoneTitle = 'Low Energy'; tagalog = 'Malungkot'; }
-
-      const dayScore = evalScoreByDateMap[c.check_in_date];
-      return [
-        c.check_in_date,
-        e.toUpperCase(),
-        tagalog,
-        zoneTitle,
-        dayScore !== undefined ? dayScore.toFixed(1) : 'N/A',
-        dayScore !== undefined ? 'Evaluated' : 'No Activity Evaluated',
-      ];
-    }),
-  ];
-  const wsEmotions = XLSX.utils.aoa_to_sheet(emotionRows);
-  XLSX.utils.book_append_sheet(wb, wsEmotions, 'Emotional Check-Ins');
-
-  const validatedSessionsList = rawSessions.filter((s: any) => s.status === 'validated' && s.rubric_evaluation);
-  const valRows = [
-    ['Session Date', 'Activity Source', 'Category', 'Activity Title', 'Looking at Objects', 'Concentrating', 'Performing Task', 'Following Instructions', 'Completed Work', 'Average Rubric Score', 'Benchmark Tier', 'Teacher Remarks'],
-    ...validatedSessionsList.map((s: any) => {
-      const r = s.rubric_evaluation || {};
-      const score = calculateRubricScore(r);
-      const tier = score !== null ? getRubricTier(score).shortLabel : 'N/A';
-      return [
-        new Date(s.created_at).toLocaleDateString('en-US'),
-        s.activity_type === 'classroom' ? 'Classroom' : 'App',
-        s.category || 'General',
-        s.title || s.activity_title || s.activityTitle || s.activityName || 'Practice Session',
-        r.looking_at_objects ?? 'N/A',
-        r.concentrating ?? 'N/A',
-        r.performing_task ?? 'N/A',
-        r.following_instructions ?? 'N/A',
-        r.completed_work ?? 'N/A',
-        score !== null ? score.toFixed(2) : 'N/A',
-        tier,
-        s.teacher_remarks || s.feedback || s.teacher_feedback || '',
-      ];
-    }),
-  ];
-  const wsVal = XLSX.utils.aoa_to_sheet(valRows);
-  XLSX.utils.book_append_sheet(wb, wsVal, 'Validated Evaluations');
-
-  const domRows = [
-    ['Domain Title', 'Total Practices', 'Average Rubric Score (0-4)', 'Benchmark Status'],
-    ...domainExposure.map((d) => {
-      const totalCount = d.skills ? d.skills.reduce((a, b) => a + b.count, 0) : 0;
-      const score = d.averageScore;
-      const tier = score !== null && score !== undefined ? getRubricTier(score).shortLabel : 'No evaluations';
-      return [
-        d.masterDomain,
-        totalCount,
-        score !== null && score !== undefined ? score.toFixed(2) : 'N/A',
-        tier,
-      ];
-    }),
-  ];
-  const wsDom = XLSX.utils.aoa_to_sheet(domRows);
-  XLSX.utils.book_append_sheet(wb, wsDom, 'Domain Practice');
-
-  const setWorksheetColumnWidths = (ws: XLSX.WorkSheet, dataRows: (string | number)[][]) => {
-    if (!dataRows || dataRows.length === 0) return;
-    const colCount = Math.max(...dataRows.map((r) => r.length));
-    const colWidths: { wch: number }[] = [];
-
-    for (let c = 0; c < colCount; c++) {
-      let maxLen = 14;
-      for (let r = 0; r < dataRows.length; r++) {
-        const val = dataRows[r][c];
-        if (val !== undefined && val !== null) {
-          const strVal = String(val);
-          if (strVal.length > maxLen) {
-            maxLen = strVal.length;
-          }
-        }
-      }
-      colWidths.push({ wch: Math.min(maxLen + 6, 80) });
-    }
-
-    ws['!cols'] = colWidths;
+  const domainRows: CellValue[][] = [['Master Domain','Sub-Skills Evaluated','Total Practices','Average Score (0-4)','Mastery Status','Clinical Observation','Next Target'],
+    ...domains.map(d => [d.masterDomain, d.skills.map(s => s.name).join(', '), d.skills.reduce((a, s) => a + s.count, 0), d.averageScore ?? null, status(d.averageScore ?? null), '', '']), ['TOTAL / COMPOSITE AVERAGE']];
+  const domainSheet = table('Skill Domains', domainRows, [22,35,18,18,18,38,42]);
+  domainSheet['!autofilter'] = { ref: `A1:G${domains.length + 1}` };
+  if (domains.length) {
+    formula(domainSheet, `C${domains.length + 2}`, `SUM(C2:C${domains.length + 1})`, domains.reduce((a,d) => a + d.skills.reduce((sum,s) => sum + s.count,0),0), '0');
+    formula(domainSheet, `D${domains.length + 2}`, `IFERROR(AVERAGE(D2:D${domains.length + 1}),"")`, average(domains.map(d => d.averageScore)));
+  }
+  const zone = (emotion: string) => {
+    const meta = getEmotionMeta(emotion);
+    if (!meta) return '';
+    if (meta.zone === 'optimal') return 'Green';
+    if (meta.zone === 'low_energy') return 'Blue';
+    return emotion.toLowerCase() === 'angry' ? 'Red' : 'Yellow';
   };
-
-  setWorksheetColumnWidths(wsOverview, overviewData);
-  setWorksheetColumnWidths(wsRecs, recRows);
-  setWorksheetColumnWidths(wsMilestones, milestoneRows);
-  setWorksheetColumnWidths(wsEmotions, emotionRows);
-  setWorksheetColumnWidths(wsVal, valRows);
-  setWorksheetColumnWidths(wsDom, domRows);
-
-  const wbout = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
-  const sanitizedName = studentDetails.name.replace(/[^a-zA-Z0-9_-]/g, '_');
-  const filename = `${sanitizedName}_Student_Analytics_${Date.now()}.xlsx`;
+  const daySessions = (day: string) => sessions.filter(s => sessionDate(s) === day);
+  const dayScores = (day: string) => average(daySessions(day).map(score));
+  const zoneNames = ['Green','Yellow','Blue','Red'];
+  const moodRows: CellValue[][] = [['EMOTIONAL REGULATION ZONE SUMMARY'], ['Regulation Zone','Emotions Included','Distribution %','Days Count','Average Day Score (0-4)','Average Hints',''],
+    ...zoneNames.map(z => { const entries = checkIns.filter(c => zone(c.emotion) === z); return [z, Array.from(new Set(entries.map(c => c.emotion))).join(', '), checkIns.length ? entries.length / checkIns.length : null, entries.length, average(entries.map(c => dayScores(c.check_in_date))), average(entries.flatMap(c => daySessions(c.check_in_date).map(s => asNumber(s.hints_used)))), '']; }),
+    [], ['DAILY CHECK-IN CORRELATION LOG'], ['Check-In Date','Reported Emotion','Tagalog Equivalent','Regulation Zone','Activity Evaluated','Day Score (0-4)','Hint-Based Prompting','Teacher Remarks'],
+    ...checkIns.map(c => { const onDay = daySessions(c.check_in_date); return [c.check_in_date, c.emotion, getEmotionMeta(c.emotion)?.tagalogLabel || '', zone(c.emotion), onDay.map(title).filter(Boolean).join(', '), dayScores(c.check_in_date), onDay.map(s => prompt(asNumber(s.hints_used))).filter(Boolean).join(', '), onDay.map(s => s.teacher_feedback).filter(Boolean).join(' | ')]; }),
+    ['TOTAL / AVERAGE']];
+  const mood = table('Mood & Check-Ins Log', moodRows, [16,25,20,18,35,18,25,45], [0,1,7,8]);
+  const moodLast = 9 + checkIns.length;
+  mood['!autofilter'] = { ref: `A9:H${moodLast}` };
+  for (let i = 0; i < 4; i++) { const row = i + 3; mood[`C${row}`].z = '0.0%'; mood[`E${row}`].z = '0.00'; mood[`F${row}`].z = '0.0'; }
+  if (checkIns.length) formula(mood, `F${moodLast + 1}`, `IFERROR(AVERAGE(F10:F${moodLast}),"")`, average(checkIns.map(c => dayScores(c.check_in_date))));
+  const relevantMilestones = milestones.filter(m => {
+    const start = m.startDate ? new Date(m.startDate) : null;
+    const end = m.targetDate ? new Date(m.targetDate) : null;
+    return (!range.startDate || !end || end >= range.startDate) && (!range.endDate || !start || start <= range.endDate);
+  });
+  const milestoneRows: CellValue[][] = [['Goal / Skill Description','Category / Domain','Created','Target Date','Status','Description'],
+    ...relevantMilestones.map(m => [m.title, (m.templateId && templates.get(m.templateId)) || '', m.startDate || '', m.targetDate || '', m.status, m.description || '']), ['TOTAL MILESTONES']];
+  const milestoneSheet = table('IEP Milestones Tracker', milestoneRows, [38,22,16,16,18,45]);
+  milestoneSheet['!autofilter'] = { ref: `A1:F${relevantMilestones.length + 1}` };
+  formula(milestoneSheet, `B${relevantMilestones.length + 2}`, relevantMilestones.length ? `COUNTA(A2:A${relevantMilestones.length + 1})` : '0', relevantMilestones.length, '0');
+  const markSummary = (ws: StyledXLSX.WorkSheet, row: number, columns: number) => {
+    for (let c = 0; c < columns; c++) {
+      const cell = ws[StyledXLSX.utils.encode_cell({ r: row - 1, c })];
+      if (cell) cell.s = { ...cell.s, fill: { fgColor: { rgb: 'F1F5F9' } }, font: { name: 'Segoe UI', bold: true, color: { rgb: '0F172A' } }, border: { top: border, bottom: { style: 'double', color: { rgb: '0F172A' } }, left: border, right: border } };
+    }
+  };
+  markSummary(master, masterSummary, 13);
+  markSummary(rubric, evaluated.length + 2, 12);
+  markSummary(domainSheet, domains.length + 2, 7);
+  markSummary(mood, moodLast + 1, 8);
+  markSummary(milestoneSheet, relevantMilestones.length + 2, 6);
+  for (let row = 2; row <= last; row++) {
+    if (master['J' + row]) master['J' + row].z = '0.0%';
+    if (master['K' + row]) master['K' + row].z = '0.00';
+  }
+  for (let row = 2; row <= evaluated.length + 1; row++) if (rubric['J' + row]) rubric['J' + row].z = '0.00';
+  for (let row = 2; row <= domains.length + 1; row++) if (domainSheet['D' + row]) domainSheet['D' + row].z = '0.00';
+  for (let row = 10; row <= moodLast; row++) if (mood['F' + row]) mood['F' + row].z = '0.00';
+  if (checkIns.length) zoneNames.forEach((z, i) => {
+    const row = i + 3;
+    const entries = checkIns.filter(c => zone(c.emotion) === z);
+    formula(mood, 'D' + row, `COUNTIF(D10:D${moodLast},A${row})`, entries.length, '0');
+    formula(mood, 'C' + row, `IFERROR(D${row}/COUNTA(A10:A${moodLast}),"")`, entries.length / checkIns.length, '0.0%');
+    formula(mood, 'E' + row, `IFERROR(AVERAGEIF(D10:D${moodLast},A${row},F10:F${moodLast}),"")`, average(entries.map(c => dayScores(c.check_in_date))));
+  });
+  const cognitiveIndex = domains.findIndex(d => /cognitiv/i.test(d.masterDomain));
+  const cognitive = cognitiveIndex < 0 ? undefined : domains[cognitiveIndex];
+  const green = checkIns.filter(c => zone(c.emotion) === 'Green').length;
+  const summary = table('Summary & KPIs', [
+    ['AUTIVITY — COMPREHENSIVE LEARNER ANALYTICS SUMMARY'], ['Student Name',studentDetails.name], ['Learner Code',studentDetails.learnerCode || ''], ['Grade',studentDetails.grade || ''], ['Evaluation Period',timeframeLabel], ['Reporting Date',localDate(new Date())], [],
+    ['Metric Category','Aggregated Value','Reporting Unit','Target Benchmark','Interpretation'],
+    ['Overall Mean Score',null,'0–4','3.2','Validated sessions'], ['Independence / Prompt-Free Rate',null,'%','','Sessions with zero recorded hints'], ['Average Hints',null,'per session','','Recorded hint counts'], ['Average Mistakes',null,'per session','','Recorded mistakes'], ['Average Duration',null,'seconds','','Recorded duration'], ['Total Sessions',null,'sessions','','All recorded sessions'], ['Cognitive Mastery Score',cognitive?.averageScore ?? null,'0–4','','Cognitive domain session average'], ['Green Zone Frequency',checkIns.length ? green / checkIns.length : null,'%','','Share of check-ins in Green Zone'],
+  ], [30,18,18,20,45], [0,7]);
+  const dataEnd = Math.max(2, last);
+  const crossAvg = (address: string, column: string, values: (number | null)[], format: string) => {
+    if (sessions.length) formula(summary, address, `IFERROR(AVERAGE('All Sessions Master Log'!${column}2:${column}${dataEnd}),"")`, average(values), format);
+  };
+  crossAvg('B9','K',sessions.map(score),'0.00');
+  crossAvg('B10','J',sessions.map(s => s.hints_used == null ? null : s.hints_used === 0 ? 1 : 0),'0.0%');
+  crossAvg('B11','H',sessions.map(s => asNumber(s.hints_used)),'0.0');
+  crossAvg('B12','G',sessions.map(s => asNumber(s.mistakes)),'0.0');
+  crossAvg('B13','E',sessions.map(s => asNumber(s.duration_seconds)),'0');
+  formula(summary,'B14',sessions.length ? `COUNTA('All Sessions Master Log'!A2:A${dataEnd})` : '0',sessions.length,'0');
+  if (cognitiveIndex >= 0 && cognitive?.averageScore != null) formula(summary, 'B15', `'Skill Domains'!D${cognitiveIndex + 2}`, cognitive.averageScore);
+  if (checkIns.length) formula(summary, 'B16', "'Mood & Check-Ins Log'!C3", green / checkIns.length, '0.0%');
+  summary.B15.z = '0.00'; summary.B16.z = '0.0%';
+  wb.SheetNames = ['Summary & KPIs','All Sessions Master Log','Rubric Criteria Matrix','Skill Domains','Mood & Check-Ins Log','IEP Milestones Tracker'];
+  const filename = `${studentDetails.name.replace(/[^a-zA-Z0-9_-]/g, '_')}_Student_Analytics_${Date.now()}.xlsx`;
+  if (Platform.OS === 'web') { StyledXLSX.writeFile(wb, filename); return filename; }
   const uri = `${FileSystem.documentDirectory}${filename}`;
-
-  await FileSystem.writeAsStringAsync(uri, wbout, {
-    encoding: FileSystem.EncodingType.Base64,
-  });
-
-  if (await Sharing.isAvailableAsync()) {
-    await Sharing.shareAsync(uri, {
-      mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      dialogTitle: `Export ${studentDetails.name} Excel Report`,
-      UTI: 'com.microsoft.excel.xlsx',
-    });
-  }
-
+  await FileSystem.writeAsStringAsync(uri, StyledXLSX.write(wb, { type: 'base64', bookType: 'xlsx' }), { encoding: FileSystem.EncodingType.Base64 });
+  if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(uri, { mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', dialogTitle: `Export ${studentDetails.name} Excel Report`, UTI: 'com.microsoft.excel.xlsx' });
   return uri;
 };
 

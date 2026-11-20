@@ -28,6 +28,7 @@ interface BaseModalProps {
   onSubmit?: () => void;
   submitLabel?: string;
   additionalSubmitLabel?: string;
+  additionalSubmitLoading?: boolean;
   onAdditionalSubmit?: () => void;
   submitDisabled?: boolean;
   isSubmitting?: boolean;
@@ -44,6 +45,7 @@ export function BaseModal({
   onSubmit,
   submitLabel = 'SAVE',
   additionalSubmitLabel,
+  additionalSubmitLoading = false,
   onAdditionalSubmit,
   submitDisabled = false,
   isSubmitting = false,
@@ -246,7 +248,7 @@ export function BaseModal({
             {onAdditionalSubmit && additionalSubmitLabel && (
               <Pressable
                 onPress={onAdditionalSubmit}
-                disabled={submitDisabled || isSubmitting}
+                disabled={submitDisabled || isSubmitting || additionalSubmitLoading}
                 className="flex-1 py-4 border-[2px] rounded-[8px] items-center justify-center bg-white active:scale-95 transition-transform"
                 style={{
                   borderColor: submitDisabled ? '#F1F1F1' : '#BBE8FB',
@@ -257,9 +259,7 @@ export function BaseModal({
                   elevation: 2,
                 }}
               >
-                <Text className="font-fredoka-one text-[11px] text-center" style={{ color: submitDisabled ? '#D9D9D9' : '#62A9E6' }}>
-                  {additionalSubmitLabel}
-                </Text>
+                {additionalSubmitLoading ? <ActivityIndicator size="small" color="#62A9E6" /> : <Text className="font-fredoka-one text-[11px] text-center" style={{ color: submitDisabled ? '#D9D9D9' : '#62A9E6' }}>{additionalSubmitLabel}</Text>}
               </Pressable>
             )}
           </View>
