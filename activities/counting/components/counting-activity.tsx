@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { playCorrectSound } from '@/src/utils/sound';
-import { speakInstruction } from '@/src/utils/speech';
+import { isSpeechEnabled, speakInstruction } from '@/src/utils/speech';
 import { useActivityHint } from '@/hooks/use-activity-hint';
 import {
   CountingActivityProps,
@@ -63,6 +63,7 @@ const ROUND_ITEMS: Array<{ type: string; name: string; category: CountingItemCat
 export default function CountingActivity({
   contentData,
   onComplete,
+  onRoundComplete,
   onFeedback,
   onIncorrectAttempt,
   hintSignal,
@@ -76,7 +77,7 @@ export default function CountingActivity({
 
   // Round 1 configuration: "random (2,3,4) on first" per user requirement
   const initialTarget =
-    contentData?.target_count && [2, 3, 4].includes(Number(contentData.target_count))
+    contentData?.target_count && Number(contentData.target_count) >= 1 && Number(contentData.target_count) <= 10
       ? Number(contentData.target_count)
       : getRandomInitialCountingTarget();
 
@@ -166,6 +167,8 @@ export default function CountingActivity({
   const basketRef = useRef<View | null>(null);
   const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
   const transitionTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const speechFallbackTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const mountedRef = useRef(true);
 
   // Load items for a given round
   const loadRound = (
@@ -212,7 +215,7 @@ export default function CountingActivity({
     const roundInstruction = `Drag ${target} ${item.name.toLowerCase()} into the basket!`;
     if (adaptiveResult) {
       const fullSpeech = `${adaptiveResult.aiMessage} ${roundInstruction}`;
-      onFeedback?.(`${adaptiveResult.reasoning}\n${roundInstruction}`);
+      onFeedback?.(`${adaptiveResult.aiMessage} ${roundInstruction}`);
       speakInstruction(fullSpeech);
     } else {
       onFeedback?.(roundInstruction);
@@ -222,6 +225,7 @@ export default function CountingActivity({
 
   // Initialize on mount
   useEffect(() => {
+    mountedRef.current = true;
     sessionStartTimeRef.current = Date.now();
     totalMistakesRef.current = 0;
     roundDurationsRef.current = [];
@@ -232,8 +236,10 @@ export default function CountingActivity({
     loadRound(1, initialTarget, randomFirstItemIndex);
 
     return () => {
+      mountedRef.current = false;
       if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
       if (transitionTimerRef.current) clearTimeout(transitionTimerRef.current);
+      if (speechFallbackTimerRef.current) clearTimeout(speechFallbackTimerRef.current);
     };
   }, []);
 
@@ -306,6 +312,7 @@ export default function CountingActivity({
     if (newCount >= target) {
       isTransitioningRef.current = true;
       setIsRoundCompleted(true);
+      onRoundComplete?.(currentRoundRef.current);
 
       const roundDuration = Math.max(1, Math.round((Date.now() - roundStartTimeRef.current) / 1000));
       roundDurationsRef.current.push(roundDuration);
@@ -313,13 +320,13 @@ export default function CountingActivity({
 
       // Real-time speech: Pronounce count and celebrate in one fluid sentence!
       const itemNameLower = roundConfigRef.current.itemName.toLowerCase();
-      const praise = `${word}! Good job! You put ${target} ${itemNameLower} in the basket!`;
+      const praise = currentRoundRef.current === TOTAL_ROUNDS
+        ? `${word}! Good job! You put ${target} ${itemNameLower} in the basket! Incredible! You completed all 3 counting activities! Great work!`
+        : `${word}! Good job! You put ${target} ${itemNameLower} in the basket!`;
       onFeedback?.(`Good job! 🌟 ${target} ${itemNameLower} in the basket!`);
-      speakInstruction(praise);
 
-      // AUTOMATIC TRANSITION AFTER 2.2 SECONDS:
-      // The basket empties out, new target number generates, fresh set of items appears on shelf
-      transitionTimerRef.current = setTimeout(() => {
+      const advanceRound = () => {
+        if (!mountedRef.current) return;
         const roundNum = currentRoundRef.current;
         if (roundNum < TOTAL_ROUNDS) {
           const nextRoundNum = roundNum + 1;
@@ -346,13 +353,40 @@ export default function CountingActivity({
           const totalSessionDuration = Math.max(1, Math.round((Date.now() - sessionStartTimeRef.current) / 1000));
           const totalMistakes = totalMistakesRef.current;
 
-          onFeedback?.('Incredible! You completed all 3 counting activities! 🎉');
-          speakInstruction('Incredible! You completed all 3 counting activities! Great work!');
-
           // Calls SetManager onComplete which displays the teacher evaluation / FeedbackModal!
           onComplete?.(15, totalSessionDuration, totalMistakes, hintsUsed);
         }
+      };
+
+      // Keep the success state visible for at least 2.2 seconds and wait for speech.
+      let delayFinished = false;
+      let speechFinished = false;
+      let advanced = false;
+      const tryAdvance = () => {
+        if (!advanced && delayFinished && speechFinished && mountedRef.current) {
+          advanced = true;
+          if (speechFallbackTimerRef.current) clearTimeout(speechFallbackTimerRef.current);
+          advanceRound();
+        }
+      };
+      const finishSpeech = () => {
+        speechFinished = true;
+        tryAdvance();
+      };
+      transitionTimerRef.current = setTimeout(() => {
+        delayFinished = true;
+        tryAdvance();
       }, 2200);
+      // Avoid trapping the activity if the platform never delivers a speech callback.
+      speechFallbackTimerRef.current = setTimeout(finishSpeech, 30000);
+      void isSpeechEnabled().then((enabled) => {
+        if (!mountedRef.current) return;
+        if (!enabled) {
+          finishSpeech();
+          return;
+        }
+        void speakInstruction(praise, { onDone: finishSpeech, onStopped: finishSpeech, onError: finishSpeech });
+      }).catch(finishSpeech);
     } else {
       // Intermediate drop: Real-time speech counting along out loud!
       speakInstruction(word);

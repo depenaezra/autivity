@@ -1,4 +1,5 @@
 import * as Speech from 'expo-speech';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { speakElevenLabs, stopElevenLabsSpeech } from '@/src/services/elevenlabs';
 
 /**
@@ -29,6 +30,22 @@ export const TIME_UP_MESSAGES = [
 
 let cachedBestVoiceEn: string | undefined = undefined;
 let cachedBestVoiceTl: string | undefined = undefined;
+const SPEECH_ENABLED_KEY = '@activity_tts_enabled';
+let speechEnabled = true;
+const speechPreferenceLoaded = AsyncStorage.getItem(SPEECH_ENABLED_KEY)
+    .then((saved) => { if (saved !== null) speechEnabled = saved !== 'false'; })
+    .catch(() => {});
+
+export const isSpeechEnabled = async (): Promise<boolean> => {
+    await speechPreferenceLoaded;
+    return speechEnabled;
+};
+
+export const setSpeechEnabled = async (enabled: boolean): Promise<void> => {
+    speechEnabled = enabled;
+    if (!enabled) await stopSpeech();
+    try { await AsyncStorage.setItem(SPEECH_ENABLED_KEY, String(enabled)); } catch {}
+};
 
 /**
  * Searches system voices to pick the highest quality, most natural voice available for the language.
@@ -130,6 +147,8 @@ export const speakInstruction = async (
         onError?: (error: any) => void;
     }
 ): Promise<void> => {
+    await speechPreferenceLoaded;
+    if (!speechEnabled) return;
     const request = ++speechRequest;
     try {
         const cleaned = cleanTextForSpeech(text);

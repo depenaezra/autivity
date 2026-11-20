@@ -13,12 +13,13 @@ import CountingActivity from '@/activities/counting/components/counting-activity
 type ActivityRendererProps = {
     activity: any;
     onComplete: (score: number, timeSpent: number, mistakes: number, hintsUsed?: number) => void;
+    onRoundComplete?: (round: number) => void;
     onFeedback?: (message: string, onSpoken?: () => void, correct?: boolean) => void;
     onIncorrectAttempt?: () => void;
     hintSignal?: number;
 };
 
-export default function ActivityRenderer({ activity, onComplete, onFeedback, onIncorrectAttempt, hintSignal }: ActivityRendererProps) {
+export default function ActivityRenderer({ activity, onComplete, onRoundComplete, onFeedback, onIncorrectAttempt, hintSignal }: ActivityRendererProps) {
     const activityType = (activity.type || activity.content_data?.type || activity.category || '').toLowerCase();
 
     const activityIdentity = [activityType, activity.path, activity.sub_category, activity.title, activity.name, activity.content_data?.activity_id].filter(Boolean).join(' ').toLowerCase();
@@ -35,6 +36,7 @@ export default function ActivityRenderer({ activity, onComplete, onFeedback, onI
             <CountingActivity
                 contentData={activity.content_data}
                 onComplete={onComplete}
+                onRoundComplete={onRoundComplete}
                 onFeedback={onFeedback}
                 onIncorrectAttempt={onIncorrectAttempt}
                 hintSignal={hintSignal}
@@ -174,6 +176,7 @@ export default function ActivityRenderer({ activity, onComplete, onFeedback, onI
                 <CountingActivity
                     contentData={activity.content_data}
                     onComplete={onComplete}
+                    onRoundComplete={onRoundComplete}
                     onFeedback={onFeedback}
                     onIncorrectAttempt={onIncorrectAttempt}
                     hintSignal={hintSignal}

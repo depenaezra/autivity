@@ -797,7 +797,7 @@ export const determineAdaptiveNextTarget = (
       let candidateTargets: number[];
       if (prevTarget === 2) candidateTargets = [5, 6];
       else if (prevTarget === 3) candidateTargets = [6, 7];
-      else candidateTargets = [7, 8];
+      else candidateTargets = [Math.min(10, Math.max(7, prevTarget + 1)), Math.min(10, Math.max(8, prevTarget + 2))];
 
       const nextTarget = candidateTargets[Math.floor(Math.random() * candidateTargets.length)];
       return {

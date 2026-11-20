@@ -21,6 +21,8 @@ interface InstructionSpeakerButtonProps {
     className?: string;
     onSpeechComplete?: () => void;
     replayKey?: number;
+    enabled?: boolean;
+    onToggleEnabled?: (enabled: boolean) => void;
 }
 
 export default function InstructionSpeakerButton({
@@ -33,6 +35,8 @@ export default function InstructionSpeakerButton({
     className = '',
     onSpeechComplete,
     replayKey,
+    enabled = true,
+    onToggleEnabled,
 }: InstructionSpeakerButtonProps) {
     const { width } = useWindowDimensions();
     const isTablet = width >= 768;
@@ -88,21 +92,22 @@ export default function InstructionSpeakerButton({
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
         } catch {}
 
-        if (isPlaying) {
+        if (!enabled) {
+            onToggleEnabled?.(true);
+        } else {
             await stopSpeech();
             setIsPlaying(false);
             stopPulseAnimation();
-        } else if (text) {
-            await playSpeech(text);
+            onToggleEnabled?.(false);
         }
     };
 
     // Automatically read instructions/mistake feedback when text updates
     useEffect(() => {
-        if (autoPlay && text) {
+        if (enabled && autoPlay && text) {
             playSpeech(text);
         }
-    }, [text, autoPlay, replayKey]);
+    }, [text, autoPlay, replayKey, enabled]);
 
     // Clean up speech when component unmounts
     useEffect(() => {
@@ -115,23 +120,24 @@ export default function InstructionSpeakerButton({
         <Animated.View style={animatedStyle}>
             <Pressable
                 onPress={handlePress}
-                className={`bg-white border-[2px] border-[#BBE8FB] rounded-xl items-center justify-center active:scale-95 transition-transform ${className}`}
+                className={`bg-white border-[2px] rounded-xl items-center justify-center active:scale-95 transition-transform ${className}`}
                 style={{
                     width: buttonSize,
                     height: buttonSize,
-                    shadowColor: '#BBE8FB',
+                    borderColor: enabled ? '#BBE8FB' : '#9CA3AF',
+                    shadowColor: enabled ? '#BBE8FB' : '#9CA3AF',
                     shadowOffset: { width: 0, height: 2 },
                     shadowOpacity: 1,
                     shadowRadius: 0,
                     elevation: 2,
                 }}
-                accessibilityLabel="Listen to instruction"
+                accessibilityLabel={enabled ? 'Turn off spoken instructions' : 'Turn on spoken instructions'}
                 accessibilityRole="button"
             >
                 <Feather
-                    name={isPlaying ? 'volume-x' : 'volume-2'}
+                    name={enabled ? 'volume-2' : 'volume-x'}
                     size={iconSiz}
-                    color={isPlaying ? '#3B82F6' : color}
+                    color={enabled ? color : '#9CA3AF'}
                 />
             </Pressable>
         </Animated.View>

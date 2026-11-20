@@ -127,7 +127,7 @@ import { createNotification } from '@/src/services/notifications';
 import { getStudentHistoricalBaseline } from '@/src/services/sessions';
 import { formatActivityTitle } from '@/src/utils/format';
 import { playCorrectSound, setGlobalSfxEnabled, startBackgroundMusic, stopBackgroundMusic } from '@/src/utils/sound';
-import { stopSpeech } from '@/src/utils/speech';
+import { isSpeechEnabled, setSpeechEnabled, stopSpeech } from '@/src/utils/speech';
 import {
     ActivityLanguage,
     getRandomPraiseMessage,
@@ -238,12 +238,14 @@ export default function SetManager({
     const [activityPool, setActivityPool] = useState<any[]>([]);
     const [playedActivityIds, setPlayedActivityIds] = useState<string[]>([]);
     const [completedCount, setCompletedCount] = useState(0);
+    const [countingRoundsCompleted, setCountingRoundsCompleted] = useState(0);
     const [currentActivity, setCurrentActivity] = useState<any | null>(null);
     const [globalTimer, setGlobalTimer] = useState(900); // 15 minutes
 
     const [isSetComplete, setIsSetComplete] = useState(false);
     const [bearMessage, setBearMessage] = useState('');
     const [language, setLanguage] = useState<ActivityLanguage>('en');
+    const [speechEnabled, setSpeechEnabledState] = useState(true);
     const [errorMode, setErrorMode] = useState(false);
     const [successMode, setSuccessMode] = useState(false);
     const [isActivityDone, setIsActivityDone] = useState(false);
@@ -261,6 +263,7 @@ export default function SetManager({
                 setLanguage(saved);
             }
         });
+        isSpeechEnabled().then(setSpeechEnabledState);
     }, []);
 
     const toggleLanguage = async () => {
@@ -291,7 +294,14 @@ export default function SetManager({
     const hasWarnedAlmostUpRef = useRef(false);
     const hasWarnedTimeUpRef = useRef(false);
 
-    const effectiveCompleted = isSetComplete ? 3 : (completedCount + (isActivityDone ? 1 : 0));
+    const isCountingActivity =
+        currentActivity?.category?.toLowerCase().includes('count') ||
+        currentActivity?.path?.toLowerCase().includes('count') ||
+        currentActivity?.content_data?.type === 'counting';
+    const activityProgress = isCountingActivity || countingRoundsCompleted > 0
+        ? Math.max(countingRoundsCompleted, isActivityDone ? 3 : 0)
+        : (isActivityDone ? 1 : 0);
+    const effectiveCompleted = isSetComplete ? 3 : (completedCount + activityProgress);
 
     // Microanimation for smooth progress bar fill (500ms easing slide)
     const progressAnim = useSharedValue(0);
@@ -325,6 +335,7 @@ export default function SetManager({
 
             setIsInitializing(true);
             setActivityPool(initialPool);
+            setCountingRoundsCompleted(0);
 
             // Fetch student preferences
             if (studentId) {
@@ -352,9 +363,13 @@ export default function SetManager({
             const isCounting = initialPool[0]?.category?.toLowerCase().includes('count') || initialPool[0]?.path?.toLowerCase().includes('count');
 
             if (isCounting) {
-                // User requirement: "random (2,3,4) on first"
+                const baseline = studentId ? await getStudentHistoricalBaseline(studentId, category) : null;
+                const previousActivity = baseline && initialPool.find((a) => a.path?.toLowerCase() === baseline.lastPath.toLowerCase());
                 const initialChoices = [2, 3, 4];
-                const randomChoice = initialChoices[Math.floor(Math.random() * initialChoices.length)];
+                const previousLevel = Number(previousActivity?.difficulty_level);
+                const randomChoice = baseline && Number.isFinite(previousLevel) && previousLevel > 0
+                    ? Math.max(2, Math.min(10, previousLevel + (baseline.previousMistakes === 0 ? 1 : baseline.previousMistakes >= 2 ? -1 : 0)))
+                    : initialChoices[Math.floor(Math.random() * initialChoices.length)];
                 const matching = initialPool.filter((a) => a.difficulty_level === randomChoice);
                 startingActivity = matching.length > 0
                     ? matching[Math.floor(Math.random() * matching.length)]
@@ -922,6 +937,7 @@ export default function SetManager({
 
                     if (!/what[ -]comes[ -]next/i.test(`${nextActivity.path || ''} ${nextActivity.sub_category || ''} ${nextActivity.title || ''}`)) setBearMessage(parsedContent.instruction || "Let's play!");
                     setCurrentActivity(nextActivity);
+                    setCountingRoundsCompleted(0);
                     setPlayedActivityIds((prev) => [...prev, nextActivity.id]);
                     setPlayedActivityPaths((prev) => [...prev, nextActivity.path || '']);
                     setIsActivityDone(false);
@@ -1063,6 +1079,11 @@ export default function SetManager({
                             text={displayBearMessage}
                             language={language}
                             replayKey={feedbackReplayKey}
+                            enabled={speechEnabled}
+                            onToggleEnabled={(enabled) => {
+                                setSpeechEnabledState(enabled);
+                                setSpeechEnabled(enabled).catch(() => {});
+                            }}
                             onSpeechComplete={() => { const pending = speechCompletionRef.current; if (pending?.message === displayBearMessage) { speechCompletionRef.current = undefined; pending.done(); } }}
                             autoPlay={!isSetComplete && (currentTask?.type !== 'counting' || displayBearMessage.startsWith('💡') || displayBearMessage.startsWith('Hint'))}
                             size={isTablet ? 44 : 36}
@@ -1110,6 +1131,7 @@ export default function SetManager({
                                 key={`${currentActivity.id}-${completedCount}`}
                                 activity={currentTask}
                                 onComplete={handleActivityComplete}
+                                onRoundComplete={setCountingRoundsCompleted}
                                 onFeedback={handleFeedback}
                                 hintSignal={hintSignal}
                             />

@@ -29,6 +29,7 @@ export interface CountingContentData {
 export interface CountingActivityProps {
   contentData?: CountingContentData;
   onComplete?: (score: number, timeSpent: number, mistakes: number, hintsUsed?: number) => void;
+  onRoundComplete?: (round: number) => void;
   onFeedback?: (message: string) => void;
   onIncorrectAttempt?: () => void;
   hintSignal?: number;
